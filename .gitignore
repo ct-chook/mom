@@ -1,0 +1,8 @@
+*.ttc
+.idea/
+extra/
+*.png
+*.pyc
+.vs/
+.pytest_cache/
+src/UnitTest/.pytest_cache/*

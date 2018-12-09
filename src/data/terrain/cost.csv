@@ -1,0 +1,14 @@
+Hex type,Master,High Sky,Sky,Low Sky,Fire Sky,Big Ocean,Small Ocean,Big Land,Small Land,Fire Land,Big Ice,Small Ice,Dune,-
+Main Fortress,1,1,1,1,1,1,1,1,1,1,1,1,1,N
+Fortress,1,1,1,1,1,1,1,1,1,1,1,1,1,N
+Tower,1,1,1,1,1,1,1,1,1,1,1,1,1,N
+Dune,N,1,1,1,1,4,4,3,2,3,3,3,1,N
+Forest,N,1,1,2,1,4,4,2,2,2,2,2,1,N
+Grassland,N,1,1,1,1,4,4,1,1,1,1,1,1,N
+Mountain,N,1,1,2,1,N,N,3,3,3,3,3,2,N
+Ocean,N,1,1,2,1,1,1,N,N,N,N,N,N,N
+River,N,1,1,1,1,2,1,N,4,3,N,3,2,N
+Rocky Tracts,N,1,1,2,1,N,N,3,3,3,3,3,1,N
+Swamp,N,1,1,2,1,2,1,N,4,3,N,3,2,N
+Tundra,N,1,1,1,2,3,3,2,3,3,1,1,2,N
+Volcano,N,2,N,N,1,N,N,N,N,1,N,3,N,N
