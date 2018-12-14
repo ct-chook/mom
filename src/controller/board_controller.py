@@ -20,8 +20,8 @@ from src.helper.Misc.spritesheet import SpriteSheetFactory
 from src.helper.Misc.tileblitter import TileBlitter
 from src.helper.events.events import Event, EventQueue
 from src.helper.events.factory import PathEventFactory
+from src.helper.selectionhandler import SelectionHandler
 from src.model.board_model import BoardModel
-from src.helper import selectionhandler
 
 
 class BoardController(Window):
@@ -33,17 +33,18 @@ class BoardController(Window):
         super().__init__(x, y, width, height)
         self.mapname = mapname
         self.path_event_factory = None
-
-        self.model = BoardModel(mapname)
+        self.is_ai_controlled = False
         self.camera = Rect(
             (0, 0), (Options.camera_width, Options.camera_height))
+
+        self.model = BoardModel(mapname)
         self.view: BoardView = self.add_view(BoardView,
                                              (self.camera, self.model))
 
-        # todo camera should be part of controller instead?
         self.pos_converter = PosConverter(
             self.camera, self.model.board.x_max, self.model.board.y_max)
-        self.actionlog_handler = ActionLogHandler(self)
+        self.selection_handler = SelectionHandler(
+            self.model.board, self.model, self)
         if self.view:
             self.path_event_factory = PathEventFactory(
                 self.view.on_path_animation)
@@ -64,19 +65,23 @@ class BoardController(Window):
             MinimapController(self.model.board))
         self.end_of_turn_window: YesNoWindow = self.attach_controller(
             YesNoWindow('Do you want to end your turn?',
-                        self.handle_end_of_turn, None))
+                        self._handle_end_of_turn, None))
 
         self.end_of_turn_window.hide()
 
     def handle_mouseclick(self):
+        if self.is_ai_controlled:
+            return
         assert self.mouse_pos[0] >= 0 and self.mouse_pos[1] >= 0, \
             'Position was calculated as outside the controller'
         tile_pos = self.get_tile_pos_at_mouse()
         self.handle_tile_selection(tile_pos)
 
     def handle_right_mouseclick(self):
+        if self.is_ai_controlled:
+            return
         tile_pos = self.get_tile_pos_at_mouse()
-        if tile_pos[0] == -1:
+        if not tile_pos:
             return
         self.view.center_camera_on(tile_pos)
 
@@ -94,160 +99,168 @@ class BoardController(Window):
             self.model.board.on_tile(tile_pos).set_terrain_to(terrain)
             self.view.queue_for_background_update()
         else:
-            self.model.select_tile(tile_pos)
-            action_log = self.model.selection_handler.actionlog
-            self.actionlog_handler.process(action_log)
+            self.selection_handler.click_tile(tile_pos)
+            # self.actionlog_handler.process(action_log)
 
     def _tile_edit_mode_is_active(self):
         return self.tile_editor_window.selected_terrain is not None
 
     def handle_keypress(self, key):
+        if self.is_ai_controlled:
+            return
         if key in self.directions:
-            self.handle_arrow_key(key)
+            self._handle_arrow_key(key)
         elif key == pygame.K_s:
-            self.handle_key_k()
+            self._handle_key_k()
         elif key == pygame.K_SPACE:
-            self.handle_key_space()
+            self._handle_key_space()
 
-    def handle_key_space(self):
+    def _handle_key_space(self):
         self.end_of_turn_window.show()
         self.view.queue_for_background_update()
 
-    def handle_key_k(self):
+    def _handle_key_k(self):
         terrain = [self.model.board.x_max, self.model.board.y_max]
         for col in self.model.board.tiles:
             for tile in col:
                 terrain.append(tile.terrain)
         print(terrain)
 
-    def handle_arrow_key(self, key):
+    def _handle_arrow_key(self, key):
         self.view.move_camera(self.directions[key])
 
-    def handle_end_of_turn(self):
+    def _handle_end_of_turn(self):
+        self.selection_handler.unselect_current_monster()
+        self.selection_handler.unselect_enemy()
         self.model.on_end_turn()
         current_player = self.model.players.get_current_player()
         self.sidebar.display_turn_info(current_player, self.model.sun_stance)
-        if not current_player.ai_type == AiType.human:
-            self.handle_ai_start_turn(current_player)
-
-    def handle_ai_start_turn(self, current_player):
-        """The ai must take over the controller until they end their turn
-        do this by disabling the controller, and have the ai send events
-        to control itself
-        every event should fetch an ai action from the brain, display this
-        action to the controller/view, and then send it to the model
-        this happens until the brain decides to end its turn
-        """
-        action = current_player.get_next_ai_action()
-        assert action, 'AI action requested but no action received'
-        if action.end_turn:
-            end_turn_event = Event(
-                self.handle_end_of_turn,
-                name=f'AI {current_player.number} end turn')
-            EventQueue(end_turn_event).subscribe()
+        if current_player.ai_type == AiType.human:
+            self.is_ai_controlled = False
         else:
-            raise AttributeError(
-                f'I don\'t know how to deal with this AI action. {action}')
+            self.is_ai_controlled = True
+            self._handle_ai_action()
 
+    def handle_move_monster(self, monster, pos):
+        """Accessed by either the selection handler or the brain processor
 
-class ActionLogHandler:
-    def __init__(self, controller):
-        self.controller = controller
+        Sends movement to model, and sends movement event to view. After that
+        it checks if it is the computer's turn, in that case it adds an event
+        to make the computer do another move.
 
-    def process(self, action_log):
-        """Performs necessary actions using log retrieved from selector.
-
-        From a mouseclick, the following can happen:
-        - A monster moves, has event queue that needs to be added
-        - A monster moves and attacks, has event queue that needs
-        appending, controller has to open combat window and have event queue
-        link to that and also display movement event. Movement event callback
-        can be received from the view with repeats for length of path. The
-        combat event can be retrieved from the combat log with callbacks to the
-        combat window so the move event has to be made by the model first and
-        then the combat event can be added to it by the controller so it needs
-        to receive the combat log and the event queue so it can add to the
-        event queue using its own function to open the combat window, and pass
-        the combat log to the combat window.
+        Moving a monster may result in a tower capture. We can check if
+        destination is unoccupied tower and add a capture event directly
+        after movement. The model should auto-capture tower upon moving
         """
-        if not action_log:
-            raise AttributeError('Action log was "None"')
-        flag = action_log.next_action
-        if flag == selectionhandler.ActionFlag.SHOW_COMBAT_SCREEN:
-            self._show_combat_screen(action_log)
-        elif flag == selectionhandler.ActionFlag.SHOW_PRE_COMBAT_SCREEN:
-            self._show_precombat_window(action_log)
-        elif flag == selectionhandler.ActionFlag.SELECT_ENEMY:
-            self._handle_monster_movement(action_log)
-        elif flag == selectionhandler.ActionFlag.SUMMON_MONSTER:
-            self._handle_choose_summon(action_log)
-        elif flag == selectionhandler.ActionFlag.MOVE_MONSTER:
-            self._handle_monster_movement(action_log)
-        elif flag == selectionhandler.ActionFlag.SELECT_MONSTER:
-            self._handle_monster_selection(action_log)
-        elif flag == selectionhandler.ActionFlag.CAPTURE_TOWER:
-            self._handle_tower_capture(action_log)
+        logging.info('Moving monster')
 
-    def _show_combat_screen(self, action_log):
-        """ todo:
-        there are two functions that handle combat
-        merge them into one
-        """
-        combat_log = action_log.combat_log
-        event_queue = action_log.get_event_queue()
-        if event_queue:
-            # todo enabling of controller should be part of event log
-            open_combat_window_event = Event(
-                self.controller.combat_window.show)
-            event_queue.append(open_combat_window_event)
+        if self.model.has_capturable_tower_at(pos):
+            tower_capture = True
         else:
-            self.controller.combat_window.show_combat(combat_log)
+            tower_capture = False
+        self.model.move_monster_to(monster, pos)
+        path = [(0, 0)]
+        eventqueue = self.add_movement_event_to_view(monster, path)
+        if tower_capture:
+            self._handle_tower_capture(pos, eventqueue)
+        if self.is_ai_controlled:
+            eventqueue.append(Event(self._handle_ai_action))
 
-    def _show_precombat_window(self, action_log):
-        self.controller.precombat_window.show()
-        self.controller.precombat_window.set_attackers(
-            action_log.combat_monsters)
+    def add_movement_event_to_view(self, monster, path):
+        """Movement can work in two ways, either by player or by computer
 
-    def _handle_monster_selection(self, actionlog):
-        tiles_to_highlight = actionlog.tiles_to_highlight
-        # todo view reference
-        self.controller.view.highlight_tiles(tiles_to_highlight)
+        In the case of the player, something sends a signal to move x to y,
+        which triggers an event for the view, as well as a change in the model
+        The ai should have the same. But after the ai's event there should be
+        a callback.
 
-    def _handle_monster_movement(self, action_log):
-        monster = action_log.monster
-        path = action_log.path
-        self._add_movement_event(monster, path)
-        self.controller.minimap_window.view.queue_for_background_update()
-
-    def _add_movement_event(self, monster, path):
+        So any asynchronous event, such as the movement in the view
+        should have an option for a callback so the ai can chain it with
+        another function.
+        """
         assert monster
         assert path
-        self.controller.view.init_path_animation(monster, path)
-        # todo view references
-        movement_event = Event(self.controller.view.on_path_animation)
-        clear_highlight_event = Event(
-            self.controller.view.clear_highlighted_tiles)
-        return EventQueue((movement_event, clear_highlight_event))
+        queue = self.view.add_movement_event(monster, path)
+        self.minimap_window.update_view()
+        return queue
 
-    def _handle_tower_capture(self, action_log):
-        monster = action_log.monster
-        path = action_log.path
-        eventqueue = self._add_movement_event(monster, path)
-        tower_capture_event = (
-            Event(self.controller.tower_capture_window.show),
-            Event(self.controller.tower_capture_window.view.show_capture),
-            Event(self.controller.tower_capture_window.hide))
-        eventqueue.append(tower_capture_event)
+    def _handle_tower_capture(self, pos, eventqueue):
+        print('handling  tower capture')
+        self.model.capture_tower_at(pos)
+        tower_capture_events = self.tower_capture_window.get_capture_events()
+        return eventqueue.append(tower_capture_events)
 
-    def _handle_choose_summon(self, actionlog):
-        x, y = actionlog.pos
+    def _handle_ai_action(self):
+        """The ai must take over the controller until they end their turn
+
+        Every event should fetch an ai action from the brain, display this
+        action to the controller/view, and then send it to the model.
+        this happens until the brain decides to end its turn.
+        Each event
+        """
+        action = self.model.get_current_player().get_next_ai_action()
+        assert action, 'AI action requested but no action received'
+        self._execute_brain_action(action)
+
+    def _execute_brain_action(self, action):
+        if action.monster_to_summon:
+            self._handle_brain_monster_summon(action)
+        elif action.monster_to_move:
+            self._handle_brain_monster_move(action)
+            if action.monster_to_attack:
+                self._handle_brain_monster_attack(action)
+        elif action.monster_to_attack:
+            self._handle_brain_monster_attack(action)
+        elif action.end_turn:
+            self._handle_brain_end_turn()
+        else:
+            raise AttributeError(
+                f'I don\'t know how to deal with this brain action. {action}')
+
+    def _handle_brain_monster_move(self, action):
+        monster = action.monster_to_move
+        pos = action.pos_to_move
+        self.handle_tile_selection(monster.pos)
+        self.handle_tile_selection(pos)
+
+    def _handle_brain_monster_attack(self, action):
+        pass
+
+    def _handle_brain_monster_summon(self, action):
+        pass
+
+    def _handle_brain_end_turn(self):
+        end_turn_event = Event(
+            self._handle_end_of_turn,
+            name=f'AI end turn')
+        EventQueue(end_turn_event).subscribe()
+
+    def show_combat_window_for(self, attacker, defender):
+        assert attacker
+        assert defender
+        assert attacker is not defender
+        self.precombat_window.show()
+        self.precombat_window.set_attackers((attacker, defender))
+
+    def handle_attack_order(self, monsters, range_):
+        attacker, defender = monsters
+        attacker.moved = True
+        logging.info(f'{attacker} is attacking monster {defender}')
+        combat_log = self.model.get_combat_result(attacker, defender, range_)
+        if combat_log.loser:
+            logging.info(f'{combat_log.loser} was defeated!')
+
+    def handle_summon_window_at(self, pos):
+        x, y = pos
         logging.info(f'Picked {(x, y)} for summon location')
-        self._show_summon_window(actionlog)
+        self.summon_window.show()
+        self.summon_window.set_summon_pos(pos)
 
-    def _show_summon_window(self, actionlog):
-        logging.info('Showing summon window')
-        self.controller.summon_window.show()
-        self.controller.summon_window.set_summon_pos(actionlog.pos)
+    def highlight_tiles(self, posses):
+        self.view.highlight_tiles(posses)
+
+
+PATH_ANIMATION_DELAY = 6
 
 
 class BoardView(View):
@@ -331,9 +344,13 @@ class BoardView(View):
         super().update_background()
         logging.info('updated surface of board')
 
-    def init_path_animation(self, monster, path):
+    def add_movement_event(self, monster, path):
         self.path_animation = (path, monster)
         self.path_index = 0
+        movement_event = Event(self.on_path_animation)
+        clear_highlight_event = Event(
+            self.clear_highlighted_tiles)
+        return EventQueue((movement_event, clear_highlight_event))
 
     def on_path_animation(self):
         path, monster = self.path_animation
@@ -347,13 +364,13 @@ class BoardView(View):
                 f'Tried to animate monster {monster.name} but not in dict. '
                 'This means that the sprite is outside camera view, or '
                 'simply was never created')
-            return 6
+            return PATH_ANIMATION_DELAY
         sprite = self.monster_to_sprite[monster]
         surface_pos = self.pos_converter.board_to_surface_pos(pos_on_path)
         sprite.rect.x = surface_pos[0]
         sprite.rect.y = surface_pos[1]
         self.queue_for_background_update()
-        return 6
+        return PATH_ANIMATION_DELAY
 
     def create_sprites_for_board_in_view(self):
         self.sprites.empty()
@@ -389,3 +406,10 @@ class BoardView(View):
         self.monster_to_sprite[monster] = self.add_sprite(
             sprite_surface, offset)
         logging.info(f'sprite added for {monster.name} ({monster.owner})')
+
+    def highlight_monsters(self, enemies):
+        tiles = []
+        for enemy in enemies:
+            tiles.append(enemy.pos)
+        self.highlight_tiles(tiles)
+

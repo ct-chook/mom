@@ -110,9 +110,9 @@ class TestMouseToBoard:
     def test_top_left(self, before):
         pos = (0, 0)
         board_pos = self.converter.mouse_to_board(pos)
-        assert (-1, -1) == board_pos
+        assert board_pos is None
 
     def test_left_of_second_row(self, before):
         pos = (0, self.converter.row_height + 1)
         board_pos = self.converter.mouse_to_board(pos)
-        assert (-1, -1) == board_pos
+        assert board_pos is None

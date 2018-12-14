@@ -3,6 +3,7 @@ import logging
 from src.abstract.window import Window
 from src.helper.Misc.constants import is_even, Color
 from src.abstract.view import View
+from src.helper.events.events import Event
 
 
 class TowerCaptureWindow(Window):
@@ -17,6 +18,11 @@ class TowerCaptureWindow(Window):
     def handle_mouseclick(self):
         self.view.halt_animation()
         self.hide()
+
+    def get_capture_events(self):
+        return (Event(self.show),
+                Event(self.view.show_capture),
+                Event(self.hide))
 
 
 class TowerCaptureView(View):

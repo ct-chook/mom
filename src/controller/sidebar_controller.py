@@ -71,7 +71,7 @@ class SidebarView(View):
     def update_turn_info(self, sun_stance,
                          active_player: src.components.board.players.Player):
         self.sun_stance.set_text(self.sun_stance_to_text[sun_stance])
-        self.active_player.set_text(active_player.number)
+        self.active_player.set_text(active_player.id_)
         self.player_mana.set_text(active_player.mana)
         self.tower_count.set_text(active_player.tower_count)
         print(f'Player mana: {self.player_mana.text}')

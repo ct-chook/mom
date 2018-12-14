@@ -36,7 +36,7 @@ class Board:
             for monster in self.monsters[self.get_current_player_id()]:
                 monster.moved = False
         logging.info(
-            f'Ending turn of {self._players.get_current_player().number}')
+            f'Ending turn of {self._players.get_current_player().id_}')
 
     def tile_at(self, pos) -> Tile:
         return self.tiles[pos[0]][pos[1]]
@@ -93,7 +93,7 @@ class Board:
 
     def get_enemies_adjacent_to(self, pos):
         enemies = []
-        adjacent_tiles = self.get_tiles_adjacent_to(pos)
+        adjacent_tiles = self.get_tile_posses_adjacent_to(pos)
         for adj_pos in adjacent_tiles:
             adj_tile = self.tile_at(adj_pos)
             if (adj_tile.monster and
@@ -101,7 +101,7 @@ class Board:
                 enemies.append(adj_tile.monster)
         return enemies
 
-    def get_tiles_adjacent_to(self, pos):
+    def get_tile_posses_adjacent_to(self, pos):
         """Boring but important stuff to retrieve all adjacent tiles
 
           @ | @

@@ -4,7 +4,6 @@ from src.helper.Misc.options_game import Options
 from src.helper.events.events import Publisher, EventQueue
 from src.controller.board_controller import BoardController
 
-
 roman_x = 1
 roman_y = 19
 chim_x = 1
@@ -30,6 +29,7 @@ top_left = (0, 0)
 
 Options.headless = True
 
+
 class TestCase:
     @pytest.fixture
     def before(self):
@@ -49,39 +49,16 @@ class TestCase:
         self.publisher.tick_events()
 
 
-class TestMoving(TestCase):
-    def test_tile_highlighting(self, before):
-        self.board_controller.handle_tile_selection(roman_start_pos)
-        assert self.view.tiles_to_highlight
-        self.board_controller.handle_tile_selection(left_of_roman_start_pos)
-
-    def test_no_highlighting_after_attacking_with_no_moving(self, before):
-        # derived from bug
-        self.board_controller.handle_tile_selection((8, 8))
-        self.board_controller.handle_tile_selection((8, 9))
-        assert self.board_controller.precombat_window.visible
-        self.board_controller.precombat_window.handle_attack_choice(0)
-        assert not self.board_controller.precombat_window.visible
-        assert self.board_controller.combat_window.visible
-        self.tick_events()
-        self.board_controller.combat_window.handle_mouseclick()
-        self.tick_events()
-        assert not self.board_controller.combat_window.visible
-        assert not self.view.tiles_to_highlight
-
 
 class TestCenterCamera(TestCase):
     def test_center_camera(self, before):
         pos = (0, 0)
         self.view.center_camera_on(pos)
-        assert -8 == self.view.camera.x
-        assert -8 == self.view.camera.y
+        assert self.view.camera.x == -8
+        assert self.view.camera.y == -8
 
     def test_bottom_right(self, before):
         pos = (4, 4)
         self.view.center_camera_on(pos)
-        assert -4 == self.view.camera.x
-        assert -4 == self.view.camera.y
-
-
-
+        assert self.view.camera.x == -4
+        assert self.view.camera.y == -4

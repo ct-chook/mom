@@ -34,6 +34,7 @@ class MatrixProcessor:
             n += 1
         if n == 1000:
             raise AttributeError('Matrix took too long to process')
+        self.matrix.accessible_positions = self.accessible_positions
 
     def _setup_processing(self, start):
         self.monster = self.board.monster_at(start)
@@ -73,7 +74,7 @@ class MatrixProcessor:
             self.accessible_positions.add(adjacent_enemy.pos)
 
     def _process_adjacent_tiles(self):
-        adjacent_posses = self.board.get_tiles_adjacent_to(self.pos)
+        adjacent_posses = self.board.get_tile_posses_adjacent_to(self.pos)
         for adj_pos in adjacent_posses:
             self._process_adjacent_tile(adj_pos)
 
@@ -355,7 +356,7 @@ class PathGenerator:
 
     def _search_for_adjacent_tiles(self):
         self.adj_found = False
-        adjacent_tiles = self.board.get_tiles_adjacent_to(
+        adjacent_tiles = self.board.get_tile_posses_adjacent_to(
             (self.x0, self.y0))
         for self.x1, self.y1 in adjacent_tiles:
             self._inspect_tile()
@@ -400,7 +401,7 @@ class PathGenerator:
             return self._next_tile_has_no_adjacent_enemies()
 
     def _next_tile_has_no_adjacent_enemies(self):
-        nearby_tiles = self.board.get_tiles_adjacent_to((self.x1, self.y1))
+        nearby_tiles = self.board.get_tile_posses_adjacent_to((self.x1, self.y1))
         for pos in nearby_tiles:
             nearby_monster = self.board.monster_at(pos)
             if (nearby_monster and nearby_monster.owner !=
@@ -423,6 +424,7 @@ class PathMatrix:
         self.end = None
         self.dist_values = {}
         self.heuristic = {}
+        self.accessible_positions = set()
 
     def set_heuristic_value_at(self, pos, value):
         self.heuristic[pos] = value

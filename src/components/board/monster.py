@@ -34,8 +34,8 @@ class Monster:
 
     def set_monster_type(self, monster_type):
         self.type = monster_type
-        self.stats = src.helper.Misc.datatables.DataTables.monster_stats[
-            monster_type]
+        self.stats = src.helper.Misc.datatables.DataTables\
+            .get_monster_stats(monster_type)
         self.hp = self.stats.max_hp
         self.name = self.stats.name
         self.exp = 0

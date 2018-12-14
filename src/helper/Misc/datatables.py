@@ -163,30 +163,41 @@ class DataTables:
     terrain_defense = []
     summon_options = []
     monster_stats = []
+    loaded = False
 
-    def __init__(self):
-        table_loader = TableLoader(self)
+    @staticmethod
+    def load():
+        table_loader = TableLoader(DataTables)
         table_loader.load_tables()
         logging.info('data tables loaded')
+        DataTables.loaded = True
 
     @staticmethod
     def get_terrain_cost(terrain, movement_type):
+        if not DataTables.loaded:
+            DataTables.load()
         return DataTables.terrain_cost[terrain][movement_type]
 
     @staticmethod
     def get_terrain_defense(terrain, terrain_type):
+        if not DataTables.loaded:
+            DataTables.load()
         return DataTables.terrain_defense[terrain][terrain_type]
 
     @staticmethod
     def get_monster_stats(monster_id) -> MonsterStats:
+        if not DataTables.loaded:
+            DataTables.load()
         return DataTables.monster_stats[monster_id]
 
     @staticmethod
     def get_terrain_name(terrain_id):
+        if not DataTables.loaded:
+            DataTables.load()
         return DataTables.terrain_name[terrain_id]
 
     @staticmethod
     def get_summon_options(summoner_id):
+        if not DataTables.loaded:
+            DataTables.load()
         return DataTables.summon_options[summoner_id]
-
-DataTables()

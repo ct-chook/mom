@@ -139,9 +139,9 @@ class Text(pygame.sprite.Sprite):
             y_offset += line_surface.get_height()
 
     def set_background_color(self, color):
-        """
-        Performance for text on solid color can be improved by specifying bg
-        color
+        """Performance for text on solid color can be improved
+
+        For solid colored backgrounds, the bg color can be specified. See:
         https://www.pygame.org/docs/ref/font.html#pygame.font.Font.render
         """
         self.background_color = color

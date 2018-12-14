@@ -3,8 +3,8 @@ from src.helper.Misc.constants import AiType
 
 
 class Player:
-    def __init__(self, number, ai_type, lord_type, initial_mana, mana_gain):
-        self.number = number
+    def __init__(self, id_, ai_type, lord_type, initial_mana, mana_gain):
+        self.id_ = id_
         self.ai_type = ai_type
         self.lord_type = lord_type
         self.mana = initial_mana
@@ -27,7 +27,7 @@ class Player:
 
     def get_next_ai_action(self):
         if not self.brain:
-            raise AttributeError(f'No brain found for player {self.number}')
+            raise AttributeError(f'No brain found for player {self.id_}')
         return self.brain.get_next_action()
 
     def regenerate_mana(self):
@@ -55,8 +55,8 @@ class PlayerList:
         if player_id == len(self.players):
             self.current_player = 0
 
-    def get_player_by_id(self, number) -> Player:
-        return self.players[number]
+    def get_player_by_id(self, id_) -> Player:
+        return self.players[id_]
 
     def goto_next_player(self) -> Player:
         self.current_player = (self.current_player + 1) % len(self.players)

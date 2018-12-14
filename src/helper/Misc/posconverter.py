@@ -82,7 +82,7 @@ class PosConverter:
         x = floor((corner[0] - 1) / 2)
         if self._pos_is_outside_boundaries(x, y) or \
                 self._pos_is_outside_camera(x, y):
-            return -1, -1
+            return None
         return x, y
 
     def _pos_is_outside_boundaries(self, x, y):

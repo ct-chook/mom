@@ -14,6 +14,9 @@ class Tile:
         if self.has_tower():
             return self.owner
 
+    def is_hostile_terrain(self, player):
+        return self.owner != player.id_
+
 
 class TileModifier:
     """Decorator class that changes properties of the tile"""

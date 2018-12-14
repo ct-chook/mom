@@ -1,27 +1,26 @@
 import pytest
 
-from src.helper.Misc.options_game import Options
-from src.controller.tile_editor_controller import TileEditorWindow, \
-    TileEditorButtons
-from src.helper.Misc.constants import Terrain, MonsterType, AiType
-from src.helper.events.events import Publisher, EventQueue
-from src.controller.board_controller import BoardController
 from src.components.board.board import Board
+from src.controller.board_controller import BoardController
+from src.helper.Misc.constants import Terrain, MonsterType, AiType
+from src.helper.Misc.options_game import Options
+from src.helper.events.events import Publisher, EventQueue
 
 Options.headless = True
 
 roman_x = 1
 roman_y = 19
 roman_start_pos = (roman_x, roman_y)
+
 chim_start_pos = (1, 17)
+chimera_pos = (roman_x, roman_y - 2)
+
 crusader_x = 5
 crusader_y = 5
 crusader_start_pos = (crusader_x, crusader_y)
 
 left_of_roman_start_pos = (roman_x - 1, roman_y)
 next_to_chimera_pos = (roman_x - 1, roman_y - 2)
-chimera_pos = (roman_x, roman_y - 2)
-
 crusader_south_once = (crusader_x, crusader_y + 3)
 crusader_south_twice = (crusader_x, crusader_y + 5)
 
@@ -29,16 +28,17 @@ daimyou_pos = (9, 11)
 left_of_daimyou_pos = (8, 11)
 right_of_daimyou_pos = (10, 11)
 far_left_of_daimyou_pos = (7, 11)
+
 tower_pos = (4, 4)
 
 
 class TestCase:
     @pytest.fixture
-    def before(self):
-        self.board_controller = BoardController(0, 0, 500, 500)
-        self.model = self.board_controller.model
+    def make_board(self):
+        self.controller = BoardController(0, 0, 500, 500)
+        self.model = self.controller.model
         self.board: Board = self.model.board
-        self.precombat_window = self.board_controller.precombat_window
+        self.precombat_window = self.controller.precombat_window
         self.publisher = Publisher()
         EventQueue.set_publisher(self.publisher)
         self.before_more()
@@ -46,13 +46,11 @@ class TestCase:
     def before_more(self):
         pass
 
-    def move_monster_to_tile(self, monster, tile):
-        tile.terrain = Terrain.TOWER
-        self.board_controller.handle_tile_selection(monster.pos)
-        self.board_controller.handle_tile_selection(tower_pos)
+    def click_on(self, pos):
+        self.controller.handle_tile_selection(pos)
 
     def end_turn(self):
-        self.board_controller.handle_end_of_turn()
+        self.controller._handle_end_of_turn()
         # let AI skip its turn
         self.tick_events(5)
 
@@ -65,168 +63,161 @@ class TestCase:
         pass
 
 
-class TestClicking(TestCase):
-    def test_click_works(self, before):
-        # click on the roman surrounded by mountains
-        self.board_controller.mouse_pos = (70, 230)
-        self.board_controller.handle_mouseclick()
-        assert self.board_controller.view.tiles_to_highlight is not None
-
-
-class TestOther(TestCase):
-    def test_idle_ai_turns(self, before):
-        self.board_controller.end_of_turn_window.yes.handle_mouseclick()
-        self.tick_events(5)
-        assert 0 == self.board.get_current_player_id()
-
-
 class TestMoving(TestCase):
-    @pytest.fixture
-    def before(self):
-        self.board_controller = BoardController(0, 0, 500, 500)
-        self.model = self.board_controller.model
-        self.board: Board = self.model.board
-        self.precombat_window = self.board_controller.precombat_window
-        self.publisher = Publisher()
-        EventQueue.set_publisher(self.publisher)
+    def before_more(self):
         self.roman = self.board.monster_at(roman_start_pos)
 
-    def move_roman_left(self):
-        self.board_controller.handle_tile_selection(roman_start_pos)
-        self.board_controller.handle_tile_selection(left_of_roman_start_pos)
+    def test_roman_pos(self, make_board):
+        self.click_on(roman_start_pos)
+        self.click_on(left_of_roman_start_pos)
+        assert self.roman.pos == left_of_roman_start_pos
+        assert self.board.monster_at(left_of_roman_start_pos) == self.roman
+        assert self.board.monster_at(roman_start_pos) is None
 
-    def test_move_roman_left(self, before):
-        roman = self.board.monster_at(roman_start_pos)
-        assert roman_start_pos == roman.pos
+    def test_cannot_move_within_mountains(self, make_board):
+        # click on the roman surrounded by mountains
+        surrounded_roman_pos = (1, 5)
+        left_of_surrounded_roman = (0, 5)
+        self.click_on(surrounded_roman_pos)
+        self.click_on(left_of_surrounded_roman)
+        assert self.board.monster_at(left_of_surrounded_roman) is None
+
+    def test_cannot_move_twice_on_same_turn(self, make_board):
         self.move_roman_left()
-        assert left_of_roman_start_pos == roman.pos
-        assert self.roman == self.board.monster_at(left_of_roman_start_pos)
-        assert None is self.board.monster_at(roman_start_pos)
+        self.click_on(left_of_roman_start_pos)
+        self.click_on(roman_start_pos)
+        assert self.roman.pos == left_of_roman_start_pos
+        assert self.board.monster_at(roman_start_pos) is None
 
-    def test_cannot_move_twice_on_same_turn(self, before):
-        self.move_roman_left()
-        self.board_controller.handle_tile_selection(left_of_roman_start_pos)
-        self.board_controller.handle_tile_selection(roman_start_pos)
-        assert left_of_roman_start_pos == self.roman.pos
-
-    def test_move_for_two_turns(self, before):
+    def test_move_for_two_turns(self, make_board):
         self.move_roman_left()
         self.end_turn()
-        assert 0 == self.board.get_current_player_id()
+        assert self.board.get_current_player_id() == 0
         # now move back to starting position
-        self.board_controller.handle_tile_selection(left_of_roman_start_pos)
-        self.board_controller.handle_tile_selection(roman_start_pos)
+        self.click_on(left_of_roman_start_pos)
+        self.click_on(roman_start_pos)
         assert self.roman.pos == roman_start_pos
+        assert self.board.monster_at(left_of_roman_start_pos) is None
+
+    def test_see_highlighted_tiles(self, make_board):
+        self.click_on(roman_start_pos)
+        assert self.controller.view.tiles_to_highlight
+        self.click_on(left_of_roman_start_pos)
+
+    def test_no_highlighting_after_attacking_with_no_moving(self, make_board):
+        # derived from bug
+        self.click_on((8, 8))
+        self.click_on((8, 9))
+        self.controller.precombat_window.handle_attack_choice(0)
+        self.tick_events()
+        self.controller.combat_window.handle_mouseclick()
+        self.tick_events()
+        assert not self.controller.view.tiles_to_highlight
+
+    def move_roman_left(self):
+        self.click_on(roman_start_pos)
+        self.click_on(left_of_roman_start_pos)
 
 
 class TestAttacking(TestCase):
-    @pytest.fixture
-    def before(self):
-        self.board_controller = BoardController(0, 0, 500, 500)
-        self.model = self.board_controller.model
-        self.board: Board = self.model.board
-        self.precombat_window = self.board_controller.precombat_window
-        self.publisher = Publisher()
-        EventQueue.set_publisher(self.publisher)
+    def before_more(self):
         self.roman = self.board.monster_at(roman_start_pos)
         self.crusader = self.board.monster_at(crusader_start_pos)
 
     def attack_chimera(self):
-        self.board_controller.handle_tile_selection(roman_start_pos)
-        self.board_controller.handle_tile_selection(next_to_chimera_pos)
-        self.board_controller.handle_tile_selection(chimera_pos)
+        self.click_on(roman_start_pos)
+        self.click_on(next_to_chimera_pos)
+        self.click_on(chimera_pos)
         assert self.precombat_window.visible
         self.precombat_window.short_range_button.handle_mouseclick()
         assert not self.precombat_window.visible
-        assert self.board_controller.combat_window.visible
+        assert self.controller.combat_window.visible
         self.tick_events()
-        self.board_controller.combat_window.handle_mouseclick()
+        self.controller.combat_window.handle_mouseclick()
         self.tick_events()
-        assert not self.board_controller.combat_window.visible
+        assert not self.controller.combat_window.visible
 
-    def test_attack_chimera(self, before):
-        assert 0 == self.roman.exp
+    def test_attack_chimera(self, make_board):
+        assert self.roman.exp == 0
         self.attack_chimera()
-        assert 1 == self.roman.exp
+        assert self.roman.exp == 1
 
-    def test_cannot_attack_from_distance(self, before):
-        self.board_controller.handle_tile_selection(roman_start_pos)
-        self.board_controller.handle_tile_selection(chimera_pos)
-        assert not self.board_controller.precombat_window.visible
+    def test_cannot_attack_from_distance(self, make_board):
+        self.click_on(roman_start_pos)
+        self.click_on(chimera_pos)
+        assert not self.controller.precombat_window.visible
 
-    def test_cannot_move_after_attacking(self, before):
+    def test_cannot_move_after_attacking(self, make_board):
         self.attack_chimera()
-        self.board_controller.handle_tile_selection(next_to_chimera_pos)
-        self.board_controller.handle_tile_selection(roman_start_pos)
-        assert next_to_chimera_pos == self.roman.pos
+        self.click_on(next_to_chimera_pos)
+        self.click_on(roman_start_pos)
+        assert self.roman.pos == next_to_chimera_pos
 
-    def test_cannot_select_and_move_after_attacking(self, before):
+    def test_cannot_select_and_move_after_attacking(self, make_board):
         self.attack_chimera()
-        self.board_controller.handle_tile_selection(next_to_chimera_pos)
-        self.board_controller.handle_tile_selection(left_of_roman_start_pos)
-        assert next_to_chimera_pos == self.roman.pos
+        self.click_on(next_to_chimera_pos)
+        self.click_on(left_of_roman_start_pos)
+        assert self.roman.pos == next_to_chimera_pos
 
-    def test_attack_without_moving(self, before):
-        self.board_controller.handle_tile_selection(roman_start_pos)
-        self.board_controller.handle_tile_selection(next_to_chimera_pos)
-        self.board_controller.handle_tile_selection(next_to_chimera_pos)
+    def test_attack_without_moving(self, make_board):
+        self.click_on(roman_start_pos)
+        self.click_on(next_to_chimera_pos)
+        self.click_on(next_to_chimera_pos)
         assert not self.precombat_window.visible
-        assert 0 == self.roman.exp
+        assert self.roman.exp == 0
         self.end_turn()
-        self.board_controller.handle_tile_selection(next_to_chimera_pos)
-        self.board_controller.handle_tile_selection(chimera_pos)
+        self.click_on(next_to_chimera_pos)
+        self.click_on(chimera_pos)
         assert self.precombat_window.visible
         self.precombat_window.short_range_button.handle_mouseclick()
         assert not self.precombat_window.visible
-        assert self.board_controller.combat_window.visible
+        assert self.controller.combat_window.visible
         self.tick_events()
-        assert 0 == self.roman.exp
-        self.board_controller.combat_window.handle_mouseclick()
+        assert self.roman.exp == 0
+        self.controller.combat_window.handle_mouseclick()
         self.tick_events()
-        assert not self.board_controller.combat_window.visible
-        assert 1 == self.roman.exp
+        assert not self.controller.combat_window.visible
+        assert self.roman.exp == 1
 
-    def test_attack_then_move_next_turn(self, before):
+    def test_attack_then_move_next_turn(self, make_board):
         # derived from bug
         # attack with one monster then move with other, move again next turn
         self.attack_chimera()
-        self.board_controller.handle_tile_selection(crusader_start_pos)
-        self.board_controller.handle_tile_selection(crusader_south_once)
-        assert crusader_south_once == self.crusader.pos
+        self.click_on(crusader_start_pos)
+        self.click_on(crusader_south_once)
+        assert self.crusader.pos == crusader_south_once
         self.end_turn()
-        self.board_controller.handle_tile_selection(crusader_south_once)
-        self.board_controller.handle_tile_selection(crusader_south_twice)
-        assert crusader_south_once != self.crusader.pos
-        assert crusader_south_twice == self.crusader.pos
+        self.click_on(crusader_south_once)
+        self.click_on(crusader_south_twice)
+        assert self.crusader.pos != crusader_south_once
+        assert self.crusader.pos == crusader_south_twice
 
 
 class TestSummoning(TestCase):
-    def test_summon_monster(self, before):
+    def test_summon_monster(self, make_board):
         left_of_daimyou = self.board.tile_at(left_of_daimyou_pos)
-        assert None is left_of_daimyou.monster
+        assert left_of_daimyou.monster is None
         # open summon window
-        self.board_controller.handle_tile_selection(left_of_daimyou_pos)
-        summon_window = self.board_controller.summon_window
+        self.click_on(left_of_daimyou_pos)
+        summon_window = self.controller.summon_window
         assert summon_window.visible
-
         # make summon choice
         summon_window.handle_summon_choice(0)
-        assert False is summon_window.visible
+        assert summon_window.visible is False
         summoned_monster = left_of_daimyou.monster
-        assert summoned_monster
-        assert MonsterType.DRAGON_DY == summoned_monster.type
+        assert summoned_monster.type == MonsterType.DRAGON_DY
         assert summoned_monster.moved
 
-    def test_cannot_summon_far_away(self, before):
+    def test_cannot_summon_far_away(self, make_board):
         far_left_of_daimyou = self.board.tile_at(far_left_of_daimyou_pos)
-        assert None is far_left_of_daimyou.monster
+        assert far_left_of_daimyou.monster is None
         # open summon window
-        self.board_controller.handle_tile_selection(far_left_of_daimyou_pos)
-        assert not self.board_controller.summon_window.visible
+        self.click_on(far_left_of_daimyou_pos)
+        assert not self.controller.summon_window.visible
 
-    def test_cannot_summon_on_top_of_monster(self, before):
+    def test_cannot_summon_on_top_of_monster(self, make_board):
         # create monsters left and right to daimyou
-        assert None is self.board.monster_at(left_of_daimyou_pos)
+        assert self.board.monster_at(left_of_daimyou_pos) is None
         self.board.place_new_monster(
             MonsterType.CYCLOPS, left_of_daimyou_pos, 0)
         self.board.place_new_monster(
@@ -236,10 +227,10 @@ class TestSummoning(TestCase):
         # try summon monster left and right of daimyou
         left_of_daimyou = self.board.tile_at(left_of_daimyou_pos)
         assert left_of_daimyou.monster
-        self.board_controller.handle_tile_selection(left_of_daimyou_pos)
-        assert not self.board_controller.summon_window.visible
-        self.board_controller.handle_tile_selection(right_of_daimyou_pos)
-        assert not self.board_controller.summon_window.visible
+        self.click_on(left_of_daimyou_pos)
+        assert not self.controller.summon_window.visible
+        self.click_on(right_of_daimyou_pos)
+        assert not self.controller.summon_window.visible
 
 
 class TestTowerCapture(TestCase):
@@ -247,95 +238,86 @@ class TestTowerCapture(TestCase):
         self.crusader = self.board.monster_at(crusader_start_pos)
         self.tower_tile = self.board.tile_at(tower_pos)
 
-    def test_tower_capture(self, before):
+    def test_tower_capture(self, make_board):
         self.move_crusader_to_tower()
-        assert self.board_controller.tower_capture_window.visible
+        assert self.controller.tower_capture_window.visible
         # now wait for window animation
         self.tick_events(300)
         # then after a while the window should be gone
         self.assert_tower_captured_by(self.crusader)
 
-    def test_tower_capture_close_window(self, before):
+    def test_tower_capture_close_window(self, make_board):
         self.move_crusader_to_tower()
-        assert self.board_controller.tower_capture_window.visible
+        assert self.controller.tower_capture_window.visible
         # close window before_zigzag animation finishes
-        self.board_controller.tower_capture_window.handle_mouseclick()
+        self.controller.tower_capture_window.handle_mouseclick()
         # now window should be closed
         self.assert_tower_captured_by(self.crusader)
 
-    def test_capture_by_enemy(self, before):
+    def test_capture_by_enemy(self, make_board):
         # set enemy AI to human
-        enemy = self.board_controller.model.players.get_player_by_id(1)
+        enemy = self.controller.model.players.get_player_by_id(1)
         enemy.ai_type = AiType.human
         # create enemy unit
         enemy_pos = (3, 3)
         roc = self.board.summon_monster(MonsterType.LOC, enemy_pos, 1)
         # player 1 turn
         self.move_crusader_to_tower()
-        self.board_controller.tower_capture_window.handle_mouseclick()
+        self.controller.tower_capture_window.handle_mouseclick()
         self.assert_tower_captured_by(self.crusader)
         self.end_turn()
         # player 2 turn
         self.end_turn()
         # player 1 turn: move away from tower
-        self.board_controller.handle_tile_selection(tower_pos)
-        self.board_controller.handle_tile_selection(crusader_start_pos)
+        self.click_on(tower_pos)
+        self.click_on(crusader_start_pos)
         self.end_turn()
         # player 2 turn: move to to tower
-        self.board_controller.handle_tile_selection(enemy_pos)
-        self.board_controller.handle_tile_selection(tower_pos)
+        self.click_on(enemy_pos)
+        self.click_on(tower_pos)
         self.assert_tower_captured_by(roc)
-        assert 0 == self.model.players.get_player_by_id(0).tower_count
+        assert self.model.players.get_player_by_id(0).tower_count == 0
 
     def move_crusader_to_tower(self):
         crusader = self.board.monster_at(crusader_start_pos)
         tower_tile = self.board.tile_at(tower_pos)
-        self.move_monster_to_tile(crusader, tower_tile)
+        self.set_tile_to_tower_and_move_monster(crusader, tower_tile)
         # now monster has to walk there
-        self.tick_events(30)
+        self.tick_events(50)
         # then window should be visible
-        return crusader, tower_tile
+
+    def set_tile_to_tower_and_move_monster(self, monster, tile):
+        tile.terrain = Terrain.TOWER
+        self.click_on(monster.pos)
+        self.click_on(tower_pos)
 
     def assert_tower_captured_by(self, monster):
-        assert not self.board_controller.tower_capture_window.visible
-        assert monster == self.board.monster_at(tower_pos)
-        assert monster.owner == self.board.terrain_owner_of(tower_pos)
+        assert not self.controller.tower_capture_window.visible
+        assert self.board.monster_at(tower_pos) == monster
+        assert self.board.terrain_owner_of(tower_pos) == monster.owner, \
+            'Wrong owner'
         player = self.model.players.get_player_by_id(monster.owner)
-        assert 1 == player.tower_count
+        assert player.tower_count == 1
 
 
 class TestComputerBrain(TestCase):
     def before_more(self):
         pass
 
-    def test_move_action(self):
+    def set_ai_to(self, ai_type):
+        ai = self.model.get_player_of_number(1)
+        ai.ai_type = ai_type
+        ai.create_brain(self.model)
+
+    def test_idle_ai_turns(self, make_board):
+        self.controller.end_of_turn_window.yes.handle_mouseclick()
+        self.tick_events(5)
+        assert self.board.get_current_player_id() == 0
+
+    def skip_test_do_move_action(self, make_board):
+        self.set_ai_to(AiType.default)
+        self.end_turn()
         action = self.model.get_brain_action()
-        self.model.execute_brain_action()
-
-
-class TestTileEditor(TestCase):
-    def before_more(self):
-        self.tile_editor: TileEditorWindow = \
-            self.board_controller.tile_editor_window
-        self.buttons: TileEditorButtons = self.tile_editor.buttons
-
-    def test_set_main_fortress(self, before):
-        tile_pos = (0, 0)
-        assert None is self.tile_editor.selected_terrain
-        self.buttons._handle_button_click(0)
-        assert Terrain.MAIN_FORTRESS == self.tile_editor.selected_terrain
-        assert Terrain.GRASS == self.board.terrain_at(tile_pos)
-        self.board_controller.handle_tile_selection(tile_pos)
-        assert Terrain.MAIN_FORTRESS == self.board.terrain_at(tile_pos)
-
-    def test_button_off(self, before):
-        tile_pos = (0, 0)
-        assert None is self.tile_editor.selected_terrain
-        self.buttons._handle_button_click(0)
-        assert Terrain.MAIN_FORTRESS == self.tile_editor.selected_terrain
-        # now turn button off
-        self.buttons._handle_button_click(0)
-        assert None is self.tile_editor.selected_terrain
-        assert Terrain.GRASS == self.board.terrain_at(tile_pos)
-        self.board_controller.handle_tile_selection(tile_pos)
-        assert Terrain.GRASS == self.board.terrain_at(tile_pos)
+        monster = action.monster_to_move
+        pos = action.pos_to_move
+        assert monster.pos == pos
