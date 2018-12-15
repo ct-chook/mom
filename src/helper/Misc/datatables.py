@@ -176,7 +176,12 @@ class DataTables:
     def get_terrain_cost(terrain, movement_type):
         if not DataTables.loaded:
             DataTables.load()
+        if terrain is None:
+            print('hi')
+        assert terrain is not None
+        assert movement_type is not None
         return DataTables.terrain_cost[terrain][movement_type]
+
 
     @staticmethod
     def get_terrain_defense(terrain, terrain_type):

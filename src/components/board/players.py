@@ -10,25 +10,6 @@ class Player:
         self.mana = initial_mana
         self.mana_gain = mana_gain
         self.tower_count = 0
-        self.brain: brain.PlayerBrain = None
-
-    def create_brain(self, board_model):
-        if self.ai_type == AiType.default:
-            brain_class = brain.PlayerDefaultBrain
-        elif self.ai_type == AiType.idle:
-            brain_class = brain.PlayerIdleBrain
-        else:
-            brain_class = brain.PlayerIdleBrain
-        self.create_brain_from_class(brain_class, board_model)
-        return self.brain
-
-    def create_brain_from_class(self, brain_class, board_model):
-        self.brain = brain_class(board_model, self)
-
-    def get_next_ai_action(self):
-        if not self.brain:
-            raise AttributeError(f'No brain found for player {self.id_}')
-        return self.brain.get_next_action()
 
     def regenerate_mana(self):
         self.mana += self.mana_gain
@@ -67,10 +48,6 @@ class PlayerList:
 
     def get_current_player_id(self):
         return self.current_player
-
-    def create_brains_from_model(self, model):
-        for player in self.players:
-            player.create_brain(model)
 
     def __len__(self):
         return len(self.players)

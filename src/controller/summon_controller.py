@@ -14,11 +14,11 @@ class SummonWindow(Window):
         button_y_offset = 100
         button_x_offset = 0
         self.board_model = board_model
-        self.player = 0
+        self.player_id = 0
         self.summonable_monsters = []
         self.summon_pos = None
 
-        self._get_summonable_monsters_for_player(self.player)
+        self._get_summonable_monsters_for_player(self.player_id)
         number_of_buttons = len(self.summonable_monsters)
         height = button_y_offset + button_height * number_of_buttons
         rows = number_of_buttons
@@ -36,7 +36,7 @@ class SummonWindow(Window):
         self.hide()
 
     def _get_summonable_monsters_for_player(self, summoner_id):
-        self.summonable_monsters = DataTables.summon_options[summoner_id]
+        self.summonable_monsters = DataTables.get_summon_options(summoner_id)
 
     def handle_summon_choice(self, index):
         monster_type = self.summonable_monsters[index]

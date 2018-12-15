@@ -1,6 +1,7 @@
 import pytest
 
 from src.components.board.board import Board
+from src.components.board.monster import Monster
 from src.controller.board_controller import BoardController
 from src.helper.Misc.constants import Terrain, MonsterType, AiType
 from src.helper.Misc.options_game import Options
@@ -50,7 +51,7 @@ class TestCase:
         self.controller.handle_tile_selection(pos)
 
     def end_turn(self):
-        self.controller._handle_end_of_turn()
+        self.controller.handle_end_of_turn()
         # let AI skip its turn
         self.tick_events(5)
 
@@ -165,6 +166,7 @@ class TestAttacking(TestCase):
         self.click_on(next_to_chimera_pos)
         assert not self.precombat_window.visible
         assert self.roman.exp == 0
+        self.tick_events(50)
         self.end_turn()
         self.click_on(next_to_chimera_pos)
         self.click_on(chimera_pos)
@@ -298,26 +300,3 @@ class TestTowerCapture(TestCase):
             'Wrong owner'
         player = self.model.players.get_player_by_id(monster.owner)
         assert player.tower_count == 1
-
-
-class TestComputerBrain(TestCase):
-    def before_more(self):
-        pass
-
-    def set_ai_to(self, ai_type):
-        ai = self.model.get_player_of_number(1)
-        ai.ai_type = ai_type
-        ai.create_brain(self.model)
-
-    def test_idle_ai_turns(self, make_board):
-        self.controller.end_of_turn_window.yes.handle_mouseclick()
-        self.tick_events(5)
-        assert self.board.get_current_player_id() == 0
-
-    def skip_test_do_move_action(self, make_board):
-        self.set_ai_to(AiType.default)
-        self.end_turn()
-        action = self.model.get_brain_action()
-        monster = action.monster_to_move
-        pos = action.pos_to_move
-        assert monster.pos == pos

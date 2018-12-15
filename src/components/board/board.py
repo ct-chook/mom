@@ -117,6 +117,10 @@ class Board:
             self._add_odd_row_tiles(adjacent_posses, x, y)
         else:
             self._add_even_row_tiles(adjacent_posses, x, y)
+        for pos in adjacent_posses:
+            assert pos[0] >= 0, f'could not get adj posses of {pos}'
+            assert pos[1] >= 0, f'could not get adj posses of {pos}'
+
         return adjacent_posses
 
     def _add_left_and_right_tiles(self, adjacent_posses, x, y):

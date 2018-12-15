@@ -46,7 +46,12 @@ class MatrixProcessor:
         return not self.tiles_to_explore
 
     def _explore_next_tile(self):
+        if not self.tiles_to_explore:
+            print('he')
+            b = self.matrix_is_finished()
         self.pos = heapq.heappop(self.tiles_to_explore)[1]
+        assert self.pos[0] >= 0
+        assert self.pos[1] >= 0
         self.cannot_move_from_pos = False
         adjacent_enemies = self.board.get_enemies_adjacent_to(self.pos)
         self._handle_adjacent_enemies(adjacent_enemies)
@@ -149,6 +154,8 @@ class SearchMatrixProcessor(MatrixProcessor):
         self.player_id = self.monster.owner
 
     def matrix_is_finished(self):
+        if not self.tiles_to_explore:
+            return True
         return self.tile_found
 
     def _move_is_valid_and_better(self, pos):
@@ -237,6 +244,8 @@ class AStarMatrixProcessor(MatrixProcessor):
         self._process_tiles(start)
 
     def matrix_is_finished(self):
+        if not self.tiles_to_explore:
+            return True
         return self.destination_reached
 
     def _explore_next_tile(self):

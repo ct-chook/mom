@@ -6,6 +6,7 @@ from pygame.rect import Rect
 
 from src.abstract.view import View
 from src.abstract.window import Window, YesNoWindow
+from src.components.board.brain import PlayerIdleBrain, PlayerDefaultBrain
 from src.controller.combat_controller import CombatWindow
 from src.controller.minimap_controller import MinimapController
 from src.controller.precombat_controller import PreCombatWindow
@@ -36,6 +37,7 @@ class BoardController(Window):
         self.is_ai_controlled = False
         self.camera = Rect(
             (0, 0), (Options.camera_width, Options.camera_height))
+        self.brains = {}
 
         self.model = BoardModel(mapname)
         self.view: BoardView = self.add_view(BoardView,
@@ -65,9 +67,27 @@ class BoardController(Window):
             MinimapController(self.model.board))
         self.end_of_turn_window: YesNoWindow = self.attach_controller(
             YesNoWindow('Do you want to end your turn?',
-                        self._handle_end_of_turn, None))
+                        self.handle_end_of_turn, None))
 
         self.end_of_turn_window.hide()
+        self.create_brains()
+
+    def create_brains(self):
+        for player in self.model.get_players():
+            self._create_brain(player)
+
+    def _create_brain(self, player):
+        ai_type = player.ai_type
+        if ai_type == AiType.default:
+            brain_class = PlayerDefaultBrain
+        elif ai_type == AiType.idle:
+            brain_class = PlayerIdleBrain
+        else:
+            brain_class = PlayerIdleBrain
+        self.add_brain_for_player(brain_class, player)
+
+    def add_brain_for_player(self, brain_class, player):
+        self.brains[player] = brain_class(self, player)
 
     def handle_mouseclick(self):
         if self.is_ai_controlled:
@@ -129,7 +149,7 @@ class BoardController(Window):
     def _handle_arrow_key(self, key):
         self.view.move_camera(self.directions[key])
 
-    def _handle_end_of_turn(self):
+    def handle_end_of_turn(self):
         self.selection_handler.unselect_current_monster()
         self.selection_handler.unselect_enemy()
         self.model.on_end_turn()
@@ -142,7 +162,7 @@ class BoardController(Window):
             self._handle_ai_action()
 
     def handle_move_monster(self, monster, pos):
-        """Accessed by either the selection handler or the brain processor
+        """Accessed by either the selection handler or the brain
 
         Sends movement to model, and sends movement event to view. After that
         it checks if it is the computer's turn, in that case it adds an event
@@ -198,30 +218,35 @@ class BoardController(Window):
         this happens until the brain decides to end its turn.
         Each event
         """
-        action = self.model.get_current_player().get_next_ai_action()
-        assert action, 'AI action requested but no action received'
-        self._execute_brain_action(action)
+        brain = self._get_current_player_brain()
+        brain.do_action()
 
-    def _execute_brain_action(self, action):
-        if action.monster_to_summon:
-            self._handle_brain_monster_summon(action)
-        elif action.monster_to_move:
-            self._handle_brain_monster_move(action)
-            if action.monster_to_attack:
-                self._handle_brain_monster_attack(action)
-        elif action.monster_to_attack:
-            self._handle_brain_monster_attack(action)
-        elif action.end_turn:
-            self._handle_brain_end_turn()
-        else:
-            raise AttributeError(
-                f'I don\'t know how to deal with this brain action. {action}')
+    def _get_current_player_brain(self):
+        player = self.model.get_current_player()
+        if player not in self.brains:
+            raise AttributeError('Brain not found')
+        return self.brains[player]
+
+        # if action.monster_to_summon:
+        #     self._handle_brain_monster_summon(action)
+        # elif action.monster_to_move:
+        #     self._handle_brain_monster_move(action)
+        #     if action.monster_to_attack:
+        #         self._handle_brain_monster_attack(action)
+        # elif action.monster_to_attack:
+        #     self._handle_brain_monster_attack(action)
+        # elif action.end_turn:
+        #     self._handle_brain_end_turn()
+        # else:
+        #     raise AttributeError(
+        #         f'I don\'t know how to deal with this brain action. {action}')
 
     def _handle_brain_monster_move(self, action):
         monster = action.monster_to_move
         pos = action.pos_to_move
-        self.handle_tile_selection(monster.pos)
-        self.handle_tile_selection(pos)
+        assert monster
+        assert pos
+        self.handle_move_monster(monster, pos)
 
     def _handle_brain_monster_attack(self, action):
         pass
@@ -231,7 +256,7 @@ class BoardController(Window):
 
     def _handle_brain_end_turn(self):
         end_turn_event = Event(
-            self._handle_end_of_turn,
+            self.handle_end_of_turn,
             name=f'AI end turn')
         EventQueue(end_turn_event).subscribe()
 
@@ -258,6 +283,9 @@ class BoardController(Window):
 
     def highlight_tiles(self, posses):
         self.view.highlight_tiles(posses)
+
+
+
 
 
 PATH_ANIMATION_DELAY = 6

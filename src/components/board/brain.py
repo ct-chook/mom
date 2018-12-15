@@ -1,65 +1,66 @@
 import random
 from math import ceil
 
-from src.components.board.monster import Monster
 from src.components.board.pathing import MovementFinder
-from src.helper.Misc.constants import Terrain, MonsterBehavior
+from src.helper.Misc.constants import MonsterBehavior, Terrain
 from src.helper.Misc.datatables import DataTables
 
 
 class PlayerBrain:
     """Reads the board model and decides next action"""
 
-    def __init__(self, board_model_, player):
-        self.model = board_model_
-        self.action: BrainAction = None
+    def __init__(self, controller, player):
+        self.controller = controller
+        self.model = controller.model
         self.player = player
+        self.did_action = False
 
-    def get_next_action(self):
+    def do_action(self):
         pass
 
-    def get_end_of_turn_action(self):
-        self.action = BrainAction()
-        self.action.set_end_turn()
-        return self.action
+    def _do_end_of_turn(self):
+        self.controller.handle_end_of_turn()
 
 
 class PlayerIdleBrain(PlayerBrain):
-    def get_next_action(self):
+    def do_action(self):
         """Will always skip to the next turn"""
-        return self.get_end_of_turn_action()
+        self._do_end_of_turn()
 
 
 class PlayerDefaultBrain(PlayerBrain):
-    def __init__(self, board_model_, player):
-        super().__init__(board_model_, player)
-        self.index = 0
+    def __init__(self, controller, player):
+        super().__init__(controller, player)
+        self.monster_index = 0
         self.monsters = None
         self.monster_to_summon = None
 
-    def get_next_action(self):
-        """Moves monsters, then summons one if all monsters have moved"""
-        self.action = None
+    def do_action(self):
+        """Checks the state of the game and then does a single action
+
+        Moving and attacking should both be single actions.
+
+        Generally, moves monsters, then summons if all monsters have moved.
+        Then it ends turn.
+        """
         self._handle_monsters()
-        # moved all monsters
-        if self.action:
-            return self.action
+        if self.did_action:
+            return
         self._handle_summon()
-        if self.action:
-            return self.action
-        # no monsters to move or summon
-        return self.get_end_of_turn_action()
+        if self.did_action:
+            return
+        self._do_end_of_turn()
 
     def _handle_monsters(self):
         if not self.monsters:
             self._create_list_of_monsters()
             self._create_monster_brains()
-        if self.index < len(self.monsters):
-            self._set_action_for_monster()
+        if self.monster_index < len(self.monsters):
+            self._do_monster_action()
 
     def _create_list_of_monsters(self):
         self.monsters = self.model.get_current_player_monsters()
-        self.index = 0
+        self.monster_index = 0
 
     def _create_monster_brains(self):
         assert self.monsters
@@ -67,14 +68,15 @@ class PlayerDefaultBrain(PlayerBrain):
             self._create_brain_for_monster(monster)
 
     def _create_brain_for_monster(self, monster):
-        monster.brain = MonsterBrain(monster, self.model.board, self.model)
+        monster.brain = MonsterBrain(
+            self.controller, monster, MonsterBehavior.SCOUT)
 
-    def _set_action_for_monster(self):
+    def _do_monster_action(self):
         monster_brain = self._get_next_monster().brain
-        self.action = monster_brain.get_action()
+        monster_brain.do_action()
 
     def _get_next_monster(self):
-        return self.monsters[self.index]
+        return self.monsters[self.monster_index]
 
     def _handle_summon(self):
         if self.monster_to_summon is None:
@@ -82,8 +84,6 @@ class PlayerDefaultBrain(PlayerBrain):
                 self.player.lord_type)
             self.monster_to_summon = random.choice(summon_options)
         if self._have_enough_mana_to_summon():
-            self.action = BrainAction()
-            self.action.monster_to_summon = self.monster_to_summon
             self.monster_to_summon = None
 
     def _have_enough_mana_to_summon(self):
@@ -92,42 +92,42 @@ class PlayerDefaultBrain(PlayerBrain):
 
 
 class MonsterBrain:
-    def __init__(self, owner, board, model):
-        self.monster = owner
-        self.action: BrainAction = None
-        self.movement_finder = MovementFinder(board)
-        self.type = None
-        self.board = board
-        self.model = model
+    def __init__(self, controller, brain_owner, type):
+        self.monster = brain_owner
+        self.controller = controller
+        self.model = controller.model
+        self.movement_finder = MovementFinder(self.model.board)
+        self.type = type
 
-    def get_action(self):
-        self.action = BrainAction()
-        self.action.monster_to_move = self.monster
+    def do_action(self):
+        assert self.type is not None
         if self.type == MonsterBehavior.SCOUT:
-            self._set_scout_action()
+            self._do_scout_action()
         if self.type == MonsterBehavior.ATTACKER:
-            self._set_attacker_action()
+            self._do_attacker_action()
         if self.type == MonsterBehavior.DEFENDER:
-            self._set_defender_action()
-        return self.action
+            self._do_defender_action()
 
-    def _set_scout_action(self):
-        self.action.pos_to_move = self.movement_finder. \
-            get_pos_to_terraintype(self.monster, Terrain.TOWER)
+    def _do_scout_action(self):
+        pos_to_move = self.movement_finder.get_pos_to_terraintype(
+            self.monster, Terrain.TOWER)
+        self.controller.handle_move_monster(self.monster, pos_to_move)
 
-    def _set_attacker_action(self):
-        self.action.pos_to_move = self.movement_finder. \
-            get_pos_to_enemy_monster_or_tile(self.monster)
+    def _do_attacker_action(self):
+        pos_to_move = self.movement_finder.get_pos_to_enemy_monster_or_tile(
+            self.monster)
+        if not pos_to_move:
+            # could not find enemy, so do nothing?
+            return
+        self.controller.handle_move_monster(self.monster, pos_to_move)
+
         # now check if there is a monster to attack
         # somewhat duplicate since it checks this in matrix
-        enemies = self.board.get_enemies_adjacent_to(self.action.pos_to_move)
-        if not enemies:
-            self.action.monster_to_attack = None
-            return
+        # enemies = self.model.get_enemies_adjacent_to(pos_to_move)
+        # if not enemies:
+        #     return
         # attack enemy that takes least number to turns to defeat
-        optimal_attack = self._get_optimal_attack(enemies)
-        self.action.monster_to_attack = optimal_attack[0]
-        self.action.range_to_use = optimal_attack[1]
+        # monster, range_ = self._get_optimal_attack(enemies)
 
     def _get_optimal_attack(self, enemies):
         min_turns_to_defeat = 1000
@@ -146,45 +146,6 @@ class MonsterBrain:
                     range_to_use = attack_range
         return monster_to_attack, range_to_use
 
-    def _set_defender_action(self):
-        self.action.pos_to_move = self.movement_finder. \
-            get_pos_to_own_tile(self.monster)
-
-
-class BrainAction:
-    """Action log for decisions made by a brain
-
-    Is passed to both the controller and the model. Used so the game can decide
-    the order of the actions to display and process.
-
-    Possible actions:
-    * Move
-    * Attack
-    * Move and attack (can be provided in a single BrainAction)
-    * Summon
-    * Use spell (not implemented at the moment)
-    * End turn
-    """
-
-    def __init__(self):
-        self.end_turn = False
-        self.monster_to_move = None
-        self.pos_to_move = None
-        self.monster_to_attack = None
-        self.monster_to_summon = None
-        self.range_to_use = None
-
-    def set_end_turn(self, is_end=True):
-        self.end_turn = is_end
-
-    def print(self):
-        monster_to_summon = DataTables.\
-            get_monster_stats(self.monster_to_summon).name
-        print('\n'
-              'BrainAction:'
-              f'end_turn: {self.end_turn}\n'
-              f'monster_to_move: {self.monster_to_move}\n'
-              f'pos_to_move: {self.pos_to_move}\n'
-              f'monster_to_attack: {self.monster_to_attack}\n'
-              f'monster_to_summon: {monster_to_summon}\n'
-              f'range_to_use: {self.range_to_use}')
+    def _do_defender_action(self):
+        pos_to_move = self.movement_finder.get_pos_to_own_tile(self.monster)
+        self.controller.handle_move_monster(self.monster, pos_to_move)

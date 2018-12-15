@@ -89,6 +89,9 @@ class PathFinder:
         """Returns path to nearest tile or monster owned by enemy"""
         matrix_factory = EnemySearchMatrixFactory(self.board)
         path_matrix = matrix_factory.generate_path_matrix(pos)
+        if not path_matrix.end:
+            # could not find an enemy
+            return None
         return self.path_generator.get_path_on(path_matrix)
 
     def get_matrix(self):

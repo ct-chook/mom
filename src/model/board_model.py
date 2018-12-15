@@ -1,6 +1,5 @@
 from src.components.board import players
 from src.components.board.board import Board, MapLoader
-from src.components.board.brain import BrainAction
 from src.components.board.pathing import PathMatrixFactory
 from src.components.board.pathing_components import PathMatrix
 from src.components.combat.attack import AttackFactory
@@ -22,7 +21,7 @@ class BoardModel:
         maploader = MapLoader(self.board)
         maploader.load_map(mapname)
         self.players = maploader.players
-        self.players.create_brains_from_model(self)
+
         self.game_over = False  # jumps to true when no human players left
         self.path_matrix: PathMatrix = None
         self.matrix_factory = PathMatrixFactory(self.board)
@@ -94,18 +93,6 @@ class BoardModel:
     def get_player_of_number(self, number):
         return self.players.get_player_by_id(number)
 
-    def get_brain_action(self) -> BrainAction:
-        """
-        There are different AI types. Each of them use them can use unique data
-        structures.
-        """
-        player = self.players.get_current_player()
-        if player.ai_type == AiType.human:
-            # humans must use their own intelligence
-            raise AttributeError('Requested AI action from human player')
-        action = player.get_next_ai_action()
-        return action
-
     def get_expected_damage_between(self, attacker, defender, attack_range):
         """This uses current sun stance"""
         attacks = self.get_short_and_long_attacks((attacker, defender))
@@ -154,3 +141,6 @@ class BoardModel:
         any monsters that are within attack range.
         """
         return self.path_matrix.accessible_positions
+
+    def get_players(self):
+        return self.players.players
