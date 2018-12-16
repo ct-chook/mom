@@ -1,7 +1,6 @@
 import pytest
 
 from src.components.board.board import Board
-from src.components.board.monster import Monster
 from src.controller.board_controller import BoardController
 from src.helper.Misc.constants import Terrain, MonsterType, AiType
 from src.helper.Misc.options_game import Options
@@ -78,10 +77,10 @@ class TestMoving(TestCase):
     def test_cannot_move_within_mountains(self, make_board):
         # click on the roman surrounded by mountains
         surrounded_roman_pos = (1, 5)
-        left_of_surrounded_roman = (0, 5)
+        right_of_surrounded_roman = (2, 5)
         self.click_on(surrounded_roman_pos)
-        self.click_on(left_of_surrounded_roman)
-        assert self.board.monster_at(left_of_surrounded_roman) is None
+        self.click_on(right_of_surrounded_roman)
+        assert self.board.monster_at(right_of_surrounded_roman) is None
 
     def test_cannot_move_twice_on_same_turn(self, make_board):
         self.move_roman_left()

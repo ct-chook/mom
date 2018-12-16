@@ -5,7 +5,6 @@ from pygame.rect import Rect
 from src.abstract.view import View
 from src.abstract.window import Window, TextButton
 from src.components.board.players import PlayerList, AiType
-from src.controller import mom_controller
 from src.helper.Misc.constants import Color
 from src.helper.Misc.constants import MAP_DIRECTORY
 
@@ -15,7 +14,7 @@ class MainMenuController(Window):
         self.rectangle = Rect(x, y, width, height)
         super().__init__(x, y, width, height)
         self.add_view(MainMenuView)
-        self.parent: mom_controller.MomController = parent
+        self.parent = parent
 
         self.mapname = None
 
@@ -65,10 +64,7 @@ class MapOptionsWindow(Window):
                 self.set_number_of_players, n))
 
     def set_number_of_players(self, number):
-        print(f'Setting number of players to {number}')
-        self.mapoptions.players.add_player(0, AiType.human, 50)
-        for n in range(1, number):
-            self.mapoptions.players.add_player(n, AiType.default, 50)
+        self.mapoptions.set_number_of_players(number)
         self.hide()
         self.parent.create_board(self.mapoptions)
 
@@ -105,8 +101,15 @@ class MapSelectionWindow(Window):
 
 
 class MapOptions:
-    players: PlayerList = PlayerList()
-    mapname = None
+    def __init__(self):
+        self.players: PlayerList = PlayerList()
+        self.mapname = None
+
+    def set_number_of_players(self, number):
+        print(f'Setting number of players to {number}')
+        self.players.add_player(0, AiType.human, 50)
+        for n in range(1, number):
+            self.players.add_player(n, AiType.default, 50)
 
 
 class MapSelectionView(View):

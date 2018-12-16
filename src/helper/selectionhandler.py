@@ -95,9 +95,7 @@ class SelectionHandler:
     def _click_terrain(self):
         logging.info('Selected terrain')
         if self._selected_monster_can_be_moved_to_pos():
-            self.adjacent_enemies = self.model.get_adjacent_enemies_at(self.pos)
-            self.controller.handle_move_monster(
-                self.selected_monster, self.pos)
+            self._handle_move_monster_to_pos()
         if self._monster_can_be_summoned_at_pos():
             self.controller.handle_summon_window_at(self.pos)
 
@@ -109,6 +107,14 @@ class SelectionHandler:
     def _is_valid_destination_for_selected_monster(self, pos):
         return self.model.is_valid_destination(pos)
 
+    def _monster_can_be_summoned_at_pos(self):
+        return self.model.lord_is_adjacent_at(self.pos)
+
+    def _handle_move_monster_to_pos(self):
+        path = self.model.get_path_to(self.pos)
+        self.adjacent_enemies = self.model.get_adjacent_enemies_at(self.pos)
+        self.controller.handle_move_monster(self.selected_monster, path)
+
     def unselect_current_monster(self):
         self.board.matrix_monster = None
         self.selected_monster = None
@@ -119,9 +125,6 @@ class SelectionHandler:
 
     def _monster_is_owned_by_player(self, monster):
         return monster.owner == self.get_current_player_id()
-
-    def _monster_can_be_summoned_at_pos(self):
-        return self.model.lord_is_adjacent_at(self.pos)
 
     def _lord_is_adjacent_to(self, tile):
         surrounding_tiles = self.board.get_tile_posses_adjacent_to(tile)

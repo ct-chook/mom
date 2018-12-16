@@ -49,7 +49,7 @@ class PathFinder:
         self.board = board
         self.path_generator = PathGenerator(board)
 
-    def get_path_of_matrix_to(self, matrix, end):
+    def get_path_on_matrix_to(self, matrix, end):
         """Returns path to end on given matrix"""
         matrix.end = end
         return self.get_path_of_matrix(matrix)
@@ -98,6 +98,14 @@ class PathFinder:
         return self.path_generator.path_matrix
 
 
+class Movement:
+    def __init__(self):
+        self.path = None
+
+    def get_destination(self):
+        return self.path[-1]
+
+
 class MovementFinder:
     """ Returns a position a monster should move to reach something
 
@@ -109,44 +117,37 @@ class MovementFinder:
         self.board = board
         self.pathfinder = PathFinder(board)
 
-    def get_pos_to_terraintype(self, monster: Monster, terrain_type):
+    def get_movement_to_terraintype(self, monster: Monster, terrain_type) \
+            -> Movement:
         path = self.pathfinder.get_path_to_terraintype(
             monster.pos, terrain_type)
-        if path is None:
-            return None
-        return self._get_furthest_reachable_pos(monster, path)
+        return self._get_movement(monster, path)
 
-    def _get_furthest_reachable_pos(self, monster: Monster, path):
+    def get_movement_to_enemy_tile(self, monster: Monster) -> Movement:
+        path = self.pathfinder.get_path_to_enemy_terrain(monster.pos)
+        return self._get_movement(monster, path)
+
+    def get_movement_to_enemy_monster_or_tile(self, monster: Monster) -> Movement:
+        path = self.pathfinder.get_path_to_enemy_monster_or_terrain(monster.pos)
+        return self._get_movement(monster, path)
+
+    def get_movement_to_own_tile(self, monster: Monster) -> Movement:
+        path = self.pathfinder.get_path_to_own_terrain(monster.pos)
+        return self._get_movement(monster, path)
+
+    def _get_movement(self, monster, path):
+        movement = Movement()
+        if path:
+            movement.path = self._get_partial_path(monster, path)
+        return movement
+
+    def _get_partial_path(self, monster: Monster, path):
         max_movement = monster.stats.move_points
         matrix: PathMatrix = self.pathfinder.get_matrix()
-        return self._get_good_pos(matrix, max_movement, path)
-
-    def _get_good_pos(self, matrix, max_movement, path):
-        good_pos = None
+        new_path = []
         for pos in path:
             if matrix.dist_values[pos] <= max_movement:
-                good_pos = pos
+                new_path.append(pos)
             else:
                 break
-        return good_pos
-
-    def get_pos_to_enemy_tile(self, monster: Monster):
-        path = self.pathfinder.get_path_to_enemy_terrain(
-            monster.pos)
-        if path is None:
-            return None
-        return self._get_furthest_reachable_pos(monster, path)
-
-    def get_pos_to_enemy_monster_or_tile(self, monster: Monster):
-        path = self.pathfinder.get_path_to_enemy_monster_or_terrain(
-            monster.pos)
-        if path is None:
-            return None
-        return self._get_furthest_reachable_pos(monster, path)
-
-    def get_pos_to_own_tile(self, monster: Monster):
-        path = self.pathfinder.get_path_to_own_terrain(
-            monster.pos)
-        if path is None:
-            return None
-        return self._get_furthest_reachable_pos(monster, path)
+        return new_path

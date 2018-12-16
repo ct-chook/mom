@@ -69,20 +69,20 @@ class EventTester:
     def assert_x_after_ticks(self, x, ticks):
         for tick in range(ticks):
             self.tick()
-        assert x == self.dummy.x
+        assert self.dummy.x == x
 
     def assert_after_ticks(self, x_tick_tuples):
         for x_tick in x_tick_tuples:
             x, tick = x_tick
             for _ in range(tick):
                 self.tick()
-            assert x == self.dummy.x
+            assert self.dummy.x == x
 
     def assert_both_after_ticks(self, x, y, ticks):
         for tick in range(ticks):
             self.tick()
-        assert x == self.dummy.x
-        assert y == self.dummy.y
+        assert self.dummy.x == x
+        assert self.dummy.y == y
 
     def test_class(self):
         pass

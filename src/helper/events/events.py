@@ -38,7 +38,7 @@ class EventList:
     def __init__(self, events):
         self.events = []
         self.index = 0
-        self.activation_time = 1
+        self.activation_time = None
         self.append(events)
         self.subscribe()  # need to check how to handle subscription (implicit?)
 
@@ -125,12 +125,13 @@ class EventQueue:
         self.timer = 0
 
     def tick_events(self):
-        self.timer += 1
         for event in self.events:
             event.poll_events(self.timer)
+        self.timer += 1
 
     def subscribe_event(self, event):
         self.events.append(event)
+        event.activation_time = self.timer
 
     def unsubscribe_event(self, event):
         if event in self.events:

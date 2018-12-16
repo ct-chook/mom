@@ -260,18 +260,18 @@ class MapLoader:
         self.y_max = None
         self.players: players.PlayerList = None
 
-    def load_map(self, mapname):
+    def load_map(self, mapoptions=None):
+        if not mapoptions:
+            mapname = 'test'
+        else:
+            mapname = mapoptions.mapname
         self.mapname = mapname
         if self.mapname == 'random':
             self._fill_with_grass_tiles()
             self._randomize_terrain()
             self._initialize_random_monsters()
         else:
-            self.players = players.PlayerList()
-            self.players.add_player(0, AiType.human, 50)
-            self.players.add_player(1, AiType.idle, 50)
-            self.players.add_player(2, AiType.idle, 50)
-            self.players.add_player(3, AiType.idle, 50)
+            self._create_players(mapoptions)
             if self.mapname == 'test':
                 layout = constants.TEST_LAYOUT
                 self.set_terrain_using_layout(layout)
@@ -281,6 +281,16 @@ class MapLoader:
                 layout = self._get_layout_from_map_file()
                 self.set_terrain_using_layout(layout)
                 self.board.set_players(self.players)
+
+    def _create_players(self, mapoptions):
+        if mapoptions and mapoptions.players:
+            self.players = mapoptions.players
+            return
+        self.players = players.PlayerList()
+        self.players.add_player(0, AiType.human, 50)
+        self.players.add_player(1, AiType.idle, 50)
+        self.players.add_player(2, AiType.idle, 50)
+        self.players.add_player(3, AiType.idle, 50)
 
     def _get_layout_from_map_file(self):
         with open(f'{ROOT}/src/data/maps/{self.mapname}', 'r') as fd:

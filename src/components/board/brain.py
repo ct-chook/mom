@@ -43,6 +43,7 @@ class PlayerDefaultBrain(PlayerBrain):
         Generally, moves monsters, then summons if all monsters have moved.
         Then it ends turn.
         """
+        self.did_action = False
         self._handle_monsters()
         if self.did_action:
             return
@@ -74,6 +75,8 @@ class PlayerDefaultBrain(PlayerBrain):
     def _do_monster_action(self):
         monster_brain = self._get_next_monster().brain
         monster_brain.do_action()
+        self.did_action = True
+        self.monster_index += 1
 
     def _get_next_monster(self):
         return self.monsters[self.monster_index]
@@ -103,23 +106,20 @@ class MonsterBrain:
         assert self.type is not None
         if self.type == MonsterBehavior.SCOUT:
             self._do_scout_action()
-        if self.type == MonsterBehavior.ATTACKER:
+        elif self.type == MonsterBehavior.ATTACKER:
             self._do_attacker_action()
-        if self.type == MonsterBehavior.DEFENDER:
+        elif self.type == MonsterBehavior.DEFENDER:
             self._do_defender_action()
 
     def _do_scout_action(self):
-        pos_to_move = self.movement_finder.get_pos_to_terraintype(
+        movement = self.movement_finder.get_movement_to_terraintype(
             self.monster, Terrain.TOWER)
-        self.controller.handle_move_monster(self.monster, pos_to_move)
+        self._move_monster(movement)
 
     def _do_attacker_action(self):
-        pos_to_move = self.movement_finder.get_pos_to_enemy_monster_or_tile(
+        movement = self.movement_finder.get_movement_to_enemy_monster_or_tile(
             self.monster)
-        if not pos_to_move:
-            # could not find enemy, so do nothing?
-            return
-        self.controller.handle_move_monster(self.monster, pos_to_move)
+        self._move_monster(movement)
 
         # now check if there is a monster to attack
         # somewhat duplicate since it checks this in matrix
@@ -147,5 +147,10 @@ class MonsterBrain:
         return monster_to_attack, range_to_use
 
     def _do_defender_action(self):
-        pos_to_move = self.movement_finder.get_pos_to_own_tile(self.monster)
-        self.controller.handle_move_monster(self.monster, pos_to_move)
+        movement = self.movement_finder.get_movement_to_own_tile(self.monster)
+        self._move_monster(movement)
+
+    def _move_monster(self, movement):
+        destination = movement.get_destination()
+        if destination:
+            self.controller.handle_move_monster(self.monster, movement.path)

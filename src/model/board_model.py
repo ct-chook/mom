@@ -1,6 +1,6 @@
 from src.components.board import players
 from src.components.board.board import Board, MapLoader
-from src.components.board.pathing import PathMatrixFactory
+from src.components.board.pathing import PathMatrixFactory, PathFinder
 from src.components.board.pathing_components import PathMatrix
 from src.components.combat.attack import AttackFactory
 from src.components.combat.combat import Combat
@@ -11,7 +11,7 @@ from src.helper.Misc.constants import AiType, Terrain
 class BoardModel:
     """Holds everything related to the board and its rules"""
 
-    def __init__(self, mapname='test'):
+    def __init__(self, mapoptions=None):
         self.selection_handler = None
         self.board = None
         self.players: players.PlayerList = None
@@ -19,7 +19,7 @@ class BoardModel:
         self.sun_stance = 0
         self.board = Board()
         maploader = MapLoader(self.board)
-        maploader.load_map(mapname)
+        maploader.load_map(mapoptions)
         self.players = maploader.players
 
         self.game_over = False  # jumps to true when no human players left
@@ -144,3 +144,8 @@ class BoardModel:
 
     def get_players(self):
         return self.players.players
+
+    def get_path_to(self, pos):
+        assert self.path_matrix
+        pathfinder = PathFinder(self.board)
+        return pathfinder.get_path_on_matrix_to(self.path_matrix, pos)

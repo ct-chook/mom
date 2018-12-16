@@ -3,6 +3,7 @@ import pytest
 from src.components.board.brain import PlayerDefaultBrain, PlayerIdleBrain
 from src.components.board.monster import Monster
 from src.controller.board_controller import BoardController
+from src.controller.mainmenu_controller import MapOptions
 from src.helper.Misc.constants import Terrain, MonsterBehavior
 from src.helper.events.events import EventList, EventQueue
 from test.controllers.test_board_controller import chim_start_pos
@@ -47,7 +48,10 @@ class TestCase:
     # noinspection PyAttributeOutsideInit
     @pytest.fixture
     def before(self):
-        self.controller = BoardController(0, 0, 500, 500, 'testempty.map')
+        mapoptions = MapOptions()
+        mapoptions.mapname = 'testempty.map'
+        mapoptions.set_number_of_players(2)
+        self.controller = BoardController(0, 0, 500, 500, mapoptions)
         self.model = self.controller.model
         self.board = self.model.board
         self.before_more()
@@ -70,10 +74,9 @@ class TestCase:
     def set_ai_type(self, ai_type):
         player = self.model.get_player_of_number(1)
         player.ai_type = ai_type
-        brain_class = None
         if ai_type == AiType.idle:
             brain_class = PlayerIdleBrain
-        if ai_type == AiType.scout:
+        elif ai_type == AiType.scout:
             brain_class = PlayerScoutBrain
         elif ai_type == AiType.attacker:
             brain_class = PlayerAttackerBrain
@@ -81,6 +84,8 @@ class TestCase:
             brain_class = PlayerDefenderBrain
         elif ai_type == AiType.summoner:
             brain_class = PlayerSummonBrain
+        else:
+            assert False, f'invalid ai type {ai_type}'
         self.controller.add_brain_for_player(brain_class, player)
 
     def summon_monster_at(self, pos):
@@ -93,14 +98,17 @@ class TestCase:
 
     def add_chim(self):
         # remove all monsters but lord and chim
+        # noinspection PyAttributeOutsideInit
         self.chim = self.board.summon_monster(Monster.Type.CHIMERA, (3, 3), 1)
         self.chim.moved = False
 
-    def ensure_player_0s_turn(self):
-        assert self.board.get_current_player_id() == 0
+    def ensure_player_x_turn(self, number):
+        assert self.board.get_current_player_id() == number
 
     def end_turn(self):
         self.controller.end_of_turn_window.yes.handle_mouseclick()
+        # the ai doesn't act until next event
+        self.tick_event()
 
     def check_move_action(self, pos):
         self.end_turn()
@@ -130,7 +138,11 @@ class TestScoutBrain(TestCase):
         self.board.debug_print()
         new_pos = self.chim.pos
         assert new_pos != old_pos
-        self.ensure_player_0s_turn()
+        self.ensure_player_x_turn(1)
+        self.board.debug_print()
+        self.tick_event(100)
+        self.ensure_player_x_turn(0)
+        self.board.debug_print()
         self.end_turn()
         self.board.debug_print()
         assert self.chim.pos != new_pos
@@ -148,7 +160,6 @@ class TestScoutBrain(TestCase):
         self.check_move_action((8, 3))
 
     def test_move_to_closest_tower(self, before):
-        self.board.debug_print()
         # Set tower next to monster
         closest_tower_pos = (5, self.chim.pos[1] - 3)
         # move monster closer to both
@@ -217,12 +228,20 @@ class TestDefenderBrain(TestCase):
         self.check_move_action(tower_location)
 
 
-class TestSummonBrain(TestCase):
+# class TestSummonBrain(TestCase):
+#     def before_more(self):
+#         self.set_ai_type(AiType.summoner)
+#
+#     def test_summon_monster(self, before):
+#         self.model.get_current_player().mana = 200
+#
+#     def test_no_mana_to_summon(self, before):
+#         self.model.get_current_player().mana = 0
+
+class TestDefaultBrain(TestCase):
     def before_more(self):
-        self.set_ai_type(AiType.summoner)
+        self.set_ai_type(AiType.default)
 
-    def test_summon_monster(self, before):
-        self.model.get_current_player().mana = 200
-
-    def test_no_mana_to_summon(self, before):
-        self.model.get_current_player().mana = 0
+    def test_ai_doesnt_lock_up_the_game(self, before):
+        self.end_turn()
+        self.tick_event(1000)

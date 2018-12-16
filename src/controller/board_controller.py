@@ -19,7 +19,7 @@ from src.helper.Misc.options_game import Options
 from src.helper.Misc.posconverter import PosConverter
 from src.helper.Misc.spritesheet import SpriteSheetFactory
 from src.helper.Misc.tileblitter import TileBlitter
-from src.helper.events.events import EventCallback, EventList
+from src.helper.events.events import EventCallback, EventList, EventQueue
 from src.helper.events.factory import PathEventFactory
 from src.helper.selectionhandler import SelectionHandler
 from src.model.board_model import BoardModel
@@ -30,16 +30,15 @@ class BoardController(Window):
     directions = {pygame.K_LEFT: (-1, 0), pygame.K_RIGHT: (1, 0),
                   pygame.K_DOWN: (0, 1), pygame.K_UP: (0, -1)}
 
-    def __init__(self, x, y, width, height, mapname='test'):
+    def __init__(self, x, y, width, height, mapoptions=None):
         super().__init__(x, y, width, height)
-        self.mapname = mapname
         self.path_event_factory = None
         self.is_ai_controlled = False
         self.camera = Rect(
             (0, 0), (Options.camera_width, Options.camera_height))
         self.brains = {}
 
-        self.model = BoardModel(mapname)
+        self.model = BoardModel(mapoptions)
         self.view: BoardView = self.add_view(BoardView,
                                              (self.camera, self.model))
 
@@ -78,6 +77,8 @@ class BoardController(Window):
 
     def _create_brain(self, player):
         ai_type = player.ai_type
+        if ai_type == AiType.human:
+            return
         if ai_type == AiType.default:
             brain_class = PlayerDefaultBrain
         elif ai_type == AiType.idle:
@@ -107,6 +108,8 @@ class BoardController(Window):
 
     def handle_mouseover(self):
         tile_pos = self.get_tile_pos_at_mouse()
+        if not tile_pos:
+            return
         tile = self.model.board.tile_at(tile_pos)
         self.sidebar.display_tile_info(tile)
 
@@ -159,9 +162,9 @@ class BoardController(Window):
             self.is_ai_controlled = False
         else:
             self.is_ai_controlled = True
-            self._handle_ai_action()
+            EventList(EventCallback(self._handle_ai_action))
 
-    def handle_move_monster(self, monster, pos):
+    def handle_move_monster(self, monster, path):
         """Accessed by either the selection handler or the brain
 
         Sends movement to model, and sends movement event to view. After that
@@ -173,13 +176,13 @@ class BoardController(Window):
         after movement. The model should auto-capture tower upon moving
         """
         logging.info('Moving monster')
-
+        pos = path[-1]
         if self.model.has_capturable_tower_at(pos):
             tower_capture = True
         else:
             tower_capture = False
         self.model.move_monster_to(monster, pos)
-        path = [(0, 0)]
+        # todo get actual path
         eventqueue = self.add_movement_event_to_view(monster, path)
         if tower_capture:
             self._handle_tower_capture(pos, eventqueue)
@@ -224,7 +227,7 @@ class BoardController(Window):
     def _get_current_player_brain(self):
         player = self.model.get_current_player()
         if player not in self.brains:
-            raise AttributeError('Brain not found')
+            raise AttributeError(f'Brain not found for player {player.id_}')
         return self.brains[player]
 
         # if action.monster_to_summon:
@@ -283,9 +286,6 @@ class BoardController(Window):
 
     def highlight_tiles(self, posses):
         self.view.highlight_tiles(posses)
-
-
-
 
 
 PATH_ANIMATION_DELAY = 6
@@ -440,4 +440,3 @@ class BoardView(View):
         for enemy in enemies:
             tiles.append(enemy.pos)
         self.highlight_tiles(tiles)
-

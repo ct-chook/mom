@@ -38,7 +38,9 @@ class MatrixProcessor:
 
     def _setup_processing(self, start):
         self.monster = self.board.monster_at(start)
-        self.accessible_positions = set(start)
+        # creating set with tuple doesn't work, add it separately
+        self.accessible_positions = set()
+        self.accessible_positions.add(start)
         self.matrix.set_distance_value_at(start, 0)
         self.tiles_to_explore = [(0, start)]
 
@@ -107,7 +109,7 @@ class MatrixProcessor:
                                            self.monster.terrain_type)
 
     def _move_is_valid_and_better(self, pos):
-        pass
+        assert False, 'Not implemented'
 
     def _push_tile_at(self, pos):
         heapq.heappush(self.tiles_to_explore, (self._get_heuristic(pos), pos))
@@ -454,7 +456,7 @@ class PathMatrix:
             return UNEXPLORED
 
     def is_legal_destination(self, pos):
-        if pos in self.dist_values:
+        if pos in self.accessible_positions:
             return True
 
     def set_monster(self, monster):

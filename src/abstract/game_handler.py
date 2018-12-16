@@ -3,7 +3,7 @@ import logging
 import pygame
 
 from src.helper.Misc.constants import MouseButton
-from src.helper.events.events import EventList
+from src.helper.events.events import EventList, EventQueue
 from src.abstract.controller import Controller
 from src.abstract.maindisplay import MainDisplay
 from src.abstract.view import View
@@ -28,7 +28,7 @@ class GameHandler:
     def __init__(self, width, height):
         self.width = width
         self.height = height
-        self.events = []
+        self.event_queue = EventQueue()
         self.events_to_unsub = []
         self.framerate = 60
         self.display: MainDisplay = None
@@ -59,9 +59,6 @@ class GameHandler:
 
     def _do_game_frame(self):
         """As long as the game is active this method is executed repeatedly"""
-        self._process_input_and_timer_events()
-
-    def _process_input_and_timer_events(self):
         self._process_input_events()
         self._process_game_events()
         self.display.blit_frame()
@@ -79,8 +76,7 @@ class GameHandler:
             self._process_input_event(input_event)
 
     def _process_game_events(self):
-        for event in self.events:
-            event.tick()
+        self.event_queue.tick_events()
         self._unsubscribe_events_in_unsub_list()
 
     def _process_input_event(self, event):
@@ -103,11 +99,11 @@ class GameHandler:
 
     def subscribe_event(self, event):
         """Adds event to list to be executed"""
-        self.events.append(event)
+        self.event_queue.subscribe_event(event)
 
     def unsubscribe_event(self, event):
         """Removes an active event from the event list"""
-        self.events_to_unsub.append(event)
+        self.event_queue.unsubscribe_event(event)
 
     def _unsubscribe_events_in_unsub_list(self):
         if self.events_to_unsub:
@@ -115,7 +111,8 @@ class GameHandler:
             for event in self.events_to_unsub:
                 if event in self.events:
                     logging.info(f'Removing event {event}')
-                    self.events.remove(event)
+                    # self.events.remove(event)
+                    self.events.unsubscribe_event(event)
                 else:
                     raise AttributeError(
                         'attempted to unsubscribe event that does not exist')
