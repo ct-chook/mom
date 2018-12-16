@@ -3,7 +3,7 @@ import logging
 import pygame
 
 from src.helper.Misc.constants import MouseButton
-from src.helper.events.events import EventQueue
+from src.helper.events.events import EventList
 from src.abstract.controller import Controller
 from src.abstract.maindisplay import MainDisplay
 from src.abstract.view import View
@@ -38,7 +38,7 @@ class GameHandler:
         self.create_display()
         self.clock = pygame.time.Clock()
 
-        EventQueue.set_publisher(self)
+        EventList.set_publisher(self)
         View.main_controller = self
         Controller.main_controller = self
 

@@ -19,7 +19,7 @@ from src.helper.Misc.options_game import Options
 from src.helper.Misc.posconverter import PosConverter
 from src.helper.Misc.spritesheet import SpriteSheetFactory
 from src.helper.Misc.tileblitter import TileBlitter
-from src.helper.events.events import Event, EventQueue
+from src.helper.events.events import EventCallback, EventList
 from src.helper.events.factory import PathEventFactory
 from src.helper.selectionhandler import SelectionHandler
 from src.model.board_model import BoardModel
@@ -184,7 +184,7 @@ class BoardController(Window):
         if tower_capture:
             self._handle_tower_capture(pos, eventqueue)
         if self.is_ai_controlled:
-            eventqueue.append(Event(self._handle_ai_action))
+            eventqueue.append(EventCallback(self._handle_ai_action))
 
     def add_movement_event_to_view(self, monster, path):
         """Movement can work in two ways, either by player or by computer
@@ -255,10 +255,10 @@ class BoardController(Window):
         pass
 
     def _handle_brain_end_turn(self):
-        end_turn_event = Event(
+        end_turn_event = EventCallback(
             self.handle_end_of_turn,
             name=f'AI end turn')
-        EventQueue(end_turn_event).subscribe()
+        EventList(end_turn_event).subscribe()
 
     def show_combat_window_for(self, attacker, defender):
         assert attacker
@@ -375,10 +375,10 @@ class BoardView(View):
     def add_movement_event(self, monster, path):
         self.path_animation = (path, monster)
         self.path_index = 0
-        movement_event = Event(self.on_path_animation)
-        clear_highlight_event = Event(
+        movement_event = EventCallback(self.on_path_animation)
+        clear_highlight_event = EventCallback(
             self.clear_highlighted_tiles)
-        return EventQueue((movement_event, clear_highlight_event))
+        return EventList((movement_event, clear_highlight_event))
 
     def on_path_animation(self):
         path, monster = self.path_animation

@@ -1,4 +1,4 @@
-from src.helper.events.events import Event
+from src.helper.events.events import EventCallback
 
 
 class PathEventFactory:
@@ -6,4 +6,4 @@ class PathEventFactory:
         self.callback = path_animation
 
     def get_event(self, path):
-        return Event(self.callback, path)
+        return EventCallback(self.callback, path)

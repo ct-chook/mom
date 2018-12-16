@@ -1,7 +1,7 @@
 import logging
 
 
-class Event:
+class EventCallback:
     """Runs callback using argument provided, and waits
 
     Wait time is equal to the return value in seconds.
@@ -26,19 +26,19 @@ class Event:
         return self.name
 
 
-class EventQueue:
+class EventList:
     """Keeps a list of events, and the wait time after each event
 
     Events can be packed in tuples or lists
     Events subscribe_event to a a publisher as a visitor pattern which can
     trigger events every tick_events (e.g. frame)
     """
-    subscription_publisher = None
+    publisher = None
 
     def __init__(self, events):
         self.events = []
         self.index = 0
-        self.timer = 1
+        self.activation_time = 1
         self.append(events)
         self.subscribe()  # need to check how to handle subscription (implicit?)
 
@@ -64,41 +64,41 @@ class EventQueue:
     def append(self, events):
         self._unpack_events(events)
 
-    def tick(self):
-        self.timer -= 1
-        self._play_event()
+    def poll_events(self, timer):
+        while self.activation_time <= timer and self.index < len(self.events):
+            self._play_events()
 
-    def _play_event(self):
-        while self.timer <= 0 and self.index < len(self.events):
-            timer_returned = self._get_event().play()
-            if timer_returned is None:
-                self._switch_to_next_event()
-            elif timer_returned <= 0:
-                self._switch_to_next_event()
-                self.timer = abs(timer_returned)
-            else:
-                self.timer = timer_returned
+    def _play_events(self):
+        timer_returned = self._get_event().play()
+        if timer_returned is None:
+            self._switch_to_next_event()
+        elif timer_returned <= 0:
+            self._switch_to_next_event()
+            self.activation_time += abs(timer_returned)
+        else:
+            self.activation_time += timer_returned
 
     def _switch_to_next_event(self):
         self.index += 1
         if self.index >= len(self.events):
             self.unsubscribe()
-        self.timer = 0
 
-    def _get_event(self) -> Event:
+    def _get_event(self) -> EventCallback:
         return self.events[self.index]
 
     def skip(self):
-        self._switch_to_next_event()
+        """Plays the rest of the events without regards for the timer"""
+        while self.index < len(self.events):
+            self._play_events()
 
     def subscribe(self):
-        assert self.subscription_publisher
-        self.subscription_publisher.subscribe_event(self)
+        assert self.publisher
+        self.publisher.subscribe_event(self)
 
     def unsubscribe(self):
-        assert self.subscription_publisher
+        assert self.publisher
         logging.info(f'Request to unsub event queue {self}')
-        self.subscription_publisher.unsubscribe_event(self)
+        self.publisher.unsubscribe_event(self)
 
     @staticmethod
     def _event_is_packed(event):
@@ -111,10 +111,10 @@ class EventQueue:
 
     @staticmethod
     def set_publisher(publisher):
-        EventQueue.subscription_publisher = publisher
+        EventList.publisher = publisher
 
 
-class Publisher:
+class EventQueue:
     """Part of the subscription-publisher pattern.
 
     Receives events. 'Ticks' events down and executes callback when timer hits
@@ -122,10 +122,12 @@ class Publisher:
     """
     def __init__(self):
         self.events = []
+        self.timer = 0
 
     def tick_events(self):
+        self.timer += 1
         for event in self.events:
-            event.tick()
+            event.poll_events(self.timer)
 
     def subscribe_event(self, event):
         self.events.append(event)

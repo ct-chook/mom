@@ -1,7 +1,7 @@
 import pytest
 
 from src.helper.Misc.options_game import Options
-from src.helper.events.events import Publisher, EventQueue
+from src.helper.events.events import EventQueue, EventList
 from src.controller.board_controller import BoardController
 
 roman_x = 1
@@ -38,8 +38,8 @@ class TestCase:
 
         self.board_controller = BoardController(0, 0, 500, 500)
         self.view = self.board_controller.view
-        self.publisher = Publisher()
-        EventQueue.set_publisher(self.publisher)
+        self.publisher = EventQueue()
+        EventList.set_publisher(self.publisher)
 
     def test(self):
         # for pycharm to recognize this as a testing class

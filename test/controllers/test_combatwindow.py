@@ -6,7 +6,7 @@ from src.controller.board_controller import BoardController
 from src.helper.Misc.constants import Terrain, DayTime, MonsterType
 from src.components.combat.attack import AttackFactory
 from src.components.board.monster import Monster
-from src.helper.events.events import Publisher, EventQueue
+from src.helper.events.events import EventQueue, EventList
 
 Options.headless = True
 PLAYER, OPPONENT = range(2)
@@ -19,8 +19,8 @@ class TestCase:
 
     @pytest.fixture
     def before(self):
-        self.publisher = Publisher()
-        EventQueue.set_publisher(self.publisher)
+        self.publisher = EventQueue()
+        EventList.set_publisher(self.publisher)
         self.board_window = BoardController(0, 0, 1000, 1000)
         self.window = self.board_window.combat_window
         self.view = self.window.view

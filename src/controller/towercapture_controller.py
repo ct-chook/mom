@@ -3,7 +3,7 @@ import logging
 from src.abstract.window import Window
 from src.helper.Misc.constants import is_even, Color
 from src.abstract.view import View
-from src.helper.events.events import Event
+from src.helper.events.events import EventCallback
 
 
 class TowerCaptureWindow(Window):
@@ -20,9 +20,9 @@ class TowerCaptureWindow(Window):
         self.hide()
 
     def get_capture_events(self):
-        return (Event(self.show),
-                Event(self.view.show_capture),
-                Event(self.hide))
+        return (EventCallback(self.show),
+                EventCallback(self.view.show_capture),
+                EventCallback(self.hide))
 
 
 class TowerCaptureView(View):

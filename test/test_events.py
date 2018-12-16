@@ -1,6 +1,6 @@
 import pytest
 
-from src.helper.events.events import EventQueue, Event, Publisher
+from src.helper.events.events import EventList, EventCallback, EventQueue
 
 
 class Dummy:
@@ -42,29 +42,29 @@ class Dummy:
 class EventTester:
     @pytest.fixture
     def before(self):
-        self.publisher = Publisher()
-        EventQueue.set_publisher(self.publisher)
+        self.publisher = EventQueue()
+        EventList.set_publisher(self.publisher)
         self.dummy = Dummy()
-        self.queues: [EventQueue] = []
+        self.queues: [EventList] = []
 
     def tick(self):
         self.publisher.tick_events()
 
     def set_queue(self, events):
-        self.queue = EventQueue(events)
+        self.queue = EventList(events)
 
     def append_queue(self, events):
         self.queue.append(events)
 
     def add_queue_with_callback(self, callback):
-        event = Event(callback)
-        self.queues.append(EventQueue(event))
+        event = EventCallback(callback)
+        self.queues.append(EventList(event))
 
     def add_queue_with_callbacks(self, callbacks):
         events = []
         for callback in callbacks:
-            events.append(Event(callback))
-        self.queues.append(EventQueue(events))
+            events.append(EventCallback(callback))
+        self.queues.append(EventList(events))
 
     def assert_x_after_ticks(self, x, ticks):
         for tick in range(ticks):

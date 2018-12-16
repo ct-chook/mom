@@ -5,7 +5,7 @@ from src.components.board.monster import Monster
 from src.controller.board_controller import BoardController
 from src.helper.Misc.constants import Terrain, MonsterType, AiType
 from src.helper.Misc.options_game import Options
-from src.helper.events.events import Publisher, EventQueue
+from src.helper.events.events import EventQueue, EventList
 
 Options.headless = True
 
@@ -40,8 +40,8 @@ class TestCase:
         self.model = self.controller.model
         self.board: Board = self.model.board
         self.precombat_window = self.controller.precombat_window
-        self.publisher = Publisher()
-        EventQueue.set_publisher(self.publisher)
+        self.publisher = EventQueue()
+        EventList.set_publisher(self.publisher)
         self.before_more()
 
     def before_more(self):

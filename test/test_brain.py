@@ -4,7 +4,7 @@ from src.components.board.brain import PlayerDefaultBrain, PlayerIdleBrain
 from src.components.board.monster import Monster
 from src.controller.board_controller import BoardController
 from src.helper.Misc.constants import Terrain, MonsterBehavior
-from src.helper.events.events import EventQueue, Publisher
+from src.helper.events.events import EventList, EventQueue
 from test.controllers.test_board_controller import chim_start_pos
 
 
@@ -51,8 +51,8 @@ class TestCase:
         self.model = self.controller.model
         self.board = self.model.board
         self.before_more()
-        self.publisher = Publisher()
-        EventQueue.set_publisher(self.publisher)
+        self.publisher = EventQueue()
+        EventList.set_publisher(self.publisher)
         self.add_chim()
 
     def tick_event(self, times=1):
