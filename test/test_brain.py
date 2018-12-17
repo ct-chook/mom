@@ -5,9 +5,10 @@ from src.components.board.monster import Monster
 from src.controller.board_controller import BoardController
 from src.controller.mainmenu_controller import MapOptions
 from src.helper.Misc.constants import Terrain, MonsterBehavior
+from src.helper.Misc.options_game import Options
 from src.helper.events.events import EventList, EventQueue
-from test.controllers.test_board_controller import chim_start_pos
 
+Options.headless = True
 
 class PlayerScoutBrain(PlayerDefaultBrain):
     """Only makes scouts"""
@@ -84,6 +85,8 @@ class TestCase:
             brain_class = PlayerDefenderBrain
         elif ai_type == AiType.summoner:
             brain_class = PlayerSummonBrain
+        elif ai_type == AiType.default:
+            brain_class = PlayerDefaultBrain
         else:
             assert False, f'invalid ai type {ai_type}'
         self.controller.add_brain_for_player(brain_class, player)
@@ -121,7 +124,7 @@ class TestIdleBrain(TestCase):
     def test_idle_ai_turns(self, before):
         self.set_ai_type(AiType.idle)
         self.end_turn()
-        self.ensure_player_0s_turn()
+        self.ensure_player_x_turn(0)
 
 
 class TestScoutBrain(TestCase):
@@ -241,7 +244,29 @@ class TestDefenderBrain(TestCase):
 class TestDefaultBrain(TestCase):
     def before_more(self):
         self.set_ai_type(AiType.default)
+        self.create_tower_at((19, 19))
+        self.create_tower_at((17, 19))
 
     def test_ai_doesnt_lock_up_the_game(self, before):
         self.end_turn()
         self.tick_event(1000)
+
+    def test_move_two_monsters(self, before):
+        # make AI move to the tower created
+        self.add_troll()
+        self.set_ai_type(AiType.scout)
+        self.check_if_ai_monsters_move_after_ending_turn()
+        self.check_if_ai_monsters_move_after_ending_turn()
+
+    def check_if_ai_monsters_move_after_ending_turn(self):
+        old_troll_pos = self.troll.pos
+        old_chim_pos = self.chim.pos
+        self.end_turn()
+        self.tick_event(90) # wait for monsters to move
+        assert self.chim.pos != old_chim_pos
+        assert self.troll.pos != old_troll_pos
+
+    def add_troll(self):
+        # noinspection PyAttributeOutsideInit
+        self.troll = self.board.summon_monster(Monster.Type.TROLL, (2, 2), 1)
+        self.troll.moved = False

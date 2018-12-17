@@ -47,6 +47,7 @@ class PlayerDefaultBrain(PlayerBrain):
         self._handle_monsters()
         if self.did_action:
             return
+        self.monster_index = 0
         self._handle_summon()
         if self.did_action:
             return
@@ -73,12 +74,12 @@ class PlayerDefaultBrain(PlayerBrain):
             self.controller, monster, MonsterBehavior.SCOUT)
 
     def _do_monster_action(self):
-        monster_brain = self._get_next_monster().brain
+        monster_brain = self._get_current_monster().brain
         monster_brain.do_action()
         self.did_action = True
         self.monster_index += 1
 
-    def _get_next_monster(self):
+    def _get_current_monster(self):
         return self.monsters[self.monster_index]
 
     def _handle_summon(self):

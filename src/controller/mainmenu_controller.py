@@ -11,6 +11,7 @@ from src.helper.Misc.constants import MAP_DIRECTORY
 
 class MainMenuController(Window):
     def __init__(self, x, y, width, height, parent):
+        """Should be initialized by MomController"""
         self.rectangle = Rect(x, y, width, height)
         super().__init__(x, y, width, height)
         self.add_view(MainMenuView)
@@ -19,8 +20,8 @@ class MainMenuController(Window):
         self.mapname = None
 
         self.start_button = self.attach_controller(
-            TextButton(
-                50, 50, 150, 50, 'Choose map', self.show_map_selection_window))
+            TextButton(50, 50, 150, 50, 'Choose map',
+                       self.show_map_selection_window))
         self.map_selection_window: MapSelectionWindow = self.attach_controller(
             MapSelectionWindow(50, 50, 200, 600, self))
         self.mapoptions_window: MapOptionsWindow = self.attach_controller(
