@@ -40,12 +40,12 @@ class SummonWindow(Window):
 
     def handle_summon_choice(self, index):
         monster_type = self.summonable_monsters[index]
-        summoned_monster = self.board_model.summon_monster_at(
+        monster = self.parent.handle_summon_monster(
             monster_type, self.summon_pos)
-        if summoned_monster is None:
-            print('Not enough mana')
-            return
-        self.hide()
+        if not monster:
+            print('not enough mana')
+        else:
+            self.hide()
 
     def display_summonable_monsters(self):
         if not self.view:

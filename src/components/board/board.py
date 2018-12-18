@@ -58,8 +58,7 @@ class Board:
     def summon_monster(self, monster_type, pos, owner):
         """Adds a monster and checks/reduces mana and flags it"""
         if self.tile_at(pos).monster:
-            logging.info('Tried to summon monster at occupied location')
-            return None
+            assert False, 'Tried to summon monster at occupied location'
         summon_cost = DataTables.get_monster_stats(monster_type).summon_cost
         if self._get_current_player().mana < summon_cost:
             logging.info('Not enough mana to summon monster')
@@ -273,7 +272,8 @@ class MapLoader:
         else:
             self._create_players(mapoptions)
             if self.mapname == 'test':
-                layout = constants.TEST_LAYOUT
+                self.mapname = 'test.map'
+                layout = self._get_layout_from_map_file()
                 self.set_terrain_using_layout(layout)
                 self.board.set_players(self.players)
                 self.set_test_monsters()
@@ -348,15 +348,23 @@ class MapLoader:
         return random.randint(0, self.x_max - 1)
 
     def set_terrain_using_layout(self, layout, mode=0):
+        """Parses the layout to set up the terrain
+
+        How it works: the first two integers are the width and height,
+        respectively. Next are a series of integer representing the terrain for
+        each row. Lastly there are eight integers representing the starting
+        positions for each player.
+        """
         self.x_max = layout[0]
         self.y_max = layout[1]
         self.board.x_max = self.x_max
         self.board.y_max = self.y_max
         self._fill_with_grass_tiles()
-        if len(layout) - 2 != self.x_max * self.y_max:
+        if len(layout) - 10 != self.x_max * self.y_max:
             raise IndexError(
                 f'Error setting terrain layout, {self.x_max}:{self.y_max} but '
-                f'only {len(layout) - 2} tiles')
+                f'{len(layout) - 10} tiles')
+        # mode should be unified to just one, right now it transposes the layout
         if mode == 0:
             n = 2
             for x in range(self.x_max):
@@ -368,6 +376,12 @@ class MapLoader:
                 for y in range(self.y_max):
                     self.board.tile_at((x, y)).terrain = \
                         layout[2 + x + y * self.x_max]
+        # grab the starting positions
+        n = len(layout) - 8
+        start_pos = []
+        for _ in range(4):
+            start_pos.append((layout[n], layout[n + 1]))
+            n += 2
 
     def _fill_with_grass_tiles(self):
         for x in range(self.x_max):

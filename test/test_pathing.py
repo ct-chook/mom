@@ -93,6 +93,9 @@ class TestAStarCustomMap:
                 raise AttributeError(f'Char "{char}" missing from legend')
             else:
                 new_list.append(legend[char])
+        # start pos (unused, but needed)
+        for _ in range(8):
+            new_list.append(0)
         return new_list
 
     def get_a_star_matrix(self, destination):
@@ -117,7 +120,8 @@ class TestAStarCustomMap:
                 . . . #
                 # # . x"""
         result = self.parse_layout(input_layout, legend)
-        assert [4, 4, 1, 0, 3, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 2] == result
+        assert [4, 4, 1, 0, 3, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 2, 0, 0, 0,
+                0, 0, 0, 0, 0] == result
 
     def test_very_short(self, before_zigzag):
         destination = (4, 1)

@@ -80,6 +80,9 @@ class BoardModel:
 
     def get_current_player_monsters(self):
         player_id = self.players.get_current_player_id()
+        return self.get_player_monsters(player_id)
+
+    def get_player_monsters(self, player_id):
         return self.board.monsters[player_id]
 
     def summon_monster_at(self, monster_type, pos):

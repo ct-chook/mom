@@ -19,7 +19,7 @@ class TestCase:
         self.assert_player_count(2)
 
     def test_set_three_players(self, before):
-        self.menu.map_selection_window.pick_map('testempty.map')
+        self.menu.map_selection_window.pick_map('test.map')
         self.menu.mapoptions_window.set_number_of_players(3)
         self.assert_player_count(3)
 

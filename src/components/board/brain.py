@@ -62,10 +62,11 @@ class PlayerDefaultBrain(PlayerBrain):
 
     def _create_list_of_monsters(self):
         self.monsters = self.model.get_current_player_monsters()
+        assert self.monsters, \
+            f'Player {self.model.get_current_player().id_} has no monsters'
         self.monster_index = 0
 
     def _create_monster_brains(self):
-        assert self.monsters
         for monster in self.monsters:
             self._create_brain_for_monster(monster)
 
@@ -75,6 +76,7 @@ class PlayerDefaultBrain(PlayerBrain):
 
     def _do_monster_action(self):
         monster_brain = self._get_current_monster().brain
+        assert monster_brain, f'{self._get_current_monster()} has no brain'
         monster_brain.do_action()
         self.did_action = True
         self.monster_index += 1
@@ -88,11 +90,24 @@ class PlayerDefaultBrain(PlayerBrain):
                 self.player.lord_type)
             self.monster_to_summon = random.choice(summon_options)
         if self._have_enough_mana_to_summon():
-            self.monster_to_summon = None
+            pos = self._get_pos_to_summon()
+            if pos:
+                monster = self.controller.handle_summon_monster(
+                    self.monster_to_summon, pos)
+                self._create_brain_for_monster(monster)
+                self.did_action = True
+                self.monster_to_summon = None
 
     def _have_enough_mana_to_summon(self):
         return self.player.mana >= \
                DataTables.get_monster_stats(self.monster_to_summon).summon_cost
+
+    def _get_pos_to_summon(self):
+        # todo
+        pos = (1, 1)
+        if self.model.board.tile_at(pos).monster:
+            return None
+        return pos
 
 
 class MonsterBrain:

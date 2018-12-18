@@ -183,11 +183,12 @@ class BoardController(Window):
             tower_capture = False
         self.model.move_monster_to(monster, pos)
         # todo get actual path
-        eventqueue = self.add_movement_event_to_view(monster, path)
+        eventlist = self.add_movement_event_to_view(monster, path)
         if tower_capture:
-            self._handle_tower_capture(pos, eventqueue)
+            self._handle_tower_capture(pos, eventlist)
         if self.is_ai_controlled:
-            eventqueue.append(EventCallback(self._handle_ai_action))
+            eventlist.append(EventCallback(
+                self._handle_ai_action, name='ai action'))
 
     def add_movement_event_to_view(self, monster, path):
         """Movement can work in two ways, either by player or by computer
@@ -230,39 +231,6 @@ class BoardController(Window):
             raise AttributeError(f'Brain not found for player {player.id_}')
         return self.brains[player]
 
-        # if action.monster_to_summon:
-        #     self._handle_brain_monster_summon(action)
-        # elif action.monster_to_move:
-        #     self._handle_brain_monster_move(action)
-        #     if action.monster_to_attack:
-        #         self._handle_brain_monster_attack(action)
-        # elif action.monster_to_attack:
-        #     self._handle_brain_monster_attack(action)
-        # elif action.end_turn:
-        #     self._handle_brain_end_turn()
-        # else:
-        #     raise AttributeError(
-        #         f'I don\'t know how to deal with this brain action. {action}')
-
-    def _handle_brain_monster_move(self, action):
-        monster = action.monster_to_move
-        pos = action.pos_to_move
-        assert monster
-        assert pos
-        self.handle_move_monster(monster, pos)
-
-    def _handle_brain_monster_attack(self, action):
-        pass
-
-    def _handle_brain_monster_summon(self, action):
-        pass
-
-    def _handle_brain_end_turn(self):
-        end_turn_event = EventCallback(
-            self.handle_end_of_turn,
-            name=f'AI end turn')
-        EventList(end_turn_event).subscribe()
-
     def show_combat_window_for(self, attacker, defender):
         assert attacker
         assert defender
@@ -283,6 +251,14 @@ class BoardController(Window):
         logging.info(f'Picked {(x, y)} for summon location')
         self.summon_window.show()
         self.summon_window.set_summon_pos(pos)
+
+    def handle_summon_monster(self, monster_type, pos):
+        summoned_monster = self.model.summon_monster_at(
+            monster_type, pos)
+
+        if self.is_ai_controlled:
+            EventList(EventCallback(self._handle_ai_action, name='ai action'))
+        return summoned_monster
 
     def highlight_tiles(self, posses):
         self.view.highlight_tiles(posses)
@@ -375,9 +351,9 @@ class BoardView(View):
     def add_movement_event(self, monster, path):
         self.path_animation = (path, monster)
         self.path_index = 0
-        movement_event = EventCallback(self.on_path_animation)
+        movement_event = EventCallback(self.on_path_animation, name='path anim')
         clear_highlight_event = EventCallback(
-            self.clear_highlighted_tiles)
+            self.clear_highlighted_tiles, name='clear highlight')
         return EventList((movement_event, clear_highlight_event))
 
     def on_path_animation(self):
