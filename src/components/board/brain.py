@@ -104,10 +104,12 @@ class PlayerDefaultBrain(PlayerBrain):
 
     def _get_pos_to_summon(self):
         # todo
-        pos = (1, 1)
-        if self.model.board.tile_at(pos).monster:
-            return None
-        return pos
+        lord_pos = (1, 1)
+        posses = self.model.board.get_tile_posses_adjacent_to(lord_pos)
+        for pos in posses:
+            tile = self.model.board.tile_at(pos)
+            if not tile.monster:
+                return pos
 
 
 class MonsterBrain:

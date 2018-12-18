@@ -255,7 +255,6 @@ class BoardController(Window):
     def handle_summon_monster(self, monster_type, pos):
         summoned_monster = self.model.summon_monster_at(
             monster_type, pos)
-
         if self.is_ai_controlled:
             EventList(EventCallback(self._handle_ai_action, name='ai action'))
         return summoned_monster
