@@ -24,10 +24,10 @@ next_to_chimera_pos = (roman_x - 1, roman_y - 2)
 crusader_south_once = (crusader_x, crusader_y + 3)
 crusader_south_twice = (crusader_x, crusader_y + 5)
 
-daimyou_pos = (9, 11)
-left_of_daimyou_pos = (8, 11)
-right_of_daimyou_pos = (10, 11)
-far_left_of_daimyou_pos = (7, 11)
+daimyou_pos = (1, 1)
+left_of_daimyou_pos = (daimyou_pos[0] - 1, daimyou_pos[1])
+right_of_daimyou_pos = (daimyou_pos[0] + 1, daimyou_pos[1])
+far_right_of_daimyou_pos = (daimyou_pos[0] + 2, daimyou_pos[1])
 
 tower_pos = (4, 4)
 
@@ -210,10 +210,10 @@ class TestSummoning(TestCase):
         assert summoned_monster.moved
 
     def test_cannot_summon_far_away(self, make_board):
-        far_left_of_daimyou = self.board.tile_at(far_left_of_daimyou_pos)
+        far_left_of_daimyou = self.board.tile_at(far_right_of_daimyou_pos)
         assert far_left_of_daimyou.monster is None
         # open summon window
-        self.click_on(far_left_of_daimyou_pos)
+        self.click_on(far_right_of_daimyou_pos)
         assert not self.controller.summon_window.visible
 
     def test_cannot_summon_on_top_of_monster(self, make_board):

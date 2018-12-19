@@ -47,21 +47,26 @@ class PlayerDefaultBrain(PlayerBrain):
         self._handle_monsters()
         if self.did_action:
             return
-        self.monster_index = 0
         self._handle_summon()
         if self.did_action:
             return
+        self.monster_index = 0
+        self.monsters = None
         self._do_end_of_turn()
 
     def _handle_monsters(self):
         if not self.monsters:
             self._create_list_of_monsters()
             self._create_monster_brains()
+        # skip lord action for now
+        if self.monster_index < len(self.monsters) and \
+                self._get_current_monster().is_lord():
+                self.monster_index += 1
         if self.monster_index < len(self.monsters):
             self._do_monster_action()
 
     def _create_list_of_monsters(self):
-        self.monsters = self.model.get_current_player_monsters()
+        self.monsters = tuple(self.model.get_current_player_monsters())
         assert self.monsters, \
             f'Player {self.model.get_current_player().id_} has no monsters'
         self.monster_index = 0
@@ -104,8 +109,8 @@ class PlayerDefaultBrain(PlayerBrain):
 
     def _get_pos_to_summon(self):
         # todo
-        lord_pos = (1, 1)
-        posses = self.model.board.get_tile_posses_adjacent_to(lord_pos)
+        lord = self.model.get_lord_of_player()
+        posses = self.model.board.get_tile_posses_adjacent_to(lord.pos)
         for pos in posses:
             tile = self.model.board.tile_at(pos)
             if not tile.monster:

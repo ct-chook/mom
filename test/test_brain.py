@@ -11,13 +11,13 @@ from src.helper.events.events import EventList, EventQueue
 Options.headless = True
 
 
-class TestMonstersBrain(PlayerDefaultBrain):
+class PlayerNoSummonBrain(PlayerDefaultBrain):
     def _handle_summon(self):
         """Doesn't summon anything so the set of monsters remains the same"""
         self.did_action = False
 
 
-class PlayerScoutBrain(TestMonstersBrain):
+class PlayerScoutBrain(PlayerNoSummonBrain):
     """Only makes scouts"""
 
     def _create_brain_for_monster(self, monster):
@@ -25,7 +25,7 @@ class PlayerScoutBrain(TestMonstersBrain):
         monster.brain.type = MonsterBehavior.SCOUT
 
 
-class PlayerAttackerBrain(TestMonstersBrain):
+class PlayerAttackerBrain(PlayerNoSummonBrain):
     """Only makes attackers"""
 
     def _create_brain_for_monster(self, monster):
@@ -33,7 +33,7 @@ class PlayerAttackerBrain(TestMonstersBrain):
         monster.brain.type = MonsterBehavior.ATTACKER
 
 
-class PlayerDefenderBrain(TestMonstersBrain):
+class PlayerDefenderBrain(PlayerNoSummonBrain):
     """Only makes attackers"""
 
     def _create_brain_for_monster(self, monster):
@@ -62,10 +62,15 @@ class TestCase:
         self.controller = BoardController(0, 0, 500, 500, mapoptions)
         self.model = self.controller.model
         self.board = self.model.board
-        self.before_more()
         self.publisher = EventQueue()
         EventList.set_publisher(self.publisher)
+        # move lords away
+        for n in range(2):
+            monsters = self.model.get_monsters_of_player(n)
+            for monster in monsters:
+                self.board.set_monster_pos(monster, (18 + n, 0))
         self.add_chim()
+        self.before_more()
 
     def tick_event(self, times=1):
         for _ in range(times):
@@ -142,25 +147,6 @@ class TestScoutBrain(TestCase):
         # set the player to scout and create brain for it
         self.set_ai_type(AiType.scout)
 
-    def test_monster_keeps_moving(self, before):
-        self.board.set_monster_pos(self.chim, (0, 12))
-        self.create_tower_at((0, 0))
-        old_pos = self.chim.pos
-        self.board.debug_print()
-        self.end_turn()  # start AI turn
-        self.board.debug_print()
-        new_pos = self.chim.pos
-        assert new_pos != old_pos
-        self.ensure_player_x_turn(1)
-        self.board.debug_print()
-        self.tick_event(120)
-        self.board.debug_print()
-        self.tick_event()
-        self.ensure_player_x_turn(0)
-        self.end_turn()
-        self.board.debug_print()
-        assert self.chim.pos != new_pos
-
     def test_move_to_nearby_tower(self, before):
         # Set tower next to monster
         closest_tower_pos = (self.chim.pos[0], self.chim.pos[1] - 2)
@@ -189,6 +175,20 @@ class TestScoutBrain(TestCase):
         other_tower_pos = (7, 4)
         self.create_tower_at(other_tower_pos)
         self.check_move_action(other_tower_pos)
+
+    def test_monster_keeps_moving(self, before):
+        self.board.set_monster_pos(self.chim, (0, 12))
+        self.create_tower_at((0, 0))
+        old_pos = self.chim.pos
+        self.end_turn()  # start AI turn
+        new_pos = self.chim.pos
+        assert new_pos != old_pos
+        self.ensure_player_x_turn(1)
+        self.tick_event(120)
+        self.tick_event()
+        self.ensure_player_x_turn(0)
+        self.end_turn()
+        assert self.chim.pos != new_pos
 
 
 class TestAttackerBrain(TestCase):
@@ -244,7 +244,8 @@ class TestDefenderBrain(TestCase):
 
 class TestSummonBrain(TestCase):
     def before_more(self):
-        self.add_wizard()
+        self.wizard = self.board.lords[1]
+        self.board.set_monster_pos(self.wizard, (1, 1))
         self.set_ai_type(AiType.summoner)
 
     def test_summon_monsters(self, before):
@@ -262,16 +263,20 @@ class TestSummonBrain(TestCase):
         monsters = self.get_monsters_after_turn()
         assert len(monsters) == 8
 
+    def test_summon_monsters_on_map_edge(self, before):
+        self.set_mana_of_player_to(1, 1000)
+        self.board.set_monster_pos(self.wizard, (0, 1))
+        monsters = self.get_monsters_after_turn()
+        # should be 5 + chim and wizard
+        assert len(monsters) == 7
+
     def get_monsters_after_turn(self):
-        monsters = self.model.get_player_monsters(1)
-        assert len(monsters) == 2
+        monsters = self.model.get_monsters_of_player(1)
+        assert len(monsters) == 2, f'Player 1 has {len(monsters)} monsters'
         self.end_turn()
         self.tick_event(10)  # give time to summon
         self.ensure_player_x_turn(0)
-        return self.model.get_player_monsters(1)
-
-    def add_wizard(self):
-        self.board.summon_monster(Monster.Type.WIZARD, (1, 1), 1)
+        return self.model.get_monsters_of_player(1)
 
 
 class TestDefaultBrain(TestCase):
@@ -295,12 +300,10 @@ class TestDefaultBrain(TestCase):
     def check_if_ai_monsters_move_after_ending_turn(self):
         old_troll_pos = self.troll.pos
         old_chim_pos = self.chim.pos
-        self.board.debug_print()
         self.ensure_player_x_turn(0)
         self.end_turn()
         self.ensure_player_x_turn(1)
         self.tick_event(90)  # wait for monsters to move
-        self.board.debug_print()
         assert_new_pos(self.chim, old_chim_pos)
         assert_new_pos(self.troll, old_troll_pos)
 

@@ -72,7 +72,7 @@ class TestAStarCustomMap:
         layout = self.parse_layout(input_layout, legend)
         self.board = Board()
         maploader = MapLoader(self.board)
-        maploader.set_terrain_using_layout(layout, 1)
+        maploader.set_map_using_layout(layout, 1)
         players = PlayerList()
         players.add_player(0, 0, 0)
         self.board.set_players(players)
@@ -227,8 +227,9 @@ class TestRoman(TestCase):
 
 class TestPhoenix(TestCase):
     def test_matrix(self, before):
+        # move darklord out of the way
+        self.board.set_monster_pos(self.board.lords[3], (0, 0))
         self.generate_matrix_at(phoenix_pos)
-        self.board.debug_print()
         assert 0 == self.matrix.get_distance_value_at(phoenix_pos)
         assert 1 == self.matrix.get_distance_value_at(
             (phoenix_x + 1, phoenix_y))

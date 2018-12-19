@@ -25,7 +25,6 @@ class CombatWindow(Window):
         logging.info('Showing combat')
         combat = Combat()
         self.combat_log = combat.monster_combat2(attacks, attack_range)
-        print('adding draw screen event')
         draw_screen_event = EventCallback(self.view.draw_screen, attacks)
         show_attacks_event = EventCallback(self.view.show_attack, self.combat_log)
         close_window_event = EventCallback(self.handle_combat_end)

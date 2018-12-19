@@ -74,10 +74,11 @@ class SidebarView(View):
         self.active_player.set_text(active_player.id_)
         self.player_mana.set_text(active_player.mana)
         self.tower_count.set_text(active_player.tower_count)
-        print(f'Player mana: {self.player_mana.text}')
-        print(f'Sun stance: {self.sun_stance.text}')
-        print(f'Active player: {self.active_player.text}')
-        print(f'Tower count: {self.tower_count.text}')
+        # todo show this on sidebar
+        # print(f'Player mana: {self.player_mana.text}')
+        # print(f'Sun stance: {self.sun_stance.text}')
+        # print(f'Active player: {self.active_player.text}')
+        # print(f'Tower count: {self.tower_count.text}')
         self.queue_for_sprite_update()
 
     def update_tile_info(self, tile: Tile):

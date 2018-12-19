@@ -16,7 +16,6 @@ class MainMenuController(Window):
         super().__init__(x, y, width, height)
         self.add_view(MainMenuView)
         self.parent = parent
-
         self.mapname = None
 
         self.start_button = self.attach_controller(
@@ -85,7 +84,7 @@ class MapSelectionWindow(Window):
 
     def fetch_maps(self):
         mapnames = os.listdir(MAP_DIRECTORY)
-        mapnames.append('test')
+        mapnames.append('test')  # fake map name that makes test map
         self.list_maps(mapnames)
 
     def list_maps(self, mapnames):
@@ -107,10 +106,11 @@ class MapOptions:
         self.mapname = None
 
     def set_number_of_players(self, number):
-        print(f'Setting number of players to {number}')
-        self.players.add_player(0, AiType.human, 50)
-        for n in range(1, number):
-            self.players.add_player(n, AiType.default, 50)
+        # lord type should be configurable, players shouldn't be made until
+        # all settings are confirmed
+        self.players.add_player(1, AiType.human, 50)
+        for n in range(number - 1):
+            self.players.add_player(2 + n, AiType.default, 50)
 
 
 class MapSelectionView(View):

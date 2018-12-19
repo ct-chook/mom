@@ -209,7 +209,6 @@ class BoardController(Window):
         return queue
 
     def _handle_tower_capture(self, pos, eventqueue):
-        print('handling  tower capture')
         self.model.capture_tower_at(pos)
         tower_capture_events = self.tower_capture_window.get_capture_events()
         return eventqueue.append(tower_capture_events)
@@ -312,7 +311,6 @@ class BoardView(View):
 
     def move_camera(self, dxy):
         center_x, center_y = self.get_center_tile(dxy)
-        print(f'center: {(center_x, center_y)}')
         if (center_x < 0 or center_y < 0 or center_x >= self.board.x_max or
                 center_y >= self.board.y_max):
             return
@@ -325,7 +323,6 @@ class BoardView(View):
         self.camera.y = new_camera_y
         self.create_sprites_for_board_in_view()
         self.queue_for_background_update()
-        print(f'new pos: {self.camera.x},{self.camera.y}')
 
     def get_center_tile(self, dxy):
         dx, dy = dxy
@@ -339,7 +336,6 @@ class BoardView(View):
         self.camera.y = y - self.camera.height / 2
         self.create_sprites_for_board_in_view()
         self.queue_for_background_update()
-        print(f'new pos: {self.camera.x},{self.camera.y}')
 
     def update_background(self):
         self.background.fill(self.bg_color)

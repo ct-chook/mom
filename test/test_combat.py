@@ -71,15 +71,24 @@ class TestDamageCalculationCombined(CombatTest):
         assert damage == expected
 
 
-class TestAttacksBetweenRomans(CombatTest):
+class TestRomanCombat(CombatTest):
     @pytest.fixture
     def before(self):
         self.model = BoardModel()
         self.board = self.model.board
         self.combat = Combat()
         blue_monsters = self.board.monsters[0]
-        self.roman_a = blue_monsters[0]
-        self.roman_b = blue_monsters[1]
+        self.roman_a = blue_monsters[1]
+        self.roman_b = blue_monsters[2]
+        Combat.perfect_accuracy = True
+        self.more()
+
+    def more(self):
+        pass
+
+
+class TestAttacksBetweenRomans(TestRomanCombat):
+    def more(self):
         self.combat.monster_combat(
             (self.roman_a, self.roman_b), CLOSE_RANGE, SUNRISE)
         self.attack0 = self.combat._attacks.get_attack(0, CLOSE_RANGE)
@@ -94,15 +103,8 @@ class TestAttacksBetweenRomans(CombatTest):
         assert 60 == self.attack1.accuracy
 
 
-class TestInvalidAttacksBetweenRomans(CombatTest):
-    @pytest.fixture
-    def before(self):
-        self.model = BoardModel()
-        self.board = self.model.board
-        self.combat = Combat()
-        blue_monsters = self.board.monsters[0]
-        self.roman_a = blue_monsters[0]
-        self.roman_b = blue_monsters[1]
+class TestInvalidAttacksBetweenRomans(TestRomanCombat):
+    def more(self):
         self.combat.monster_combat(
             (self.roman_a, self.roman_b), LONG_RANGE, SUNRISE)
         self.attack0 = self.combat._attacks.get_attack(0, LONG_RANGE)
@@ -117,16 +119,7 @@ class TestInvalidAttacksBetweenRomans(CombatTest):
         assert 60 == self.attack1.accuracy
 
 
-class TestAligmentMultiplier(CombatTest):
-    @pytest.fixture
-    def before(self):
-        self.model = BoardModel()
-        self.board = self.model.board
-        self.combat = Combat()
-        blue_monsters = self.board.monsters[0]
-        self.roman_a = blue_monsters[0]
-        self.roman_b = blue_monsters[1]
-
+class TestAligmentMultiplier(TestRomanCombat):
     def test_multipliers(self, before):
         self.assert_damage(DAY, 4)
         self.assert_damage(SUNSET, 4)
@@ -138,46 +131,28 @@ class TestAligmentMultiplier(CombatTest):
             (self.roman_a, self.roman_b), CLOSE_RANGE, sun_stance)
         self.attack0 = self.combat._attacks.get_attack(0, CLOSE_RANGE)
         self.attack1 = self.combat._attacks.get_attack(1, CLOSE_RANGE)
-        assert expect == self.attack0.damage
-        assert expect == self.attack1.damage
+        assert self.attack0.damage == expect
+        assert self.attack1.damage == expect
 
 
-class TestOneRoundOfCombat(CombatTest):
-    @pytest.fixture
-    def before(self):
-        self.model = BoardModel()
-        self.board = self.model.board
-        self.combat = Combat()
-        self.combat.perfect_accuracy = True
-        blue_monsters = self.board.monsters[0]
-        self.roman_a = blue_monsters[0]
-        self.roman_b = blue_monsters[1]
+class TestOneRoundOfCombat(TestRomanCombat):
+    def more(self):
         self.combat_result = self.combat.monster_combat(
             (self.roman_a, self.roman_b), CLOSE_RANGE, SUNRISE)
         self.model.process_combat_log(self.combat_result)
 
     def test_end_of_round_results(self, before):
         assert self.combat_result
-        assert 6 == len(self.combat_result.rounds)
+        assert len(self.combat_result.rounds) == 6
         # base hp is 33, 33 - 3 * 3 = 24
-        assert 21 == self.combat_result.hp_end[0]
+        assert self.combat_result.hp_end[0] == 21
         self.assert_no_promotions()
         assert not self.combat_result.winner
-        assert 1 == self.roman_a.exp
-        assert 21 == self.roman_a.hp
+        assert self.roman_a.exp == 1
+        assert self.roman_a.hp == 21
 
 
-class TestMultipleRoundsOfCombat(CombatTest):
-    @pytest.fixture
-    def before(self):
-        self.model = BoardModel()
-        self.board = self.model.board
-        self.combat = Combat()
-        self.combat.perfect_accuracy = True
-        blue_monsters = self.board.monsters[0]
-        self.roman_a = blue_monsters[0]
-        self.roman_b = blue_monsters[1]
-
+class TestMultipleRoundsOfCombat(TestRomanCombat):
     def test_combat_result_exists(self, before):
         self.combat_rounds(2)
         assert self.combat_result
@@ -185,12 +160,12 @@ class TestMultipleRoundsOfCombat(CombatTest):
     def test_three_rounds(self, before):
         # attacker just barely survives this, since he attacks first
         self.combat_rounds(3)
-        assert 1 == self.combat_result.hp_end[0]
+        assert self.combat_result.hp_end[0] == 1
         self.assert_no_promotions()
-        assert 0 == self.combat_result.hp_end[1]
+        assert self.combat_result.hp_end[1] == 0
         assert self.combat_result.winner == self.roman_a
         assert self.combat_result.loser == self.roman_b
-        assert 18 == self.combat_result.winner.exp
+        assert self.combat_result.winner.exp == 18
 
     def combat_round(self):
         self.combat_result = self.combat.monster_combat(
@@ -202,16 +177,8 @@ class TestMultipleRoundsOfCombat(CombatTest):
             self.combat_round()
 
 
-class TestPromotionFromWinning(CombatTest):
-    @pytest.fixture
-    def before(self):
-        self.model = BoardModel()
-        self.board = self.model.board
-        self.combat = Combat()
-        self.combat.perfect_accuracy = True
-        blue_monsters = self.board.monsters[0]
-        self.roman_a = blue_monsters[0]
-        self.roman_b = blue_monsters[1]
+class TestPromotionFromWinning(TestRomanCombat):
+    def more(self):
         self.roman_a.award_exp(15)
         self.roman_b.hp = 3
         self.combat_result = self.combat.monster_combat(
@@ -226,16 +193,8 @@ class TestPromotionFromWinning(CombatTest):
         assert 33 == self.roman_a.hp
 
 
-class TestPromotionFromSurviving(CombatTest):
-    @pytest.fixture
-    def before(self):
-        self.model = BoardModel()
-        self.board = self.model.board
-        self.combat = Combat()
-        self.combat.perfect_accuracy = True
-        blue_monsters = self.board.monsters[0]
-        self.roman_a = blue_monsters[0]
-        self.roman_b = blue_monsters[1]
+class TestPromotionFromSurviving(TestRomanCombat):
+    def more(self):
         self.roman_a.award_exp(25)
         self.roman_b.award_exp(25)
         self.combat_result = self.combat.monster_combat(
@@ -254,22 +213,14 @@ class TestPromotionFromSurviving(CombatTest):
         assert 33 == self.roman_b.hp
 
 
-class TestPromotionFromMultipleRounds(CombatTest):
-    @pytest.fixture
-    def before(self):
-        self.model = BoardModel()
-        self.board = self.model.board
-        self.combat = Combat()
-        self.combat.perfect_accuracy = True
-        blue_monsters = self.board.monsters[0]
-        self.roman_a = blue_monsters[0]
-        self.roman_b = blue_monsters[1]
+class TestPromotionFromMultipleRounds(TestRomanCombat):
+    def more(self):
         self.roman_a.award_exp(20)
 
     def test_monster_promotion_after_three(self, before):
         self.combat_rounds(3)
-        assert MonsterType.CARTHAGO == self.combat_result.promotions[0]
-        assert MonsterType.CARTHAGO == self.roman_a.type
+        assert self.combat_result.promotions[0] == MonsterType.CARTHAGO
+        assert self.roman_a.type == MonsterType.CARTHAGO
 
     def combat_round(self):
         self.combat_result = self.combat.monster_combat(

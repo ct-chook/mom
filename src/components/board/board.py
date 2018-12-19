@@ -4,7 +4,6 @@ import random
 from src.components.board import players
 from src.components.board.monster import Monster
 from src.components.board.tile import TileModifier, Tile
-from src.helper.Misc import constants
 from src.helper.Misc.constants import ROOT, MonsterType, Terrain, AiType, is_odd
 from src.helper.Misc.datatables import DataTables
 
@@ -22,6 +21,7 @@ class Board:
         self.x_max = None
         self.tiles = []
         self.monsters = {}
+        self.lords = {}
         # list of players is used to check for enemies
         self._players: players.PlayerList = None
 
@@ -57,8 +57,10 @@ class Board:
 
     def summon_monster(self, monster_type, pos, owner):
         """Adds a monster and checks/reduces mana and flags it"""
-        if self.tile_at(pos).monster:
-            assert False, 'Tried to summon monster at occupied location'
+        assert not self.tile_at(pos).monster, f'{self.debug_print()}' \
+            f'Tried to summon ' \
+            f'{DataTables.get_monster_stats(monster_type).name} at ' \
+            f'location occupied by {self.monster_at(pos).name} '
         summon_cost = DataTables.get_monster_stats(monster_type).summon_cost
         if self._get_current_player().mana < summon_cost:
             logging.info('Not enough mana to summon monster')
@@ -70,9 +72,10 @@ class Board:
 
     def place_new_monster(self, monster_type, pos=(0, 0), owner=0) -> Monster:
         """Places a new monster without checking/reducing mana or flagging it"""
-        if self.monster_at(pos):
-            raise AttributeError(
-                f'Tried to summon monster at {pos} but it is already occupied')
+        assert not self.monster_at(pos), \
+            f'Tried to summon a ' \
+                f'{DataTables.get_monster_stats(monster_type).name} at {pos} ' \
+                f'but it is already occupied by a {self.monster_at(pos)} '
         new_monster = Monster(monster_type, pos, owner, self.terrain_at(pos))
         self.monsters[owner].append(new_monster)
         self.tile_at(new_monster.pos).monster = new_monster
@@ -99,6 +102,10 @@ class Board:
                     adj_tile.monster.owner != self.get_current_player_id()):
                 enemies.append(adj_tile.monster)
         return enemies
+
+    def get_lord_of_player(self, player_id):
+        assert player_id in self.lords, f'Player {player_id} has no lord set'
+        return self.lords[player_id]
 
     def get_tile_posses_adjacent_to(self, pos):
         """Boring but important stuff to retrieve all adjacent tiles
@@ -161,10 +168,8 @@ class Board:
 
     def move_monster(self, monster, destination):
         """Changes the monster position on the board and flags it as moved"""
-        if monster.moved:
-            logging.info(
-                f'Tried to move monster {monster} but it already moved')
-            return
+        assert not monster.moved, f'{self.debug_print()}' \
+            f'Tried to move monster {monster} but it already moved'
         self.set_monster_pos(monster, destination)
         monster.moved = True
 
@@ -258,8 +263,11 @@ class MapLoader:
         self.x_max = None
         self.y_max = None
         self.players: players.PlayerList = None
+        self.start_posses = []
+        self.mapoptions = None
 
     def load_map(self, mapoptions=None):
+        self.mapoptions = mapoptions
         if not mapoptions:
             mapname = 'test'
         else:
@@ -272,25 +280,26 @@ class MapLoader:
         else:
             self._create_players(mapoptions)
             if self.mapname == 'test':
+                test = True
                 self.mapname = 'test.map'
-                layout = self._get_layout_from_map_file()
-                self.set_terrain_using_layout(layout)
-                self.board.set_players(self.players)
-                self.set_test_monsters()
             else:
-                layout = self._get_layout_from_map_file()
-                self.set_terrain_using_layout(layout)
-                self.board.set_players(self.players)
+                test = False
+            layout = self._get_layout_from_map_file()
+            self.set_map_using_layout(layout)
+            self.board.set_players(self.players)
+            self._add_lords()
+            if test:
+                self.set_test_monsters()
 
     def _create_players(self, mapoptions):
         if mapoptions and mapoptions.players:
             self.players = mapoptions.players
             return
         self.players = players.PlayerList()
-        self.players.add_player(0, AiType.human, 50)
-        self.players.add_player(1, AiType.idle, 50)
+        self.players.add_player(1, AiType.human, 50)
         self.players.add_player(2, AiType.idle, 50)
         self.players.add_player(3, AiType.idle, 50)
+        self.players.add_player(4, AiType.idle, 50)
 
     def _get_layout_from_map_file(self):
         with open(f'{ROOT}/src/data/maps/{self.mapname}', 'r') as fd:
@@ -311,9 +320,6 @@ class MapLoader:
         self.board.place_new_monster(MonsterType.PHOENIX, (1, 18), blue)
         self.board.place_new_monster(MonsterType.CHIMERA, (1, 17), red)
         self.board.place_new_monster(MonsterType.FIGHTER, (5, 5), blue)
-        # lords
-        self.board.place_new_monster(MonsterType.DAIMYOU, (9, 11), blue)
-        self.board.place_new_monster(MonsterType.WIZARD, (11, 11), red)
         # water
         self.board.place_new_monster(MonsterType.MARMAID, (12, 16), blue)
         self.board.place_new_monster(MonsterType.KRAKEN, (13, 16), red)
@@ -325,11 +331,6 @@ class MapLoader:
         self.board.place_new_monster(random.randint(1, 82), (8, 9), red)
 
     def _add_random_monsters(self, player):
-        # add lord
-        self.board.place_new_monster(
-            MonsterType.DAIMYOU + player,
-            (self._get_random_x(), self._get_random_y()),
-            player)
         # adds phoenix for testing purposes
         self.board.place_new_monster(
             MonsterType.PHOENIX,
@@ -347,7 +348,7 @@ class MapLoader:
     def _get_random_x(self):
         return random.randint(0, self.x_max - 1)
 
-    def set_terrain_using_layout(self, layout, mode=0):
+    def set_map_using_layout(self, layout, mode=0):
         """Parses the layout to set up the terrain
 
         How it works: the first two integers are the width and height,
@@ -378,10 +379,17 @@ class MapLoader:
                         layout[2 + x + y * self.x_max]
         # grab the starting positions
         n = len(layout) - 8
-        start_pos = []
         for _ in range(4):
-            start_pos.append((layout[n], layout[n + 1]))
+            self.start_posses.append((layout[n], layout[n + 1]))
             n += 2
+
+    def _add_lords(self):
+        n = 0
+        for player in self.players.players:
+            pos = self.start_posses[n]
+            lord = self.board.place_new_monster(player.lord_type, pos, n)
+            self.board.lords[n] = lord
+            n += 1
 
     def _fill_with_grass_tiles(self):
         for x in range(self.x_max):

@@ -35,7 +35,7 @@ class TestCase:
         assert 8 == attacks_right[Range.LONG].damage
 
     def test_lose_lord_self(self, before):
-        blue_lord = self.model.board.monsters[0][4]
+        blue_lord = self.model.get_lord_of_player(0)
         assert blue_lord.type == Monster.Type.DAIMYOU
         self.model.kill_monster(blue_lord)
         assert self.model.game_over is True

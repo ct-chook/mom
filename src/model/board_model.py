@@ -80,9 +80,9 @@ class BoardModel:
 
     def get_current_player_monsters(self):
         player_id = self.players.get_current_player_id()
-        return self.get_player_monsters(player_id)
+        return self.get_monsters_of_player(player_id)
 
-    def get_player_monsters(self, player_id):
+    def get_monsters_of_player(self, player_id):
         return self.board.monsters[player_id]
 
     def summon_monster_at(self, monster_type, pos):
@@ -152,3 +152,12 @@ class BoardModel:
         assert self.path_matrix
         pathfinder = PathFinder(self.board)
         return pathfinder.get_path_on_matrix_to(self.path_matrix, pos)
+
+    def get_lord_of_player(self, player_id=None):
+        # todo include direct link to lord
+        if player_id is None:
+            player_id = self.get_current_player_id()
+        return self.board.get_lord_of_player(player_id)
+
+    def get_current_player_id(self):
+        return self.players.current_player
