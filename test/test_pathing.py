@@ -335,7 +335,7 @@ class TestSirenePath(TestCase2):
 
 class TestNoPathGeneration(TestCase2):
     def test_no_path_was_made(self, before):
-        with pytest.raises(AttributeError):
+        with pytest.raises(AssertionError):
             self.get_path_between(roman_pos, (roman_x, roman_y - 6))
 
 

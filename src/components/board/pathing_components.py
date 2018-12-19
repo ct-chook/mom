@@ -48,9 +48,6 @@ class MatrixProcessor:
         return not self.tiles_to_explore
 
     def _explore_next_tile(self):
-        if not self.tiles_to_explore:
-            print('he')
-            b = self.matrix_is_finished()
         self.pos = heapq.heappop(self.tiles_to_explore)[1]
         assert self.pos[0] >= 0
         assert self.pos[1] >= 0
@@ -287,8 +284,6 @@ class PathGenerator:
     Use the board's path matrix to generate the shortest path between monster
     location and a provided destination. Paths are constrained by the game's
     rules. Will return None if no path could be found or reached.
-
-    The interface allows get a path...
     """
 
     def __init__(self, board):
@@ -317,10 +312,9 @@ class PathGenerator:
         self._setup_tracing()
         while self._path_not_fully_traced_yet():
             self._search_for_adjacent_tiles()
-            if not self.adj_found:
-                raise AttributeError(
-                    f'Could not retrace path to {self.x0},{self.y0}. '
-                    f'Dist values: {self.path_matrix.dist_values}')
+            assert self.adj_found, \
+                (f'Could not retrace path to {self.x0},{self.y0}. '
+                 f'Dist values: {self.path_matrix.dist_values}')
         return self.path
 
     def get_path_on(self, matrix):
@@ -342,12 +336,11 @@ class PathGenerator:
         self._setup_tracing()
         while self._path_not_fully_traced_yet():
             self._search_for_adjacent_tiles()
-            if not self.adj_found:
-                raise AttributeError(
-                    f'Could not retrace path to {self.x0},{self.y0}.\n'
-                    f'Stuck at {self.x0}:{self.y0}\n'
-                    f'Path so far: {self.path}\n'
-                    f'{self.path_matrix.print_dist_values()}')
+            assert self.adj_found, \
+                (f'Could not retrace path to {self.x0},{self.y0}.\n'
+                 f'Stuck at {self.x0}:{self.y0}\n'
+                 f'Path so far: {self.path}\n'
+                 f'{self.path_matrix.print_dist_values()}')
         return self.path
 
     def _destination_not_reachable(self):

@@ -302,12 +302,16 @@ class MapLoader:
         self.players.add_player(4, AiType.idle, 50)
 
     def _get_layout_from_map_file(self):
+        assert self.mapname, 'No mapname set'
         with open(f'{ROOT}/src/data/maps/{self.mapname}', 'r') as fd:
             content = fd.read()
-            layout_strings = content.split(', ')
-            layout = []
-            for layout_string in layout_strings:
-                layout.append(int(layout_string))
+        return self._get_layout_from_content(content)
+
+    def _get_layout_from_content(self, content):
+        layout_strings = content.split(', ')
+        layout = []
+        for layout_string in layout_strings:
+            layout.append(int(layout_string))
         return layout
 
     def set_test_monsters(self):

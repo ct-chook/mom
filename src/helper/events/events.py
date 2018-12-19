@@ -6,7 +6,7 @@ class EventCallback:
 
     Wait time is equal to the return value in seconds.
     """
-    def __init__(self, callback, *args, name='nameless event'):
+    def __init__(self, callback, *args, name=None):
         self.callback = callback
         self.args = args
         self.name = name
@@ -14,16 +14,15 @@ class EventCallback:
     def play(self):
         assert self.callback, f'Event {self} has no callback'
         logging.info(f'Playing event: {self.name}')
-        if self.args:
-            return self.callback(*self.args)
-        else:
-            return self.callback()
+        return self.callback(*self.args)
 
     def __str__(self):
         return f'{self.name} {self.callback}, {self.args}'
 
     def __repr__(self):
-        return self.name
+        if self.name:
+            return self.name
+        return self.callback
 
 
 class EventList:

@@ -59,8 +59,10 @@ class TestCase:
         mapoptions = MapOptions()
         mapoptions.mapname = 'testempty.map'
         mapoptions.set_number_of_players(2)
+        mapoptions.set_players()
         self.controller = BoardController(0, 0, 500, 500, mapoptions)
         self.model = self.controller.model
+        assert len(self.model.players) == 2
         self.board = self.model.board
         self.publisher = EventQueue()
         EventList.set_publisher(self.publisher)
