@@ -9,7 +9,7 @@ from src.helper.events.events import EventCallback
 class TowerCaptureWindow(Window):
     def __init__(self):
         super().__init__(200, 200, 200, 200)
-        self.view: TowerCaptureView = self.add_view(TowerCaptureView, None)
+        self.view: TowerCaptureView = self.add_view(TowerCaptureView)
         self.hide()
 
     def show_capture(self):

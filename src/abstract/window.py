@@ -37,7 +37,7 @@ class Window(Controller):
         super().__init__(x, y, width, height)
         self._buttons = []
 
-    def add_button(self, input_button) -> Button:
+    def add_button(self, input_button):
         self.attach_controller(input_button)
         self._buttons.append(input_button)
         input_button.show()

@@ -11,7 +11,7 @@ from src.helper.Misc.spritesheet import SpriteSheetFactory
 class Sidebar(Window):
     def __init__(self):
         super().__init__(800, 0, 200, 600)
-        self.view: SidebarView = self.add_view(SidebarView, None)
+        self.view: SidebarView = self.add_view(SidebarView)
 
     def display_tile_info(self, tile):
         self.view.update_tile_info(tile)

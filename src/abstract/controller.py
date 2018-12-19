@@ -75,12 +75,12 @@ class Controller:
         self.view.add_child_view(controller.view)
         return controller
 
-    def add_view(self, view_class, parameters=None):
-        if parameters:
-            self.view = view_class(self.rectangle, parameters)
-        else:
-            self.view = view_class(self.rectangle)
-        assert self.view.rectangle
+    def add_view(self, view_class, *args):
+        # if parameters:
+        self.view = view_class(self.rectangle, *args)
+        # else:
+        #     self.view = view_class(self.rectangle)
+        # assert self.view.rectangle
         self.view.initialize_background()
         return self.view
 
@@ -126,6 +126,10 @@ class Controller:
 
     def handle_keypress(self, key):
         pass
+
+    def click(self):
+        """Shorthand, use in tests etc"""
+        self.handle_mouseclick()
 
     def handle_mouseclick(self):
         pass

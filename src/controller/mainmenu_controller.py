@@ -59,17 +59,20 @@ class MapOptionsWindow(Window):
         self.parent: MainMenuController = parent
         self.mapoptions = MapOptions()
         # add buttons for player options
-        # (eventually must become options for each player
+        # (eventually must become options for each player)
+        # from player counts 2 - 4
+        self.player_count_buttons = []
         for n in range(3):
-            self.add_button(TextButton(
+            self.player_count_buttons.append(self.add_button(TextButton(
                 50, 50 * n, 150, 50, f'{n} Players',
-                self.set_number_of_players, n + 1))
-        for n in range(1, 6):
-            self.add_button(TextButton(
-                100, 50 * n, 150, 50,
-                f'{DataTables.get_monster_stats(n).name}',
-                self.set_lord, n))
-        self.add_button(TextButton(50, 250, 150, 50, 'Ok', self.finish))
+                self.set_number_of_players, n + 2)))
+        # for players 1 - 4
+        self.summoner_type_buttons = []
+        for n in range(6):
+            self.summoner_type_buttons.append(self.add_button(SummonerButton(
+                100, 50 * n, 150, 50, n)))
+        self.finish_button = self.add_button(TextButton(
+            50, 250, 150, 50, 'Ok', self.finish))
         self.set_number_of_players(4)
 
     def set_number_of_players(self, number):
@@ -79,6 +82,10 @@ class MapOptionsWindow(Window):
         self.mapoptions.lord_type = monster_type
 
     def finish(self):
+        n = 0
+        for button in self.summoner_type_buttons:
+            self.mapoptions.lord_types[n] = button.get_summoner_type()
+            n += 1
         self.mapoptions.set_players()
         self.hide()
         self.parent.create_board(self.mapoptions)
@@ -89,6 +96,48 @@ class MapOptionsView(View):
         super().__init__(rectangle)
         self.add_text('MapOptionsView')
         self.bg_color = Color.LIGHT_RED
+
+
+class CappedCounter:
+    """A variable that can be incremented and loop to zero at a certain cap
+
+    The cap is exclusive. CappedCounter(0, 10) will loop between 0-9
+    """
+    def __init__(self, value, cap):
+        self.value = value
+        self.cap = cap
+
+    def __repr__(self):
+        return self.value
+
+    def flip(self):
+        """Increase counter, reverts back to zero if value hits cap"""
+        self.value += 1
+        if self.value >= self.cap:
+            self.value = 0
+
+
+class SummonerButton(TextButton):
+    summoners = (Monster.Type.DAIMYOU, Monster.Type.WIZARD,
+                 Monster.Type.SORCERER, Monster.Type.DARKLORD,
+                 Monster.Type.SUMMONER, Monster.Type.SIXTHLORD)
+
+    def __init__(self, x, y, width, height, summoner_type):
+        super().__init__(x, y, width, height, '', self._next_summoner)
+        self.summoner_type = CappedCounter(summoner_type, len(self.summoners))
+        self._display_summoner_name()
+
+    def _next_summoner(self):
+        self.summoner_type.flip()
+        self._display_summoner_name()
+
+    def _display_summoner_name(self):
+        # self.view.texts[0].set_text(
+        #     DataTables.get_monster_stats(self.summoner_type.value).name)
+        self.update_view()
+
+    def get_summoner_type(self):
+        return self.summoners[self.summoner_type.value]
 
 
 class MapSelectionWindow(Window):
@@ -119,7 +168,7 @@ class MapOptions:
     def __init__(self):
         self.players: PlayerList = PlayerList()
         self.number_of_players = None
-        self.lord_type = Monster.Type.DAIMYOU
+        self.lord_types = {}
         self.mapname = None
 
     def set_number_of_players(self, number):
@@ -128,9 +177,14 @@ class MapOptions:
     def set_players(self):
         # lord type should be configurable, players shouldn't be made until
         # all settings are confirmed
-        self.players.add_player(self.lord_type, AiType.human, 50)
+        # quick fix for lack of lord types configured
+        if not self.lord_types:
+            for n in range(4):
+                self.lord_types[n] = n + Monster.Type.DAIMYOU
+        self.players.add_player(self.lord_types[0], AiType.human, 50)
         for n in range(self.number_of_players - 1):
-            self.players.add_player(2 + n, AiType.default, 50)
+            self.players.add_player(
+                self.lord_types[n + 1], AiType.default, 50)
 
 
 class MapSelectionView(View):
