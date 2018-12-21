@@ -56,7 +56,9 @@ class TestCase:
         self.check_lord_type_for_player(Monster.Type.SIXTHLORD, 3)
 
     def check_lord_type_for_player(self, type_, player):
-        assert self.model.board.lords[player].type == type_
+        lord = self.model.board.lords[player]
+        assert lord.type == type_
+        assert self.model.board.monster_at(lord.pos) == lord
 
     def click_summon_button_x_times(self, a, n):
         for _ in range(n):

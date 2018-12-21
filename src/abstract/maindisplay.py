@@ -4,6 +4,7 @@ import pygame
 from pygame.rect import Rect
 
 from src.abstract.view import View, Sprite
+from src.helper.logging_functions import log_time
 
 
 class MainDisplay:
@@ -80,12 +81,16 @@ class MainDisplay:
             return
         logging.info(f'Redrawing screen using {len(self.changed_rects)} rects')
         self.top_view.blit_to_display(0, 0)
-        # pygame.display.flip() #  doesn't work for software displays
+        #log_time(pygame.display.flip)  # doesn't work for software displays
+        #self.changed_rects = (Rect(0, 0, 100, 100))
         for rect in self.changed_rects:
             logging.info(
-                f'Using rect: {rect.x}:{rect.y} {rect.width}x{rect.height}')
-        # log_time(pygame.display.update, self.changed_rects)
-        pygame.display.update()
+                f'Updating with rect: '
+                f'{rect.x}:{rect.y} {rect.width}x{rect.height}')
+        self.changed_rects = (None, Rect(0, 0, 100, 100))
+        # pygame.display.update()
+        log_time(pygame.display.update, self.changed_rects)
+        #pygame.display.update(self.changed_rects)
         self.changed_rects = []
 
     def blit(self, surface, pos):
@@ -93,10 +98,6 @@ class MainDisplay:
 
     def add_sprite_movement(self, sprite, old_pos, parent):
         self.sprites_to_update.add((sprite, old_pos, parent))
-
-    # def update_sprites(self):
-    #     for sprite_data in self.sprites_to_update:
-    #         sprite, old_pos, parent = sprite_data
 
     def __repr__(self):
         return 'maindisplay'

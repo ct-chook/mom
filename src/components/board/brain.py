@@ -4,6 +4,7 @@ from math import ceil
 from src.components.board.pathing import MovementFinder
 from src.helper.Misc.constants import MonsterBehavior, Terrain
 from src.helper.Misc.datatables import DataTables
+from src.helper.events.events import EventList, EventCallback
 
 
 class PlayerBrain:
@@ -118,15 +119,16 @@ class PlayerDefaultBrain(PlayerBrain):
 
 
 class MonsterBrain:
-    def __init__(self, controller, brain_owner, type):
+    def __init__(self, controller, brain_owner, type_):
         self.monster = brain_owner
         self.controller = controller
         self.model = controller.model
         self.movement_finder = MovementFinder(self.model.board)
-        self.type = type
+        self.type = type_
 
     def do_action(self):
         assert self.type is not None
+        assert self.monster is not None
         if self.type == MonsterBehavior.SCOUT:
             self._do_scout_action()
         elif self.type == MonsterBehavior.ATTACKER:
@@ -177,3 +179,6 @@ class MonsterBrain:
         destination = movement.get_destination()
         if destination:
             self.controller.handle_move_monster(self.monster, movement.path)
+        else:
+            # add callback for next turn, which normally comes with move monster
+            EventList(self.controller.get_ai_action_event())

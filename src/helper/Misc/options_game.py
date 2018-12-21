@@ -3,8 +3,8 @@ class Options:
     tile_size = 48
     tile_width = tile_size
     tile_height = tile_size
-    camera_width = 15
-    camera_height = 15
+    camera_width = 14
+    camera_height = 17
 
-    player_count = 3
+    player_count = 4
     headless = False

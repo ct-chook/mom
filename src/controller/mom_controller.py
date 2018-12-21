@@ -16,12 +16,12 @@ class MomController(Window):
 
         # Controllers
         self.main_menu: MainMenuController = self.attach_controller(
-            MainMenuController(50, 0, 1100, 700, self))
+            MainMenuController(10, 10, 1100, 700, self))
         self.board_controller: BoardController = None
 
     def create_board(self, mapoptions: MapOptions):
         self.board_controller: BoardController = self.attach_controller(
-            BoardController(50, 50, 1100, 700, mapoptions))
+            BoardController(10, 10, 1100, 700, mapoptions))
 
     def handle_keypress(self, key):
         if key == pygame.K_ESCAPE:

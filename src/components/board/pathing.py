@@ -103,7 +103,8 @@ class Movement:
         self.path = None
 
     def get_destination(self):
-        return self.path[-1]
+        if self.path:
+            return self.path[-1]
 
 
 class MovementFinder:

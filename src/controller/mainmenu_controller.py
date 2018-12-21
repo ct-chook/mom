@@ -26,7 +26,7 @@ class MainMenuController(Window):
         self.map_selection_window: MapSelectionWindow = self.attach_controller(
             MapSelectionWindow(50, 50, 200, 600, self))
         self.mapoptions_window: MapOptionsWindow = self.attach_controller(
-            MapOptionsWindow(50, 50, 200, 500, self))
+            MapOptionsWindow(50, 50, 350, 350, self))
 
         self.map_selection_window.hide()
         self.mapoptions_window.hide()
@@ -64,13 +64,13 @@ class MapOptionsWindow(Window):
         self.player_count_buttons = []
         for n in range(3):
             self.player_count_buttons.append(self.add_button(TextButton(
-                50, 50 * n, 150, 50, f'{n} Players',
+                50, 50 * n, 150, 50, f'{2 + n} Players',
                 self.set_number_of_players, n + 2)))
         # for players 1 - 4
         self.summoner_type_buttons = []
-        for n in range(6):
+        for n in range(4):
             self.summoner_type_buttons.append(self.add_button(SummonerButton(
-                100, 50 * n, 150, 50, n)))
+                200, 50 * n, 150, 50, n)))
         self.finish_button = self.add_button(TextButton(
             50, 250, 150, 50, 'Ok', self.finish))
         self.set_number_of_players(4)
@@ -123,7 +123,7 @@ class SummonerButton(TextButton):
                  Monster.Type.SUMMONER, Monster.Type.SIXTHLORD)
 
     def __init__(self, x, y, width, height, summoner_type):
-        super().__init__(x, y, width, height, '', self._next_summoner)
+        super().__init__(x, y, width, height, 'summoner', self._next_summoner)
         self.summoner_type = CappedCounter(summoner_type, len(self.summoners))
         self._display_summoner_name()
 
@@ -132,9 +132,9 @@ class SummonerButton(TextButton):
         self._display_summoner_name()
 
     def _display_summoner_name(self):
-        # self.view.texts[0].set_text(
-        #     DataTables.get_monster_stats(self.summoner_type.value).name)
-        self.update_view()
+        self.view.set_text(DataTables.get_monster_stats(
+            self.summoners[self.summoner_type.value]).name)
+        self.view.queue_for_sprite_update()
 
     def get_summoner_type(self):
         return self.summoners[self.summoner_type.value]

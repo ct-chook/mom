@@ -326,6 +326,8 @@ class PathGenerator:
         self.path_matrix.print_dist_values()
         assert self.path_matrix, 'No path matrix set'
         assert self.path_matrix.start
+        if not self.path_matrix.end:
+            return None
         assert self.path_matrix.end
         self.start = self.path_matrix.start
         self.end = self.path_matrix.end
@@ -522,13 +524,17 @@ class MatrixFactory:
         self.terrain_cost = DataTables.terrain_cost
         self.board: board.Board = board
 
+    def setup_matrix(self, start):
+        self.matrix = PathMatrix(self.board)
+        monster = self.board.monster_at(start)
+        assert monster
+        self.matrix.set_monster(monster)
+
 
 class AStarMatrixFactory(MatrixFactory):
     def generate_path_matrix(self, start, destination):
         """Generates path matrix up until the destination"""
-        self.matrix = PathMatrix(self.board)
-        monster = self.board.monster_at(start)
-        self.matrix.set_monster(monster)
+        self.setup_matrix(start)
         self.processor = AStarMatrixProcessor(self.matrix)
         self.processor.fill_distance_values(start, destination)
         return self.matrix
@@ -537,9 +543,7 @@ class AStarMatrixFactory(MatrixFactory):
 class TerrainTypeSearchMatrixFactory(MatrixFactory):
     def generate_path_matrix(self, start, terrain_type):
         """Generates a path matrix to the nearest terrain type"""
-        self.matrix = PathMatrix(self.board)
-        monster = self.board.monster_at(start)
-        self.matrix.set_monster(monster)
+        self.setup_matrix(start)
         self.processor = TerrainTypeSearchMatrixProcessor(self.matrix)
         self.processor.fill_distance_values(start, terrain_type)
         return self.matrix
@@ -548,9 +552,7 @@ class TerrainTypeSearchMatrixFactory(MatrixFactory):
 class OwnTerrainSearchMatrixFactory(MatrixFactory):
     def generate_path_matrix(self, start):
         """Generates a path matrix to the nearest tile owned by self"""
-        self.matrix = PathMatrix(self.board)
-        monster = self.board.monster_at(start)
-        self.matrix.set_monster(monster)
+        self.setup_matrix(start)
         self.processor = OwnTerrainSearchMatrixProcessor(self.matrix)
         self.processor.fill_distance_values(start)
         return self.matrix
@@ -559,9 +561,7 @@ class OwnTerrainSearchMatrixFactory(MatrixFactory):
 class EnemyTerrainSearchMatrixFactory(MatrixFactory):
     def generate_path_matrix(self, start):
         """Generates a path matrix to the nearest tile owned by enemy"""
-        self.matrix = PathMatrix(self.board)
-        monster = self.board.monster_at(start)
-        self.matrix.set_monster(monster)
+        self.setup_matrix(start)
         self.processor = EnemyTerrainSearchMatrixProcessor(self.matrix)
         self.processor.fill_distance_values(start)
         return self.matrix
@@ -570,9 +570,7 @@ class EnemyTerrainSearchMatrixFactory(MatrixFactory):
 class EnemySearchMatrixFactory(MatrixFactory):
     def generate_path_matrix(self, start):
         """Generates a path matrix to the nearest tile owned by enemy"""
-        self.matrix = PathMatrix(self.board)
-        monster = self.board.monster_at(start)
-        self.matrix.set_monster(monster)
+        self.setup_matrix(start)
         self.processor = EnemySearchMatrixProcessor(self.matrix)
         self.processor.fill_distance_values(start)
         return self.matrix

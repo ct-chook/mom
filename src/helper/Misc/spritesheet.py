@@ -168,8 +168,8 @@ class SpriteSheetFactory:
 
     def get_minimap_terrain(self, size) -> SpriteSheet:
         if not self.minimap_terrain:
-            self.minimap_terrain = SpriteSheet('', size=24,
-                                max_rows=1, max_columns=99)
+            self.minimap_terrain = SpriteSheet(
+                '', size=24, max_rows=1, max_columns=99)
             self.minimap_terrain.generate_mini_terrain_sprites(size)
         return self.minimap_terrain
 

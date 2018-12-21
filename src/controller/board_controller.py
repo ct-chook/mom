@@ -187,8 +187,11 @@ class BoardController(Window):
         if tower_capture:
             self._handle_tower_capture(pos, eventlist)
         if self.is_ai_controlled:
-            eventlist.append(EventCallback(
-                self._handle_ai_action, name='ai action'))
+            eventlist.append(self.get_ai_action_event())
+
+    def get_ai_action_event(self):
+        return EventCallback(
+                self._handle_ai_action, name='ai action')
 
     def add_movement_event_to_view(self, monster, path):
         """Movement can work in two ways, either by player or by computer

@@ -8,7 +8,7 @@ class MomHandler(GameHandler):
     verbose = 1
 
     def __init__(self):
-        super().__init__(1200, 800)
+        super().__init__(1200, 600)
         self.turn_active = True
 
         self.top_controller = MomController(self.width, self.height)

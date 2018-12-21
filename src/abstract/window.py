@@ -8,11 +8,11 @@ from src.abstract.view import View
 
 
 class Button(Controller):
-    def __init__(self, x, y, width, height, callbacks, arguments=None):
+    def __init__(self, x, y, width, height, callbacks, *args):
         super().__init__(x, y, width, height)
         self.callbacks = []
         self.arguments = []
-        self.add_callback(callbacks, arguments)
+        self.add_callback(callbacks, *args)
         self.name = 'Button'
         self.view = None
 
@@ -20,16 +20,16 @@ class Button(Controller):
         logging.info(f'{self} was clicked')
         for callback, argument in zip(self.callbacks, self.arguments):
             logging.info(f'executing callback {callback}')
-            if argument is not None:
-                callback(argument)
-            else:
-                callback()
+            callback(*argument)
 
-    def add_callback(self, callback, arguments=None):
+    def add_callback(self, callback, *args):
         if callback is not None:
             logging.info(f'Adding callback {callback}')
             self.callbacks.append(callback)
-            self.arguments.append(arguments)
+            # strange workaround to avoid giving args to append()
+            self.arguments.append(None)
+            self.arguments[-1] = args
+
 
 
 class Window(Controller):
@@ -58,8 +58,8 @@ class Window(Controller):
 
 class TextButton(Button):
     def __init__(
-            self, x, y, width, height, button_text, callbacks, arguments=None):
-        super().__init__(x, y, width, height, callbacks, arguments)
+            self, x, y, width, height, button_text, callbacks, *args):
+        super().__init__(x, y, width, height, callbacks, *args)
         self.name = f'TextButton: {button_text}'
         self.view = self.add_view(TextButtonView, button_text)
 
@@ -68,7 +68,12 @@ class TextButtonView(View):
     def __init__(self, rectangle, text):
         super().__init__(rectangle)
         self.bg_color = Color.BLACK
-        self.add_text(text, size=20, offset=(0, 0))
+        self.text = self.add_text(text, size=20, offset=(0, 0))
+
+    def set_text(self, text):
+        self.text.set_text(text)
+        self.text.set_new_text_to_surface()
+        self.queue_for_sprite_update()
 
 
 class ButtonMatrix(Button):
