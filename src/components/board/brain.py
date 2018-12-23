@@ -51,9 +51,7 @@ class PlayerDefaultBrain(PlayerBrain):
         self._handle_summon()
         if self.did_action:
             return
-        self.monster_index = 0
-        self.monsters = None
-        self._do_end_of_turn()
+        self._finish_turn()
 
     def _handle_monsters(self):
         if not self.monsters:
@@ -109,13 +107,17 @@ class PlayerDefaultBrain(PlayerBrain):
                DataTables.get_monster_stats(self.monster_to_summon).summon_cost
 
     def _get_pos_to_summon(self):
-        # todo
         lord = self.model.get_lord_of_player()
         posses = self.model.board.get_tile_posses_adjacent_to(lord.pos)
         for pos in posses:
             tile = self.model.board.tile_at(pos)
             if not tile.monster:
                 return pos
+
+    def _finish_turn(self):
+        self.monster_index = 0
+        self.monsters = None
+        self._do_end_of_turn()
 
 
 class MonsterBrain:

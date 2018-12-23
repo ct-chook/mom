@@ -146,7 +146,7 @@ class BoardModel:
         return self.path_matrix.accessible_positions
 
     def get_players(self):
-        return self.players.players
+        return self.players
 
     def get_path_to(self, pos):
         assert self.path_matrix

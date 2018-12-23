@@ -52,7 +52,6 @@ class PlayerList:
     def __len__(self):
         return len(self.players)
 
-    def __iter__(self, n):
-        # todo how does this work?
-        return self.players[n]
+    def __iter__(self):
+        return iter(self.players)
 

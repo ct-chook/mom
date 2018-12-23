@@ -19,7 +19,7 @@ from src.helper.Misc.options_game import Options
 from src.helper.Misc.posconverter import PosConverter
 from src.helper.Misc.spritesheet import SpriteSheetFactory
 from src.helper.Misc.tileblitter import TileBlitter
-from src.helper.events.events import EventCallback, EventList, EventQueue
+from src.helper.events.events import EventCallback, EventList
 from src.helper.events.factory import PathEventFactory
 from src.helper.selectionhandler import SelectionHandler
 from src.model.board_model import BoardModel
