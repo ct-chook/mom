@@ -120,6 +120,7 @@ class MovementFinder:
 
     def get_movement_to_terraintype(self, monster: Monster, terrain_type) \
             -> Movement:
+        assert monster.pos
         path = self.pathfinder.get_path_to_terraintype(
             monster.pos, terrain_type)
         return self._get_movement(monster, path)
@@ -151,4 +152,10 @@ class MovementFinder:
                 new_path.append(pos)
             else:
                 break
+        # only one problem, the path itself may cross over own units, but it
+        # cannot end on them. so if the final pos ends at a monster, this will
+        # cause an error
+        assert self.board.monster_at(new_path[-1]) is None, (
+            f'Partial path is not valid, '
+            f'{self.board.monster_at(new_path[-1])} is at the last pos')
         return new_path

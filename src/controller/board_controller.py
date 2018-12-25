@@ -177,6 +177,9 @@ class BoardController(Window):
         """
         logging.info('Moving monster')
         pos = path[-1]
+        assert self.model.board.monster_at(pos) is None, (
+            f'Destination {pos} is occupied by '
+            f'{self.model.board.monster_at(pos)}')
         if self.model.has_capturable_tower_at(pos):
             tower_capture = True
         else:

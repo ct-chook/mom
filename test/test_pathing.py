@@ -1,10 +1,11 @@
 import re
-
 import pytest
 
 from src.components.board.board import Board, MapLoader
+from src.components.board.monster import Monster
 from src.components.board.pathing import PathGenerator, PathFinder
-from src.components.board.pathing_components import AStarMatrixFactory
+from src.components.board.pathing_components import AStarMatrixFactory, \
+    TerrainTypeSearchMatrixFactory
 from src.components.board.players import PlayerList
 from src.helper.Misc.constants import MonsterType, Terrain, UNEXPLORED, \
     IMPASSIBLE
@@ -32,56 +33,52 @@ octopus_pos = (octopus_x, octopus_y)
 sirene_pos = (sirene_x, sirene_y)
 
 
-class TestAStarCustomMap:
-    @pytest.fixture
-    def before_zigzag(self):
-        legend = {'o': Terrain.GRASS, 'X': Terrain.VOLCANO}
-        layout = """18 10
-                  o  o  o  o  o  o  o  o  o  o  X  o  o  o  o  o  o  o 
-                    o  o  o  o  o  o  o  o  o  o  X  o  o  o  X  o  o  o 
-                  o  o  o  o  o  o  o  o  o  o  X  o  o  o  X  X  o  o 
-                    o  o  o  o  o  o  o  o  o  o  X  o  o  o  X  o  o  o 
-                  o  o  o  o  o  o  o  o  o  o  X  o  o  o  X  o  o  o 
-                    o  o  o  o  o  o  o  o  o  o  X  o  o  o  X  o  o  o 
-                  o  o  o  o  o  o  o  o  o  o  X  o  o  o  X  o  o  o 
-                    o  o  o  o  o  o  o  o  o  o  X  o  o  o  X  o  o  o 
-                  o  o  o  o  o  o  o  o  o  o  X  o  o  o  X  o  o  o 
-                    o  o  o  o  o  o  o  o  o  o  o  o  o  o  X  o  o  o"""
-        self.use_layout(layout, (4, 0), legend)
+class Layouts:
+    zigzag = None
+    cross = None
 
-    @pytest.fixture
-    def before_cross(self):
-        legend = {'.': Terrain.GRASS, '#': Terrain.VOLCANO, '=': Terrain.RIVER}
-        #          1   2   3   4   5   6   7   8   9  10  11  12  13  14
-        layout = """14 12
-                  #  .   .   .   .   .   .   .   .   .   .   .   .   . 
-                    #   .   .   .   .   .   .   .   #   .   .   =   =   . 
-                  .   #   .   .   .   #   .   .   #   .   .   =   =   . 
-                    .   #   .   .   .   #   .   #   .   .   =   =   .   . 
-                  .   .   #   .   .   .   #   #   .   .   .   =   =   . 
-                    .   .   #   .   .   .   #   .   .   .   .   =   =   = 
-                  .   .   .   #   .   .   #   #   .   .   .   =   =   . 
-                    .   .   .   .   .   #   .   .   .   .   .   =   =   . 
-                  .   .   .   .   .   #   .   .   .   .   .   =   =   . 
-                    .   .   .   .   #   .   .   .   .   .   =   =   .   . 
-                  .   .   .   .   .   .   .   .   .   .   =   =   .   . 
-                    .   .   .   .   .   .   .   .   .   .   .   .   .   ."""
-        self.use_layout(layout, (6, 3), legend)
+    @staticmethod
+    def get_zigzag():
+        if not Layouts.zigzag:
+            legend = {'o': Terrain.GRASS, 'X': Terrain.VOLCANO}
+            layout = """18 10
+                      o  o  o  o  o  o  o  o  o  o  X  o  o  o  o  o  o  o 
+                        o  o  o  o  o  o  o  o  o  o  X  o  o  o  X  o  o  o 
+                      o  o  o  o  o  o  o  o  o  o  X  o  o  o  X  X  o  o 
+                        o  o  o  o  o  o  o  o  o  o  X  o  o  o  X  o  o  o 
+                      o  o  o  o  o  o  o  o  o  o  X  o  o  o  X  o  o  o 
+                        o  o  o  o  o  o  o  o  o  o  X  o  o  o  X  o  o  o 
+                      o  o  o  o  o  o  o  o  o  o  X  o  o  o  X  o  o  o 
+                        o  o  o  o  o  o  o  o  o  o  X  o  o  o  X  o  o  o 
+                      o  o  o  o  o  o  o  o  o  o  X  o  o  o  X  o  o  o 
+                        o  o  o  o  o  o  o  o  o  o  o  o  o  o  X  o  o  o"""
+            Layouts.zigzag = Layouts._parse_layout(layout, legend)
+        return Layouts.zigzag
 
-    def use_layout(self, input_layout, start_pos, legend):
-        layout = self.parse_layout(input_layout, legend)
-        self.board = Board()
-        maploader = MapLoader(self.board)
-        maploader.set_map_using_layout(layout, 1)
-        players = PlayerList()
-        players.add_player(0, 0, 0)
-        self.board.set_players(players)
-        self.start_pos = start_pos
-        self.board.place_new_monster(MonsterType.ROMAN, self.start_pos)
-        self.matrix_generator = AStarMatrixFactory(self.board)
-        self.path_generator = PathGenerator(self.board)
+    @staticmethod
+    def get_cross():
+        if not Layouts.cross:
+            legend = {'.': Terrain.GRASS, '#': Terrain.VOLCANO,
+                      '=': Terrain.RIVER}
+            #          1   2   3   4   5   6   7   8   9  10  11  12  13  14
+            layout = """14 12
+                      #  .   .   .   .   .   .   .   .   .   .   .   .   . 
+                        #   .   .   .   .   .   .   .   #   .   .   =   =   . 
+                      .   #   .   .   .   #   .   .   #   .   .   =   =   . 
+                        .   #   .   .   .   #   .   #   .   .   =   =   .   . 
+                      .   .   #   .   .   .   #   #   .   .   .   =   =   . 
+                        .   .   #   .   .   .   #   .   .   .   .   =   =   = 
+                      .   .   .   #   .   .   #   #   .   .   .   =   =   . 
+                        .   .   .   .   .   #   .   .   .   .   .   =   =   . 
+                      .   .   .   .   .   #   .   .   .   .   .   =   =   . 
+                        .   .   .   .   #   .   .   .   .   .   =   =   .   . 
+                      .   .   .   .   .   .   .   .   .   .   =   =   .   . 
+                        .   .   .   .   .   .   .   .   .   .   .   .   .   ."""
+            Layouts.cross = Layouts._parse_layout(layout, legend)
+        return Layouts.cross
 
-    def parse_layout(self, input_layout, legend):
+    @staticmethod
+    def _parse_layout(input_layout, legend):
         chars = re.sub('[\\s]+', ' ', input_layout).split(' ')
         new_list = []
         for char in chars:
@@ -98,6 +95,36 @@ class TestAStarCustomMap:
             new_list.append(0)
         return new_list
 
+
+# class TestLayouts:
+#     def test_parse_layout(self):
+#         legend = {'#': 1, '.': 0, 'x': 2, 'o': 3}
+#         input_layout = """
+#                 4 4
+#                 # . o #
+#                 . . # #
+#                 . . . #
+#                 # # . x"""
+#         result = self.parse_layout(input_layout, legend)
+#         assert [4, 4, 1, 0, 3, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 2, 0, 0, 0,
+#                 0, 0, 0, 0, 0] == result
+
+
+class TestCase:
+    # noinspection PyAttributeOutsideInit
+    def make_board_from_layout(self, layout, start_pos):
+        self.board = Board()
+        maploader = MapLoader(self.board)
+        maploader.set_map_using_layout(layout, 1)
+        players = PlayerList()
+        players.add_player(0, 0, 0)
+        self.board.set_players(players)
+        self.start_pos = start_pos
+        self.board.place_new_monster(MonsterType.ROMAN, self.start_pos)
+        self.matrix_generator = AStarMatrixFactory(self.board)
+        self.path_generator = PathGenerator(self.board)
+
+    # noinspection PyAttributeOutsideInit
     def get_a_star_matrix(self, destination):
         self.matrix = self.matrix_generator.generate_path_matrix(
             self.start_pos, destination)
@@ -109,21 +136,16 @@ class TestAStarCustomMap:
         return path
 
     def check(self, value, pos):
-        assert value == self.matrix.get_distance_value_at(pos)
+        assert self.matrix.get_distance_value_at(pos) == value, (
+            f'\n{self.matrix.print_dist_values()}')
 
-    def test_parse_layout(self):
-        legend = {'#': 1, '.': 0, 'x': 2, 'o': 3}
-        input_layout = """
-                4 4
-                # . o #
-                . . # #
-                . . . #
-                # # . x"""
-        result = self.parse_layout(input_layout, legend)
-        assert [4, 4, 1, 0, 3, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 2, 0, 0, 0,
-                0, 0, 0, 0, 0] == result
 
-    def test_very_short(self, before_zigzag):
+class TestAStarZigZag(TestCase):
+    @pytest.fixture
+    def before(self):
+        self.make_board_from_layout(Layouts.get_zigzag(), (4, 0))
+
+    def test_very_short(self, before):
         destination = (4, 1)
         self.get_a_star_matrix(destination)
         self.check(0, (4, 0))
@@ -133,57 +155,63 @@ class TestAStarCustomMap:
         self.check(UNEXPLORED, (4, 2))
         self.check(UNEXPLORED, (6, 1))
         path = self.get_path_to(destination)
-        assert 2 == len(path)
+        assert len(path) == 2
 
-    def test_short(self, before_zigzag):
+    def test_short(self, before):
         destination = (4, 9)
         self.get_a_star_matrix(destination)
         path = self.get_path_to(destination)
-        assert 10 == len(path)
+        assert len(path) == 10
 
-    def test_southwest_of_east_mountain(self, before_zigzag):
+    def test_left_of_east_mountain(self, before):
         destination = (13, 9)
         self.get_a_star_matrix(destination)
         self.check(14, (13, 9))
         path = self.get_path_to(destination)
-        assert 15 == len(path)
+        assert len(path) == 15
 
-    def test_pass_mountain(self, before_zigzag):
+    def test_pass_mountain(self, before):
         destination = (11, 0)
         self.get_a_star_matrix(destination)
         self.check(5, (9, 0))
         self.check(IMPASSIBLE, (10, 0))
         self.check(20, (11, 0))
         path = self.get_path_to(destination)
-        assert 21 == len(path)
+        assert len(path) == 21
 
-    def test_rightmost_corner(self, before_zigzag):
+    def test_rightmost_corner(self, before):
         destination = (17, 9)
         self.get_a_star_matrix(destination)
         self.check(30, (17, 9))
         path = self.get_path_to(destination)
-        assert 31 == len(path)
+        assert len(path) == 31
 
-    def test_cross_goto_opposite(self, before_cross):
+
+class TestAStarCross(TestCase):
+    @pytest.fixture
+    def before(self):
+        self.make_board_from_layout(Layouts.get_cross(), (6, 3))
+
+    def test_cross_goto_opposite(self, before):
         destination = (6, 7)
         self.get_a_star_matrix(destination)
         path = self.get_path_to(destination)
-        assert 13 == len(path)
+        assert len(path) == 13
 
-    def test_funnel(self, before_cross):
+    def test_funnel(self, before):
         destination = (0, 3)
         self.get_a_star_matrix(destination)
         path = self.get_path_to(destination)
-        assert 15 == len(path)
+        assert len(path) == 15
 
-    def test_pass_ocean(self, before_cross):
+    def test_pass_ocean(self, before):
         destination = (13, 11)
         self.get_a_star_matrix(destination)
         path = self.get_path_to(destination)
-        assert 20 == len(path)
+        assert len(path) == 20
 
 
-class TestCase:
+class TestMatrix:
     model = None
     board = None
     generator = None
@@ -201,15 +229,7 @@ class TestCase:
     def check(self, value, pos):
         assert value == self.matrix.get_distance_value_at(pos)
 
-
-class TestStartingPositions(TestCase):
-    def test_roman_at_start_pos(self, before):
-        assert self.board.monster_at(roman_pos).type is MonsterType.ROMAN
-        assert self.board.monster_at(phoenix_pos).type is MonsterType.PHOENIX
-
-
-class TestRoman(TestCase):
-    def test_matrix(self, before):
+    def test_roman(self, before):
         self.generate_matrix_at(roman_pos)
         assert self.generator
         self.check(0, roman_pos)
@@ -224,38 +244,29 @@ class TestRoman(TestCase):
         self.check(3, left_of_chim)
         self.check(UNEXPLORED, past_chim)
 
-
-class TestPhoenix(TestCase):
-    def test_matrix(self, before):
+    def test_phoenix(self, before):
         # move darklord out of the way
         self.board.set_monster_pos(self.board.lords[3], (0, 0))
         self.generate_matrix_at(phoenix_pos)
-        assert 0 == self.matrix.get_distance_value_at(phoenix_pos)
-        assert 1 == self.matrix.get_distance_value_at(
-            (phoenix_x + 1, phoenix_y))
-        assert 8 == self.matrix.get_distance_value_at(
-            (phoenix_x, phoenix_y - 2))
+        self.check(0, phoenix_pos)
+        self.check(1, (phoenix_x + 1, phoenix_y))
+        self.check(8, (phoenix_x, phoenix_y - 2))
 
-
-class TestOctopus(TestCase):
-    def test_matrix(self, before):
+    def test_octopus(self, before):
         octopus_northeast = (octopus_x + 1, octopus_y - 1)
         ocean_tip = (octopus_x - 1, octopus_y - 5)
         west_of_ocean_tip = (octopus_x - 2, octopus_y - 4)
         coast = (octopus_x, octopus_y + 1)
         north_of_ocean = (octopus_x - 1, octopus_y - 6)
         self.generate_matrix_at(octopus_pos)
-        assert 0 == self.matrix.get_distance_value_at(octopus_pos)
-        assert 1 == self.matrix.get_distance_value_at(octopus_northeast)
-        assert 6 == self.matrix.get_distance_value_at(ocean_tip)
-        assert 4 == self.matrix.get_distance_value_at(coast)
-        assert UNEXPLORED == self.matrix.get_distance_value_at(
-            west_of_ocean_tip)
-        assert UNEXPLORED == self.matrix.get_distance_value_at(north_of_ocean)
+        self.check(0, octopus_pos)
+        self.check(1, octopus_northeast)
+        self.check(6, ocean_tip)
+        self.check(4, coast)
+        self.check(UNEXPLORED, west_of_ocean_tip)
+        self.check(UNEXPLORED, north_of_ocean)
 
-
-class TestSirene(TestCase):
-    def test_matrix(self, before):
+    def test_sirene(self, before):
         self.generate_matrix_at(sirene_pos)
         # start
         assert 0 == self.matrix.get_distance_value_at(sirene_pos)
@@ -270,7 +281,7 @@ class TestSirene(TestCase):
             (sirene_x, sirene_y + 1))
 
 
-class TestCase2:
+class TestPaths:
     model = None
     board = None
     generator = None
@@ -280,7 +291,7 @@ class TestCase2:
     @pytest.fixture
     def before(self):
         self.model = BoardModel()
-        self.board = self.model.board
+        self.board: Board = self.model.board
         self.generator = PathMatrixFactory(self.board)
         self.path_generator = PathGenerator(self.board)
 
@@ -289,9 +300,7 @@ class TestCase2:
         self.path_generator.set_path_matrix(path_matrix)
         self.path = self.path_generator.get_path_to(end)
 
-
-class TestRomanPath(TestCase2):
-    def test_land_path(self, before):
+    def test_roman_path(self, before):
         self.get_path_between(roman_pos, (roman_x - 1, roman_y - 2))
         assert self.path
         assert 4 == len(self.path), f'path wrong: {self.path}'
@@ -299,9 +308,7 @@ class TestRomanPath(TestCase2):
         assert (roman_x - 1, roman_y) == self.path[1]
         assert (roman_x - 1, roman_y - 2) == self.path[-1]
 
-
-class TestOctopusPath(TestCase2):
-    def test_ocean_path(self, before):
+    def test_octopus_ocean_path(self, before):
         end_pos = (octopus_x - 1, octopus_y - 5)
         self.get_path_between(octopus_pos, end_pos)
         assert self.path
@@ -312,7 +319,7 @@ class TestOctopusPath(TestCase2):
         # end
         assert end_pos == self.path[6]
 
-    def test_land_path(self, before):
+    def test_octopus_land_path(self, before):
         self.get_path_between(octopus_pos, (octopus_x, octopus_y - 3))
         assert self.path
         assert 4 == len(self.path)
@@ -321,9 +328,7 @@ class TestOctopusPath(TestCase2):
         # LastPathTile
         assert (octopus_x, octopus_y - 3) == self.path[3]
 
-
-class TestSirenePath(TestCase2):
-    def test_ocean_path(self, before):
+    def test_sirene(self, before):
         self.get_path_between(sirene_pos, (sirene_x - 1, sirene_y - 6))
         assert self.path
         assert self.path and len(self.path) == 7
@@ -332,8 +337,6 @@ class TestSirenePath(TestCase2):
         # last
         assert self.path and self.path[6] == (sirene_x - 1, sirene_y - 6)
 
-
-class TestNoPathGeneration(TestCase2):
     def test_no_path_was_made(self, before):
         with pytest.raises(AssertionError):
             self.get_path_between(roman_pos, (roman_x, roman_y - 6))
@@ -420,3 +423,37 @@ class TestTerrainSearch:
         self.path = self.pathfinder.get_path_to_terraintype(
             start, Terrain.TOWER)
         assert self.path
+
+
+class TestValidPath(TestCase):
+    @pytest.fixture
+    def before(self):
+        self.make_board_from_layout(Layouts.get_zigzag(), (0, 0))
+
+    def tower_found_on_first_turn(self, before):
+        self.start_pos = (0, 0)
+        destination = (5, 0)
+        self.board.on_tile(destination).set_terrain_to(Terrain.TOWER)
+        # troll can move only 4 tiles per turn. it must move 2 tiles on the
+        # second turn to move to 5,0, so total move cost will be 6
+        matrix_generator = TerrainTypeSearchMatrixFactory(self.board)
+        matrix = matrix_generator.generate_path_matrix(
+            self.start_pos, Terrain.TOWER)
+        assert matrix.get_distance_value_at(destination) == 5
+
+    def test_tower_behind_own_monster(self, before):
+        self.start_pos = (0, 0)
+        self.board.monster_at(self.start_pos).set_monster_type(
+            Monster.Type.TROLL)
+        self.board.place_new_monster(Monster.Type.ROMAN, (4, 0))
+        # there's a monster at (4, 0)
+        # lets see if we can move past it
+        destination = (5, 0)
+        self.board.on_tile(destination).set_terrain_to(Terrain.TOWER)
+        # troll can move only 4 tiles per turn. it must move 2 tiles on the
+        # second turn to move to 5,0, so total move cost will be 6
+        matrix_generator = TerrainTypeSearchMatrixFactory(self.board)
+        matrix = matrix_generator.generate_path_matrix(
+            self.start_pos, Terrain.TOWER)
+        matrix.print_dist_values()
+        assert matrix.get_distance_value_at(destination) == 6

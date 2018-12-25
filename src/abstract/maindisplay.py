@@ -82,12 +82,10 @@ class MainDisplay:
         logging.info(f'Redrawing screen using {len(self.changed_rects)} rects')
         self.top_view.blit_to_display(0, 0)
         #log_time(pygame.display.flip)  # doesn't work for software displays
-        #self.changed_rects = (Rect(0, 0, 100, 100))
         for rect in self.changed_rects:
             logging.info(
                 f'Updating with rect: '
                 f'{rect.x}:{rect.y} {rect.width}x{rect.height}')
-        self.changed_rects = (None, Rect(0, 0, 100, 100))
         # pygame.display.update()
         log_time(pygame.display.update, self.changed_rects)
         #pygame.display.update(self.changed_rects)
