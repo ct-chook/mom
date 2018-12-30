@@ -119,7 +119,7 @@ class BoardController(Window):
     def handle_tile_selection(self, tile_pos):
         if self._tile_edit_mode_is_active():
             terrain = self.tile_editor_window.selected_terrain
-            self.model.board.on_tile(tile_pos).set_terrain_to(terrain)
+            self.model.board.set_terrain_to(tile_pos, terrain)
             self.view.queue_for_background_update()
         else:
             self.selection_handler.click_tile(tile_pos)

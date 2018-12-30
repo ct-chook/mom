@@ -3,9 +3,10 @@ import pytest
 
 from src.components.board.board import Board, MapLoader
 from src.components.board.monster import Monster
-from src.components.board.pathing import PathGenerator, PathFinder
+from src.components.board.pathing import PathGenerator, PathFinder, \
+    MovementFinder
 from src.components.board.pathing_components import AStarMatrixFactory, \
-    TerrainTypeSearchMatrixFactory
+    TowerSearchMatrixFactory
 from src.components.board.players import PlayerList
 from src.helper.Misc.constants import MonsterType, Terrain, UNEXPLORED, \
     IMPASSIBLE
@@ -36,6 +37,7 @@ sirene_pos = (sirene_x, sirene_y)
 class Layouts:
     zigzag = None
     cross = None
+    gauntlet = None
 
     @staticmethod
     def get_zigzag():
@@ -76,6 +78,22 @@ class Layouts:
                         .   .   .   .   .   .   .   .   .   .   .   .   .   ."""
             Layouts.cross = Layouts._parse_layout(layout, legend)
         return Layouts.cross
+
+    @staticmethod
+    def get_gauntlet():
+        this_layout = Layouts.gauntlet
+        if not this_layout:
+            legend = {'.': Terrain.GRASS, '#': Terrain.VOLCANO}
+            #          1   2   3   4   5   6   7   8   9  10  11  12  13  14
+            layout = """14 5
+                      #   #   #   #   #   #   #   #   #   #   #   #   #   #        
+                        #   .   .   .   .   .   .   .   .   .   .   .   .   #   
+                      #   #   #   #   #   #   #   #   #   #   #   #   #   .      
+                        #   .   .   .   .   .   .   .   .   .   .   .   .   # 
+                      #   #   #   #   #   #   #   #   #   #   #   #   #   #     
+                      """
+            this_layout = Layouts._parse_layout(layout, legend)
+        return this_layout
 
     @staticmethod
     def _parse_layout(input_layout, legend):
@@ -400,7 +418,7 @@ class TestTerrainSearch:
         start_pos = (0, 0)
         end_pos = (2, 0)
         self.board.place_new_monster(MonsterType.ROMAN, start_pos, 0)
-        self.board.on_tile(end_pos).set_terrain_to(Terrain.TOWER)
+        self.board.set_terrain_to(end_pos, Terrain.TOWER)
         self.assert_path(end_pos, start_pos)
 
     def test_long_path(self, before):
@@ -408,8 +426,8 @@ class TestTerrainSearch:
         end_pos = (10, 0)
         self.board.place_new_monster(MonsterType.ROMAN, start_pos, 0)
         # this tile contains a tower by default
-        self.board.on_tile((7, 4)).set_terrain_to(Terrain.GRASS)
-        self.board.on_tile(end_pos).set_terrain_to(Terrain.TOWER)
+        self.board.set_terrain_to((7, 4), Terrain.GRASS)
+        self.board.set_terrain_to(end_pos, Terrain.TOWER)
         self.assert_path(end_pos, start_pos)
 
     def assert_path(self, end_pos, start_pos):
@@ -420,25 +438,23 @@ class TestTerrainSearch:
         assert expected == self.path
 
     def get_path_to_tower(self, start):
-        self.path = self.pathfinder.get_path_to_terraintype(
-            start, Terrain.TOWER)
+        self.path = self.pathfinder.get_path_to_tower(
+            start)
         assert self.path
 
 
-class TestValidPath(TestCase):
+class TestValidPathZigzag(TestCase):
     @pytest.fixture
     def before(self):
         self.make_board_from_layout(Layouts.get_zigzag(), (0, 0))
 
-    def tower_found_on_first_turn(self, before):
+    def test_tower_found_on_first_turn(self, before):
         self.start_pos = (0, 0)
         destination = (5, 0)
-        self.board.on_tile(destination).set_terrain_to(Terrain.TOWER)
+        self.board.set_terrain_to(destination, Terrain.TOWER)
         # troll can move only 4 tiles per turn. it must move 2 tiles on the
         # second turn to move to 5,0, so total move cost will be 6
-        matrix_generator = TerrainTypeSearchMatrixFactory(self.board)
-        matrix = matrix_generator.generate_path_matrix(
-            self.start_pos, Terrain.TOWER)
+        matrix = self.search_tower()
         assert matrix.get_distance_value_at(destination) == 5
 
     def test_tower_behind_own_monster(self, before):
@@ -446,14 +462,39 @@ class TestValidPath(TestCase):
         self.board.monster_at(self.start_pos).set_monster_type(
             Monster.Type.TROLL)
         self.board.place_new_monster(Monster.Type.ROMAN, (4, 0))
-        # there's a monster at (4, 0)
-        # lets see if we can move past it
+        self.board.place_new_monster(Monster.Type.ROMAN, (3, 1))
         destination = (5, 0)
-        self.board.on_tile(destination).set_terrain_to(Terrain.TOWER)
-        # troll can move only 4 tiles per turn. it must move 2 tiles on the
-        # second turn to move to 5,0, so total move cost will be 6
-        matrix_generator = TerrainTypeSearchMatrixFactory(self.board)
-        matrix = matrix_generator.generate_path_matrix(
-            self.start_pos, Terrain.TOWER)
+        self.board.set_terrain_to(destination, Terrain.TOWER)
+        matrix = self.search_tower()
         matrix.print_dist_values()
-        assert matrix.get_distance_value_at(destination) == 6
+        assert matrix.get_distance_value_at(destination) == 5
+
+    def search_tower(self):
+        matrix_generator = TowerSearchMatrixFactory(self.board)
+        matrix = matrix_generator.generate_path_matrix(
+            self.start_pos)
+        return matrix
+
+
+class TestValidPathGauntlet(TestCase):
+    @pytest.fixture
+    def before(self):
+        self.make_board_from_layout(Layouts.get_gauntlet(), (1, 1))
+
+    def test_tower_found_on_first_turn(self, before):
+        self.start_pos = (1, 1)
+        destination = (1, 3)
+        self.board.place_new_monster(Monster.Type.ROMAN, (6, 1))
+        self.board.place_new_monster(Monster.Type.ROMAN, (5, 1))
+        self.board.place_new_monster(Monster.Type.ROMAN, (4, 1))
+        self.board.place_new_monster(Monster.Type.ROMAN, (8, 1))
+        self.board.set_terrain_to(destination, Terrain.TOWER)
+        matrix = self.search_tower()
+        matrix.print_dist_values()
+        assert matrix.get_distance_value_at(destination) == 24
+
+    def search_tower(self):
+        matrix_generator = TowerSearchMatrixFactory(self.board)
+        matrix = matrix_generator.generate_path_matrix(
+            self.start_pos)
+        return matrix

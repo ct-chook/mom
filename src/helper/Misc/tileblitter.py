@@ -64,11 +64,10 @@ class TileBlitter:
         if terrain_id is None:
             return  # terrain outside bounds
         if terrain_id == Terrain.TOWER:
-            tile = self.board.tile_at(pos)
-            owner = tile.get_terrain_ownership()
-            if owner is not None:
+            if (self.board.has_tower_at(pos)
+                    and self.board.tower_owner_at(pos) is not None):
                 terrain_sprite = self.terrain_sprites.get_sprite(
-                    Terrain.TOWER_CLAIMED + owner)
+                    Terrain.TOWER_CLAIMED + self.board.tower_owner_at(pos))
             else:
                 terrain_sprite = self.terrain_sprites.get_sprite(terrain_id)
         else:

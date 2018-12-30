@@ -1,8 +1,9 @@
 from src.components.board.monster import Monster
 from src.components.board.pathing_components import FullMatrixProcessor, \
     PathGenerator, PathMatrix, MatrixFactory, AStarMatrixFactory, \
-    TerrainTypeSearchMatrixFactory, OwnTerrainSearchMatrixFactory, \
-    EnemyTerrainSearchMatrixFactory, EnemySearchMatrixFactory
+    OwnTerrainSearchMatrixFactory, \
+    EnemyTerrainSearchMatrixFactory, EnemySearchMatrixFactory, \
+    TowerSearchMatrixFactory
 
 
 class PathMatrixFactory(MatrixFactory):
@@ -21,7 +22,7 @@ class PathMatrixFactory(MatrixFactory):
     target may be multiple turns away.
     """
 
-    def generate_path_matrix(self, start):
+    def generate_path_matrix(self, start) -> PathMatrix:
         """Gets all distance values starting with 1 turn of movement"""
         self.matrix = PathMatrix(self.board)
         monster = self.board.monster_at(start)
@@ -66,11 +67,11 @@ class PathFinder:
             beginning, end)
         return self.path_generator.get_path_on(path_matrix)
 
-    def get_path_to_terraintype(self, beginning, terrain_type):
+    def get_path_to_tower(self, beginning):
         """Returns path to nearest terrain type"""
-        matrix_factory = TerrainTypeSearchMatrixFactory(self.board)
+        matrix_factory = TowerSearchMatrixFactory(self.board)
         path_matrix = matrix_factory.generate_path_matrix(
-            beginning, terrain_type)
+            beginning)
         return self.path_generator.get_path_on(path_matrix)
 
     def get_path_to_enemy_terrain(self, beginning):
@@ -118,18 +119,24 @@ class MovementFinder:
         self.board = board
         self.pathfinder = PathFinder(board)
 
-    def get_movement_to_terraintype(self, monster: Monster, terrain_type) \
-            -> Movement:
+    def get_movement_to_tile(self, monster, destination) -> Movement:
         assert monster.pos
-        path = self.pathfinder.get_path_to_terraintype(
-            monster.pos, terrain_type)
+        path = self.pathfinder.get_path_between(monster.pos, destination)
+        return self._get_movement(monster, path)
+
+    def get_movement_to_terraintype(self,
+                                    monster: Monster) -> Movement:
+        assert monster.pos
+        path = self.pathfinder.get_path_to_tower(
+            monster.pos)
         return self._get_movement(monster, path)
 
     def get_movement_to_enemy_tile(self, monster: Monster) -> Movement:
         path = self.pathfinder.get_path_to_enemy_terrain(monster.pos)
         return self._get_movement(monster, path)
 
-    def get_movement_to_enemy_monster_or_tile(self, monster: Monster) -> Movement:
+    def get_movement_to_enemy_monster_or_tile(self,
+                                              monster: Monster) -> Movement:
         path = self.pathfinder.get_path_to_enemy_monster_or_terrain(monster.pos)
         return self._get_movement(monster, path)
 
@@ -152,10 +159,11 @@ class MovementFinder:
                 new_path.append(pos)
             else:
                 break
-        # only one problem, the path itself may cross over own units, but it
+        # the path itself may cross over own units, but it
         # cannot end on them. so if the final pos ends at a monster, this will
         # cause an error
-        assert self.board.monster_at(new_path[-1]) is None, (
-            f'Partial path is not valid, '
-            f'{self.board.monster_at(new_path[-1])} is at the last pos')
+        # for now this error should be handled by whatever calls this function
+        # assert self.board.monster_at(new_path[-1]) is None, (
+        #     f'Partial path is not valid, '
+        #     f'{self.board.monster_at(new_path[-1])} is at the last pos')
         return new_path

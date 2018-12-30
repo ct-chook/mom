@@ -288,14 +288,14 @@ class TestTowerCapture(TestCase):
         # then window should be visible
 
     def set_tile_to_tower_and_move_monster(self, monster, tile):
-        tile.terrain = Terrain.TOWER
+        self.board.set_terrain_to(tower_pos, Terrain.TOWER)
         self.click_on(monster.pos)
         self.click_on(tower_pos)
 
     def assert_tower_captured_by(self, monster):
         assert not self.controller.tower_capture_window.visible
         assert self.board.monster_at(tower_pos) == monster
-        assert self.board.terrain_owner_of(tower_pos) == monster.owner, \
+        assert self.board.tower_owner_at(tower_pos) == monster.owner, \
             'Wrong owner'
         player = self.model.players.get_player_by_id(monster.owner)
         assert player.tower_count == 1

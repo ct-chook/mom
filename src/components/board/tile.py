@@ -5,31 +5,15 @@ class Tile:
     def __init__(self, terrain):
         self.terrain = terrain
         self.monster = None
-        self.owner = None
 
     def has_tower(self):
         return self.terrain == Terrain.TOWER
 
-    def get_terrain_ownership(self):
-        if self.has_tower():
-            return self.owner
-
-    def is_hostile_terrain(self, player):
-        return self.owner != player.id_
-
 
 class TileModifier:
-    """Decorator class that changes properties of the tile"""
-
-    def __init__(self, tile):
-        self.tile = tile
+    def __init__(self, pos, board):
+        self.pos = pos
+        self.board = board
 
     def set_terrain_to(self, terrain):
-        self.tile.terrain = terrain
-
-    def set_monster_to(self, monster):
-        self.tile.monster = monster
-
-    # don't use, use the capture terrain method in Board instead
-    # def set_terrain_owner_to(self, player_id):
-    #     self.tile.owner = player_id
+        self.board.set_terrain_to(self.pos, terrain)

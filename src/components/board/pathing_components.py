@@ -1,5 +1,4 @@
 import heapq
-import copy
 from math import floor
 
 from src.helper import functions
@@ -82,7 +81,7 @@ class MatrixProcessor:
             self.accessible_positions.add(adjacent_enemy.pos)
 
     def _process_adjacent_tiles(self):
-        adjacent_posses = self.board.get_tile_posses_adjacent_to(self.pos)
+        adjacent_posses = self.board.get_posses_adjacent_to(self.pos)
         for adj_pos in adjacent_posses:
             self._process_adjacent_tile(adj_pos)
 
@@ -160,26 +159,6 @@ class SearchMatrixProcessor(MatrixProcessor):
         super()._setup_processing(start)
         self.player_id = self.monster.owner
 
-    def _expand_matrix(self, matrix):
-        self.matrix = matrix
-
-        self.monster = self.board.monster_at(start)
-        # creating set with tuple doesn't work, add it separately
-        self.accessible_positions = set()
-        self.accessible_positions.add(start)
-        self.matrix.accessible_positions = self.accessible_positions
-        self.matrix.set_distance_value_at(start, 0)
-        self.tiles_to_explore = [(0, start)]
-
-        n = 0
-        while n < 1000:
-            if self.matrix_is_finished():
-                break
-            self._explore_next_tile()
-            n += 1
-        if n == 1000:
-            raise AttributeError('Matrix took too long to process')
-
     def matrix_is_finished(self):
         if not self.tiles_to_explore:
             return True
@@ -197,29 +176,24 @@ class SearchMatrixProcessor(MatrixProcessor):
         return dist_value > self.move_points_next_tile
 
 
-class TerrainTypeSearchMatrixProcessor(SearchMatrixProcessor):
-    """Like regular MatrixProcessor, except this one searches a specific tile"""
-    def __init__(self, matrix):
-        super().__init__(matrix)
-        self.terrain_to_search_for = None
-
-    def fill_distance_values(self, start, terrain_type, max_dist_value):
-        self.terrain_to_search_for = terrain_type
+class TowerSearchMatrixProcessor(SearchMatrixProcessor):
+    """Like regular MatrixProcessor, except it searches a capturable tower"""
+    def fill_distance_values(self, start, max_dist_value):
         self.max_dist_value = max_dist_value
         self._process_tiles(start)
 
-    def expand_matrix(self, matrix, start_move_points,
-                      max_dist_value):
-        for pos in self.matrix.dist_values:
-            self.matrix.dist_values[pos] = start_move_points
-            heapq.heappush(self.tiles_to_explore,
-                           (start_move_points, pos))
-        self.max_dist_value = max_dist_value
-        self._explore_tiles()
+    def _handle_adjacent_enemies(self, enemies):
+        """Ignore enemies for this processor"""
+        pass
+
+    def _tile_is_not_passable(self, pos):
+        """Ignore impassible tiles for this processor"""
+        return False
 
     def _found_tile_to_search_for(self):
-        return (self.board.tile_at(self.pos).terrain ==
-                self.terrain_to_search_for)
+        # todo move players to board, add method to check friend or foe
+        return (self.board.has_tower_at(self.pos)
+                and self.board.tower_is_capturable_by(self.pos, self.player_id))
 
 
 class EnemyTerrainSearchMatrixProcessor(SearchMatrixProcessor):
@@ -290,6 +264,14 @@ class AStarMatrixProcessor(MatrixProcessor):
             return True
         return self.destination_reached
 
+    def _handle_adjacent_enemies(self, enemies):
+        """Ignore enemies for this processor"""
+        pass
+
+    def _tile_is_not_passable(self, pos):
+        """Ignore impassible tiles for this processor"""
+        return False
+
     def _explore_next_tile(self):
         self.pos = heapq.heappop(self.tiles_to_explore)[1]
         if self.pos == self.destination:
@@ -358,7 +340,7 @@ class PathGenerator:
             assert self.adj_found, \
                 (f'Could not retrace path to {self.start}. '
                  f'Stuck at {self.x0},{self.y0}. \n'
-                 f'{self.path_matrix.get_dist_values()}')
+                 f'{self.path_matrix.get_printable_dist_values()}')
         return self.path
 
     def get_path_on(self, matrix):
@@ -369,8 +351,6 @@ class PathGenerator:
         """Returns the shortest path to a pos in the path matrix"""
         assert self.path_matrix, 'No path matrix set'
         assert self.path_matrix.start
-        if not self.path_matrix.end:
-            return None
         assert self.path_matrix.end
         self.start = self.path_matrix.start
         self.end = self.path_matrix.end
@@ -381,11 +361,10 @@ class PathGenerator:
         self._setup_tracing()
         while self._path_not_fully_traced_yet():
             self._search_for_adjacent_tiles()
-            assert self.adj_found, \
-                (f'Could not retrace path to {self.x0},{self.y0}.\n'
-                 f'Stuck at {self.x0}:{self.y0}\n'
-                 f'Path so far: {self.path}\n'
-                 f'{self.path_matrix.print_dist_values()}')
+        # check
+        for part in self.path:
+            assert part in self.path_matrix.dist_values, (
+                'Path is not fully present in dist values')
         return self.path
 
     def _destination_not_reachable(self):
@@ -405,10 +384,38 @@ class PathGenerator:
 
     def _search_for_adjacent_tiles(self):
         self.adj_found = False
-        adjacent_tiles = self.board.get_tile_posses_adjacent_to(
+        adjacent_tiles = self.board.get_posses_adjacent_to(
             (self.x0, self.y0))
         for self.x1, self.y1 in adjacent_tiles:
             self._inspect_tile()
+        if not self.adj_found:
+            # now make the brave assumption that this is because the next
+            # step requires you to wait for the next turn, so the move cost
+            # difference is a little higher
+            for self.x1, self.y1 in adjacent_tiles:
+                next_tile_found = False
+                if (self._move_cost_difference_is_lower()
+                        and self._next_tile_is_not_blocked()):
+                    # if tile isn't the last tile, it can't be adjacent to enemy
+                    self.path.insert(0, (self.x1, self.y1))
+                    self.x0 = self.x1
+                    self.y0 = self.y1
+                    next_tile_found = True
+                if not self.adj_found:
+                    self.adj_found = next_tile_found
+            assert self.adj_found, \
+                (f'Could not retrace path. Stuck at {self.x0}:{self.y0}\n'
+                 f'Path so far: {self.path}\n'
+                 f'{self.path_matrix.get_printable_dist_values()}')
+
+    def _move_cost_difference_is_lower(self):
+        path_cost_difference = (
+                self._get_distance_value((self.x0, self.y0)) -
+                self._get_distance_value((self.x1, self.y1)))
+        terrain = self.board.terrain_at((self.x0, self.y0))
+        move_cost = DataTables.get_terrain_cost(
+            terrain, self.monster.terrain_type)
+        return path_cost_difference > move_cost
 
     def _inspect_tile(self):
         next_tile_found = False
@@ -450,7 +457,7 @@ class PathGenerator:
             return self._next_tile_has_no_adjacent_enemies()
 
     def _next_tile_has_no_adjacent_enemies(self):
-        nearby_tiles = self.board.get_tile_posses_adjacent_to((self.x1, self.y1))
+        nearby_tiles = self.board.get_posses_adjacent_to((self.x1, self.y1))
         for pos in nearby_tiles:
             nearby_monster = self.board.monster_at(pos)
             if (nearby_monster and nearby_monster.owner !=
@@ -502,10 +509,9 @@ class PathMatrix:
         self.start = monster.pos
 
     def print_dist_values(self):
-        print()
-        print(self.get_dist_values())
+        print(self.get_printable_dist_values())
 
-    def get_dist_values(self, mode=0):
+    def get_printable_dist_values(self, mode=0):
         min_x, min_y, max_x, max_y = self._get_row_and_col_count()
         row_count = (max_y - min_y + 1)
         col_count = max_x - min_x + 1
@@ -522,10 +528,16 @@ class PathMatrix:
         result = []
         for row in range(row_count):
             if row % 2 != 0:
-                result += '  ' + '  '.join(to_print[row]) + '\n'
+                prefix = '  '
             else:
-                result += '  '.join(to_print[row]) + '\n'
-        return ''.join(result)
+                prefix = ''
+            result.append('{:2d}  '.format(min_y + row) + prefix
+                          + '  '.join(to_print[row]) + '\n')
+        last_line = ['   ']
+        for col in range(col_count):
+            last_line.append('{:2d}'.format(col + min_x))
+        result.append('  '.join(last_line))
+        return '\n' + ''.join(result)
 
     def _get_row_and_col_count(self):
         min_x = 1000
@@ -563,6 +575,9 @@ class PathMatrix:
                 return str(floor(val))
         pass
 
+    def __iter__(self):
+        return iter(self.dist_values)
+
 
 class MatrixFactory:
     def __init__(self, board):
@@ -581,52 +596,87 @@ class MatrixFactory:
 class AStarMatrixFactory(MatrixFactory):
     def generate_path_matrix(self, start, destination):
         """Generates path matrix up until the destination"""
+        assert destination
         self.setup_matrix(start)
         self.processor = AStarMatrixProcessor(self.matrix)
         self.processor.fill_distance_values(start, destination)
         return self.matrix
 
 
-class TerrainTypeSearchMatrixFactory(MatrixFactory):
-    def generate_path_matrix(self, start, terrain_type) -> PathMatrix:
-        """Generates a path matrix to the nearest terrain type"""
+class TowerSearchMatrixFactory(MatrixFactory):
+    def generate_path_matrix(self, start) -> PathMatrix:
+        """Generates a path matrix to the nearest capturable tower"""
         self.setup_matrix(start)
-        self.processor = TerrainTypeSearchMatrixProcessor(self.matrix)
+        self.processor = TowerSearchMatrixProcessor(self.matrix)
         move_points = self.board.monster_at(start).stats.move_points
-        self.processor.fill_distance_values(start, terrain_type, move_points)
-        # ok, so now we have the matrix for a single turn. if the terrain is
-        # further than that, what we need to do is continue the matrix until we
-        # find the terrain.
-        # only restriction is that the first turn can't end on another monster,
-        # so all dist values from the first turn that end on a monster must be
-        # removed. then more dist values should be generated continuing from the
-        # second turn, so they start with dist values equal to the monster's
-        # move points per turn.
-        # to do this, copy the matrix and replace dist values
-        # with move point values, push them on the queue and fill remaining dist
-        # values
-
-        keys_to_remove = []
-        for pos in self.matrix.dist_values:
-            if self.board.monster_at(pos) and pos != start:
-                keys_to_remove.append(pos)
-        for key in keys_to_remove:
-            self.matrix.dist_values.pop(key)
-        # now we have a matrix that may need to expand, check if we found
-        # something already
-        if self.matrix.end and self.board.monster_at(self.matrix.end) is None:
-            return self.matrix
-        # otherwise we need to expand this matrix
-        # save dist values since these are overwritten
-        old_dist_values = copy.copy(self.matrix.dist_values)
-        self.processor.expand_matrix(
-            self.matrix, move_points, move_points * 11)
-
-        # now we got a matrix that doesn't have a full path, so copy the saved
-        # path over the expanded one to reconstruct the full path
-        for pos in old_dist_values:
-            self.matrix.dist_values[pos] = old_dist_values[pos]
+        self.processor.fill_distance_values(start, move_points * 10)
         return self.matrix
+
+    # def _generate_path_matrix_old(self, start, terrain_type) -> PathMatrix:
+    #     """Generates a path matrix to the nearest terrain type
+    #
+    #     Buggy, might be fixed later
+    #     """
+    #     self.setup_matrix(start)
+    #     self.processor = TowerSearchMatrixProcessor(self.matrix)
+    #     move_points = self.board.monster_at(start).stats.move_points
+    #     # todo something goes wrong here, invalid distance values are
+    #     #  generated
+    #     # on hold till later
+    #     # INFO:root:1
+    #     # INFO:root:
+    #     # 17  2   4   4
+    #     # 18    5   1   0   4
+    #     # 19  2   4   4
+    #     #      11  12  13  14
+    #     # the 2's on the left make no sense
+    #     self.processor.fill_distance_values(start, terrain_type, move_points)
+    #     # ok, so now we have the matrix for a single turn. if the terrain is
+    #     # further than that, what we need to do is continue the matrix until
+    #     # we
+    #     # find the terrain.
+    #     # only restriction is that the first turn can't end on another
+    #     # monster,
+    #     # so all dist values from the first turn that end on a monster must be
+    #     # removed. then more dist values should be generated continuing from
+    #     # the
+    #     # second turn, so they start with dist values equal to the monster's
+    #     # move points per turn.
+    #     # to do this, copy the matrix and replace dist values
+    #     # with move point values, push them on the queue and fill remaining
+    #     # dist
+    #     # values
+    #     logging.info('1')
+    #     logging.info(self.matrix.get_dist_values())
+    #     # now we have a matrix that may need to expand, check if we found
+    #     # something already
+    #     if self.matrix.end and self.board.monster_at(self.matrix.end) is None:
+    #         return self.matrix
+    #     # if not, we need to expand this
+    #     # save dist values since these are overwritten
+    #     old_dist_values = copy.copy(self.matrix.dist_values)
+    #     # change dist values that have friendly monsters on them since
+    #     # they can't be used as starting pos for the next turn
+    #     keys_to_remove = []
+    #     if self.matrix.end:
+    #         assert not self.board.monster_at(self.matrix.end)
+    #     for pos in self.matrix.dist_values:
+    #         if self.board.monster_at(pos) and pos != start:
+    #             self.matrix.dist_values[pos] = IMPASSIBLE
+    #
+    #     logging.info('2')
+    #     logging.info(self.matrix.get_dist_values())
+    #     self.processor.expand_matrix(
+    #         self.matrix, move_points, move_points * 11)
+    #     logging.info('3')
+    #     logging.info(self.matrix.get_dist_values())
+    #     # now we got a matrix that doesn't have a full path, so copy the saved
+    #     # path over the expanded one to reconstruct the full path
+    #     for pos in old_dist_values:
+    #         self.matrix.dist_values[pos] = old_dist_values[pos]
+    #     logging.info('4')
+    #     logging.info(self.matrix.get_dist_values())
+    #     return self.matrix
 
 
 class OwnTerrainSearchMatrixFactory(MatrixFactory):
@@ -634,7 +684,8 @@ class OwnTerrainSearchMatrixFactory(MatrixFactory):
         """Generates a path matrix to the nearest tile owned by self"""
         self.setup_matrix(start)
         self.processor = OwnTerrainSearchMatrixProcessor(self.matrix)
-        self.processor.fill_distance_values(start, 100)
+        move_points = self.board.monster_at(start).stats.move_points
+        self.processor.fill_distance_values(start, move_points * 10)
         return self.matrix
 
 
@@ -643,7 +694,8 @@ class EnemyTerrainSearchMatrixFactory(MatrixFactory):
         """Generates a path matrix to the nearest tile owned by enemy"""
         self.setup_matrix(start)
         self.processor = EnemyTerrainSearchMatrixProcessor(self.matrix)
-        self.processor.fill_distance_values(start, 100)
+        move_points = self.board.monster_at(start).stats.move_points
+        self.processor.fill_distance_values(start, move_points * 10)
         return self.matrix
 
 
@@ -652,5 +704,6 @@ class EnemySearchMatrixFactory(MatrixFactory):
         """Generates a path matrix to the nearest tile owned by enemy"""
         self.setup_matrix(start)
         self.processor = EnemySearchMatrixProcessor(self.matrix)
-        self.processor.fill_distance_values(start, 100)
+        move_points = self.board.monster_at(start).stats.move_points
+        self.processor.fill_distance_values(start, move_points * 10)
         return self.matrix

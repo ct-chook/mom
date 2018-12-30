@@ -71,7 +71,6 @@ class TestMouseoverDisplay(TestCase):
         tile.owner = 0
         self.display_tile_info_for(tile)
         self.assert_terrain_is('Tower')
-        self.assert_terrain_owner('Player 0')
         self.assert_no_monster_info()
 
     def test_dune_with_lizard(self, before):

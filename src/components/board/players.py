@@ -1,7 +1,3 @@
-import src.components.board.brain as brain
-from src.helper.Misc.constants import AiType
-
-
 class Player:
     def __init__(self, id_, ai_type, lord_type, initial_mana, mana_gain):
         self.id_ = id_

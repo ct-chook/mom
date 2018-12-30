@@ -105,11 +105,11 @@ class TestCase:
             assert False, f'invalid ai type {ai_type}'
         self.controller.add_brain_for_player(brain_class, player)
 
-    def summon_monster_at(self, pos):
+    def summon_troll_at(self, pos):
         return self.board.summon_monster(Monster.Type.TROLL, pos, 0)
 
     def create_tower_at(self, pos, owner=None):
-        self.board.on_tile(pos).set_terrain_to(Terrain.TOWER)
+        self.board.set_terrain_to(pos, Terrain.TOWER)
         if owner is not None:
             self.board.capture_terrain_at(pos, owner)
 
@@ -129,7 +129,7 @@ class TestCase:
 
     def check_move_action(self, pos):
         self.end_turn()
-        assert self.board.monster_at(pos) == self.chim, \
+        assert self.chim.pos == pos, \
             f'Monster was at {self.chim.pos} instead of {pos} \
               {self.board.debug_print()}'
 
@@ -172,11 +172,12 @@ class TestScoutBrain(TestCase):
     def test_ignore_occupied_tower(self, before):
         closest_tower_pos = (0, 3)
         self.create_tower_at(closest_tower_pos)
-        self.summon_monster_at(closest_tower_pos)
-        # scout should ignore this tower and go for the other one
+        self.summon_troll_at(closest_tower_pos)
+        # monster should be next to closest tower
         other_tower_pos = (7, 4)
         self.create_tower_at(other_tower_pos)
-        self.check_move_action(other_tower_pos)
+        next_to_closest_tower = (closest_tower_pos[0] + 1, closest_tower_pos[1])
+        self.check_move_action(next_to_closest_tower)
 
     def test_monster_keeps_moving(self, before):
         self.board.set_monster_pos(self.chim, (0, 12))
@@ -197,10 +198,9 @@ class TestAttackerBrain(TestCase):
     def before_more(self):
         # set the player to attacker and create brain for it
         self.set_ai_type(AiType.attacker)
-        self.enemy_fortress = (8, 3)
-        self.board.on_tile(self.enemy_fortress).set_terrain_to(
-            Terrain.MAIN_FORTRESS)
-        self.board.capture_terrain_at(self.enemy_fortress, 0)
+        self.tower = (8, 3)
+        self.board.on_tile(self.tower).set_terrain_to(
+            Terrain.TOWER)
 
     def test_go_to_enemy_tower(self, before):
         # let's create a tower and set owner to the enemy
@@ -211,37 +211,23 @@ class TestAttackerBrain(TestCase):
         self.create_tower_at(own_tower_pos, 1)
         self.check_move_action(enemy_tower_pos)
 
-    def test_choose_between_towers(self, before):
-        # it should always grab the enemy fortress over the tower
-
-        # x-pos has multiple valid option, y-should always be 12
-        self.check_move_action(self.enemy_fortress)
-
     def test_attack_monster_on_tower(self, before):
-        tower_location = (6, 0)
-        self.create_tower_at(tower_location, 0)
-        self.summon_monster_at(tower_location)
-        self.board.set_monster_pos(self.chim, (4, 0))
+        # there is an enemy on top of the tower
+        self.summon_troll_at(self.tower)
+        # monster is almost dead, easy target
+        self.board.monster_at(self.tower).hp = 1
+        # chim should move next so it can attack it
+        left_of_tower = (self.tower[0] - 5, self.tower[1])
+        next_to_tower = (self.tower[0] - 1, self.tower[1])
+        self.board.set_monster_pos(
+            self.chim, left_of_tower)
+        self.check_move_action(next_to_tower)
 
-
-class TestDefenderBrain(TestCase):
-    def before_more(self):
-        # set the player to scout and create brain for it
-        self.set_ai_type(AiType.defender)
-
-    def test_go_to_owned_tower(self, before):
-        # capture tower for self
-        tower_location = (0, 0)
-        self.create_tower_at(tower_location, 1)
-        self.check_move_action(tower_location)
-
-    def test_ignore_enemy_tower(self, before):
-        # defend own tower
-        enemy_tower_location = (1, 1)
-        self.create_tower_at(enemy_tower_location, 0)
-        tower_location = (6, 0)
-        self.create_tower_at(tower_location, 1)
-        self.check_move_action(tower_location)
+    def test_go_to_enemy_lord(self, before):
+        # tower is owned so now the only target is player 0's lord
+        old_chim_pos = self.chim.pos
+        self.board.capture_terrain_at(self.tower, 1)
+        self.check_move_action((old_chim_pos[0] + 4, old_chim_pos[1] - 3))
 
 
 class TestSummonBrain(TestCase):

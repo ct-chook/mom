@@ -5,7 +5,7 @@ from src.components.board.pathing_components import PathMatrix
 from src.components.combat.attack import AttackFactory
 from src.components.combat.combat import Combat
 from src.components.combat.combatlog import CombatLog
-from src.helper.Misc.constants import AiType, Terrain
+from src.helper.Misc.constants import AiType
 
 
 class BoardModel:
@@ -107,9 +107,8 @@ class BoardModel:
             monsters, self.sun_stance)
 
     def has_capturable_tower_at(self, pos):
-        return (self.board.tile_at(pos).terrain == Terrain.TOWER and
-                self.board.tile_at(pos).is_hostile_terrain(
-                    self.players.get_current_player()))
+        return (self.board.has_tower_at(pos) and
+                not self.is_friendly_player(self.board.tower_owner_at(pos)))
 
     def move_monster_to(self, monster, pos):
         self.board.move_monster(monster, pos)
@@ -127,12 +126,15 @@ class BoardModel:
         return self.path_matrix.is_legal_destination(pos)
 
     def lord_is_adjacent_at(self, pos):
-        posses = self.board.get_tile_posses_adjacent_to(pos)
+        posses = self.board.get_posses_adjacent_to(pos)
         for pos in posses:
             monster = self.board.monster_at(pos)
             if (monster and monster.is_lord() and
                     self._current_player_owns(monster)):
                 return True
+
+    def is_enemy(self, monster):
+        return monster.owner != self.get_current_player_id()
 
     def _current_player_owns(self, monster):
         return monster.owner == self.get_current_player().id_
@@ -161,3 +163,6 @@ class BoardModel:
 
     def get_current_player_id(self):
         return self.players.current_player
+
+    def is_friendly_player(self, player_id):
+        return player_id == self.get_current_player_id()

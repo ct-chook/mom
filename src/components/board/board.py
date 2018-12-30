@@ -3,7 +3,7 @@ import random
 
 from src.components.board import players
 from src.components.board.monster import Monster
-from src.components.board.tile import TileModifier, Tile
+from src.components.board.tile import Tile, TileModifier
 from src.helper.Misc.constants import ROOT, MonsterType, Terrain, AiType, is_odd
 from src.helper.Misc.datatables import DataTables
 
@@ -21,6 +21,7 @@ class Board:
         self.x_max = None
         self.tiles = []
         self.monsters = {}
+        self.towers = {}
         self.lords = {}
         # list of players is used to check for enemies
         self._players: players.PlayerList = None
@@ -41,9 +42,6 @@ class Board:
     def tile_at(self, pos) -> Tile:
         return self.tiles[pos[0]][pos[1]]
 
-    def on_tile(self, pos) -> TileModifier:
-        return TileModifier(self.tile_at(pos))
-
     def terrain_at(self, pos):
         if not self.is_valid_board_pos(pos):
             return None
@@ -52,8 +50,14 @@ class Board:
     def monster_at(self, pos) -> Monster:
         return self.tile_at(pos).monster
 
-    def terrain_owner_of(self, pos):
-        return self.tile_at(pos).owner
+    def set_terrain_to(self, pos, terrain):
+        """Change terrain type of tile at pos and check tower bookkeeping"""
+        if pos in self.towers:
+            self.towers.pop(pos)
+        self.tile_at(pos).terrain = terrain
+        if terrain == Terrain.TOWER:
+            if pos not in self.towers:
+                self.towers[pos] = None
 
     def summon_monster(self, monster_type, pos, owner):
         """Adds a monster and checks/reduces mana and flags it"""
@@ -81,9 +85,39 @@ class Board:
         self.tile_at(new_monster.pos).monster = new_monster
         return new_monster
 
-    def remove_monster_at(self, pos):
-        monster = self.monster_at(pos)
-        self.remove_monster(monster)
+    def has_tower_at(self, pos):
+        return pos in self.towers
+
+    def tower_owner_at(self, pos):
+        assert pos in self.towers
+        return self.towers[pos]
+
+    def set_tower_owner_at(self, pos, player_id):
+        assert pos in self.towers
+        self.towers[pos] = player_id
+
+    def tower_is_capturable_by(self, pos, player_id):
+        return not self.is_friendly_player(
+                    self.tower_owner_at(pos), player_id)
+
+    def get_capturable_towers_for_player(self, player_id):
+        towers = {}
+        for pos in self.towers:
+            if not self.is_friendly_player(self.towers[pos], player_id):
+                towers[pos] = player_id
+        return towers
+
+    def is_friendly_player(self, id1, id2):
+        return id1 == id2
+
+    def get_enemy_lord_for_player(self, player):
+        for player_id in self.lords:
+            if not self.is_friendly_player(self.lords[player_id], player):
+                return self.lords[player_id]
+        assert False, f'Could not find enemy lord for player {player}'
+
+    def on_tile(self, pos):
+        return TileModifier(pos, self)
 
     def remove_monster(self, monster):
         assert monster
@@ -95,7 +129,7 @@ class Board:
 
     def get_enemies_adjacent_to(self, pos):
         enemies = []
-        adjacent_tiles = self.get_tile_posses_adjacent_to(pos)
+        adjacent_tiles = self.get_posses_adjacent_to(pos)
         for adj_pos in adjacent_tiles:
             adj_tile = self.tile_at(adj_pos)
             if (adj_tile.monster and
@@ -107,7 +141,7 @@ class Board:
         assert player_id in self.lords, f'Player {player_id} has no lord set'
         return self.lords[player_id]
 
-    def get_tile_posses_adjacent_to(self, pos):
+    def get_posses_adjacent_to(self, pos):
         """Boring but important stuff to retrieve all adjacent tiles
 
           @ | @
@@ -175,25 +209,19 @@ class Board:
 
     def set_monster_pos(self, monster, new_pos):
         """Ignores movement check, useful for spell effects, or testing"""
-        self.on_tile(monster.pos).set_monster_to(None)
-        self.on_tile(new_pos).set_monster_to(monster)
+        self.tile_at(monster.pos).monster = None
+        self.tile_at(new_pos).monster = monster
         monster.pos = new_pos
         monster.terrain = self.terrain_at(new_pos)
 
     def capture_terrain_at(self, pos, player_id):
         """Change tower count if a tower was captured, and change tile owner"""
         tile = self.tile_at(pos)
-        old_owner = tile.owner
+        old_owner = self.tower_owner_at(pos)
         if tile.terrain == Terrain.TOWER and old_owner is not None:
             self._players.get_player_by_id(old_owner).tower_count -= 1
-        tile.owner = player_id
+        self.set_tower_owner_at(pos, player_id)
         self._players.get_player_by_id(player_id).tower_count += 1
-
-    def pos_is_enemy_terrain(self, pos):
-        return self.is_enemy_id(self.tile_at(pos).owner)
-
-    def is_enemy_id(self, id_):
-        return id_ is not None and id_ != self.get_current_player_id()
 
     def debug_print(self):
         BoardPrinter(self).debug_print()
@@ -374,13 +402,13 @@ class MapLoader:
             n = 2
             for x in range(self.x_max):
                 for y in range(self.y_max):
-                    self.board.tile_at((x, y)).terrain = layout[n]
+                    self.board.set_terrain_to((x, y), layout[n])
                     n += 1
         else:
             for x in range(self.x_max):
                 for y in range(self.y_max):
-                    self.board.tile_at((x, y)).terrain = \
-                        layout[2 + x + y * self.x_max]
+                    self.board.set_terrain_to(
+                        (x, y), layout[2 + x + y * self.x_max])
         # grab the starting positions
         n = len(layout) - 8
         for _ in range(4):

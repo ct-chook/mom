@@ -5,6 +5,8 @@ from src.helper.Misc import constants
 
 
 def get_hexagonal_manhattan_distance(start, end):
+    assert len(start) == 2
+    assert len(end) == 2
     dx = abs(start[0] - end[0])
     dy = abs(start[1] - end[1])
     # first go up/down, then go left/right

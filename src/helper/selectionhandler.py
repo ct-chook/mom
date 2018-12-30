@@ -127,7 +127,7 @@ class SelectionHandler:
         return monster.owner == self.get_current_player_id()
 
     def _lord_is_adjacent_to(self, tile):
-        surrounding_tiles = self.board.get_tile_posses_adjacent_to(tile)
+        surrounding_tiles = self.board.get_posses_adjacent_to(tile)
         for pos in surrounding_tiles:
             surrounding_monster = self.board.monster_at(pos)
             if surrounding_monster and surrounding_monster.is_lord():

@@ -16,3 +16,12 @@ class TestBoard:
         assert self.board.is_valid_board_pos((0, 0))
         assert not self.board.is_valid_board_pos((255, 0))
         assert not self.board.is_valid_board_pos((0, 255))
+
+    def test_tower_bookkeeping(self, before):
+        assert self.board.towers
+        towers = self.board.get_capturable_towers_for_player(0)
+        assert towers
+        for pos in towers:
+            self.board.capture_terrain_at(pos, 0)
+        towers = self.board.get_capturable_towers_for_player(0)
+        assert not towers

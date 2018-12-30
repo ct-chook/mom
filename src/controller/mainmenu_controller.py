@@ -5,8 +5,8 @@ from pygame.rect import Rect
 from src.abstract.view import View
 from src.abstract.window import Window, TextButton
 from src.components.board.monster import Monster
-from src.components.board.players import PlayerList, AiType
-from src.helper.Misc.constants import Color
+from src.components.board.players import PlayerList
+from src.helper.Misc.constants import Color, AiType
 from src.helper.Misc.constants import MAP_DIRECTORY
 from src.helper.Misc.datatables import DataTables
 

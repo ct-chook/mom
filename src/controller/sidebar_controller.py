@@ -90,9 +90,7 @@ class SidebarView(View):
 
     def _set_terrain_info_for(self, tile):
         terrain_name = DataTables.terrain_name[tile.terrain]
-        owner_text = self._get_owner_text(tile)
         self.terrain.set_text(terrain_name)
-        self.terrain_owner.set_text(owner_text)
 
     def _set_monster_info_for(self, tile):
         if tile.monster:
@@ -116,8 +114,4 @@ class SidebarView(View):
         self.monster_sprite.surface = sprite
 
     def _get_owner_text(self, owned_object):
-        if owned_object.owner is not None:
-            owner_text = f'Player {owned_object.owner}'
-        else:
-            owner_text = ''
-        return owner_text
+        return 'Player ' + str(owned_object.owner)
