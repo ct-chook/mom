@@ -379,20 +379,40 @@ class TestAStar:
         assert path_matrix, 'Could not generate path matrix'
         self.path_generator.set_path_matrix(path_matrix)
         self.path = self.path_generator.get_path_to(end)
+        path_matrix.print_dist_values()
 
     def test_short_path(self, before):
         start_pos = (0, 0)
         end_pos = (2, 0)
         self.board.place_new_monster(MonsterType.ROMAN, start_pos, 0)
-        self.assert_path(end_pos, start_pos)
+        self.assert_line_path(end_pos, start_pos)
 
     def test_long_path(self, before):
         start_pos = (0, 0)
         end_pos = (10, 0)
         self.board.place_new_monster(MonsterType.ROMAN, start_pos, 0)
-        self.assert_path(end_pos, start_pos)
+        self.assert_line_path(end_pos, start_pos)
 
-    def assert_path(self, end_pos, start_pos):
+    def test_move_from_corner(self, before):
+        bot_left_corner = (0, 19)
+        self.board.place_new_monster(MonsterType.SOLDIER, bot_left_corner, 0)
+        north_of_mountain = (1, 13)
+        path_matrix = self.generator.generate_path_matrix(
+            bot_left_corner, north_of_mountain)
+        path_matrix.print_dist_values()
+        assert path_matrix.get_distance_value_at(north_of_mountain) == 6
+
+    def test_move_from_corner_long(self, before):
+        self.board.debug_print()
+        bot_left_corner = (0, 19)
+        self.board.place_new_monster(MonsterType.SOLDIER, bot_left_corner, 0)
+        far_away = (5, 5)
+        path_matrix = self.generator.generate_path_matrix(
+            bot_left_corner, far_away)
+        path_matrix.print_dist_values()
+        assert path_matrix.get_distance_value_at(far_away) == 14
+
+    def assert_line_path(self, end_pos, start_pos):
         self.get_path_between(start_pos, end_pos)
         expected = []
         for n in range(end_pos[0] + 1):
@@ -466,7 +486,6 @@ class TestValidPathZigzag(TestCase):
         destination = (5, 0)
         self.board.set_terrain_to(destination, Terrain.TOWER)
         matrix = self.search_tower()
-        matrix.print_dist_values()
         assert matrix.get_distance_value_at(destination) == 5
 
     def search_tower(self):
@@ -490,7 +509,6 @@ class TestValidPathGauntlet(TestCase):
         self.board.place_new_monster(Monster.Type.ROMAN, (8, 1))
         self.board.set_terrain_to(destination, Terrain.TOWER)
         matrix = self.search_tower()
-        matrix.print_dist_values()
         assert matrix.get_distance_value_at(destination) == 24
 
     def search_tower(self):

@@ -394,9 +394,7 @@ class PathGenerator:
             # difference is a little higher
             for self.x1, self.y1 in adjacent_tiles:
                 next_tile_found = False
-                if (self._move_cost_difference_is_lower()
-                        and self._next_tile_is_not_blocked()):
-                    # if tile isn't the last tile, it can't be adjacent to enemy
+                if self._has_proper_move_cost_difference():
                     self.path.insert(0, (self.x1, self.y1))
                     self.x0 = self.x1
                     self.y0 = self.y1
@@ -408,7 +406,7 @@ class PathGenerator:
                  f'Path so far: {self.path}\n'
                  f'{self.path_matrix.get_printable_dist_values()}')
 
-    def _move_cost_difference_is_lower(self):
+    def _has_proper_move_cost_difference(self):
         path_cost_difference = (
                 self._get_distance_value((self.x0, self.y0)) -
                 self._get_distance_value((self.x1, self.y1)))
@@ -464,6 +462,13 @@ class PathGenerator:
                     self.board.get_current_player_id()):
                 return False
         return True
+
+
+class SimplePathGenerator(PathGenerator):
+    """Gives the shorest possible path, ignores monsters blocking the path"""
+
+    def _next_tile_is_not_blocked(self):
+        return False
 
 
 class PathMatrix:
@@ -527,7 +532,7 @@ class PathMatrix:
                     self._get_dist_value_representation((x, y), mode)
         result = []
         for row in range(row_count):
-            if row % 2 != 0:
+            if row % 2 == 0:
                 prefix = '  '
             else:
                 prefix = ''
@@ -594,7 +599,7 @@ class MatrixFactory:
 
 
 class AStarMatrixFactory(MatrixFactory):
-    def generate_path_matrix(self, start, destination):
+    def generate_path_matrix(self, start, destination) -> PathMatrix:
         """Generates path matrix up until the destination"""
         assert destination
         self.setup_matrix(start)
@@ -677,33 +682,3 @@ class TowerSearchMatrixFactory(MatrixFactory):
     #     logging.info('4')
     #     logging.info(self.matrix.get_dist_values())
     #     return self.matrix
-
-
-class OwnTerrainSearchMatrixFactory(MatrixFactory):
-    def generate_path_matrix(self, start):
-        """Generates a path matrix to the nearest tile owned by self"""
-        self.setup_matrix(start)
-        self.processor = OwnTerrainSearchMatrixProcessor(self.matrix)
-        move_points = self.board.monster_at(start).stats.move_points
-        self.processor.fill_distance_values(start, move_points * 10)
-        return self.matrix
-
-
-class EnemyTerrainSearchMatrixFactory(MatrixFactory):
-    def generate_path_matrix(self, start):
-        """Generates a path matrix to the nearest tile owned by enemy"""
-        self.setup_matrix(start)
-        self.processor = EnemyTerrainSearchMatrixProcessor(self.matrix)
-        move_points = self.board.monster_at(start).stats.move_points
-        self.processor.fill_distance_values(start, move_points * 10)
-        return self.matrix
-
-
-class EnemySearchMatrixFactory(MatrixFactory):
-    def generate_path_matrix(self, start):
-        """Generates a path matrix to the nearest tile owned by enemy"""
-        self.setup_matrix(start)
-        self.processor = EnemySearchMatrixProcessor(self.matrix)
-        move_points = self.board.monster_at(start).stats.move_points
-        self.processor.fill_distance_values(start, move_points * 10)
-        return self.matrix

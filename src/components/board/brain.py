@@ -198,7 +198,7 @@ class MonsterBrain:
                 return
         # 4. Otherwise, generate a-star matrix and move toward destination.
         assert len(self.target_pos) == 2
-        path = self.movement_finder.get_movement_to_tile(
+        path = self.movement_finder.get_simple_movement_to_tile(
             self.monster, self.target_pos)
         destination = path.get_destination()
         # 5. If the tile leading to destination is blocked, move to tile

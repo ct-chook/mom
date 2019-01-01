@@ -1,8 +1,6 @@
 from src.components.board.monster import Monster
 from src.components.board.pathing_components import FullMatrixProcessor, \
     PathGenerator, PathMatrix, MatrixFactory, AStarMatrixFactory, \
-    OwnTerrainSearchMatrixFactory, \
-    EnemyTerrainSearchMatrixFactory, EnemySearchMatrixFactory, \
     TowerSearchMatrixFactory
 
 
@@ -65,6 +63,15 @@ class PathFinder:
         matrix_factory = AStarMatrixFactory(self.board)
         path_matrix = matrix_factory.generate_path_matrix(
             beginning, end)
+        path_matrix.print_dist_values()
+        return self.path_generator.get_path_on(path_matrix)
+
+    def get_simple_path_between(self, beginning, end):
+        """Returns path between given positions"""
+        matrix_factory = AStarMatrixFactory(self.board)
+        path_matrix = matrix_factory.generate_path_matrix(
+            beginning, end)
+        path_matrix.print_dist_values()
         return self.path_generator.get_path_on(path_matrix)
 
     def get_path_to_tower(self, beginning):
@@ -72,27 +79,6 @@ class PathFinder:
         matrix_factory = TowerSearchMatrixFactory(self.board)
         path_matrix = matrix_factory.generate_path_matrix(
             beginning)
-        return self.path_generator.get_path_on(path_matrix)
-
-    def get_path_to_enemy_terrain(self, beginning):
-        """Returns path to nearest tile owned by enemy owner"""
-        matrix_factory = EnemyTerrainSearchMatrixFactory(self.board)
-        path_matrix = matrix_factory.generate_path_matrix(beginning)
-        return self.path_generator.get_path_on(path_matrix)
-
-    def get_path_to_own_terrain(self, beginning):
-        """Returns path to nearest tile owned by specified owner"""
-        matrix_factory = OwnTerrainSearchMatrixFactory(self.board)
-        path_matrix = matrix_factory.generate_path_matrix(beginning)
-        return self.path_generator.get_path_on(path_matrix)
-
-    def get_path_to_enemy_monster_or_terrain(self, pos):
-        """Returns path to nearest tile or monster owned by enemy"""
-        matrix_factory = EnemySearchMatrixFactory(self.board)
-        path_matrix = matrix_factory.generate_path_matrix(pos)
-        if not path_matrix.end:
-            # could not find an enemy
-            return None
         return self.path_generator.get_path_on(path_matrix)
 
     def get_matrix(self):
@@ -124,27 +110,24 @@ class MovementFinder:
         path = self.pathfinder.get_path_between(monster.pos, destination)
         return self._get_movement(monster, path)
 
-    def get_movement_to_terraintype(self,
-                                    monster: Monster) -> Movement:
+    def get_simple_movement_to_tile(self, monster, destination) -> Movement:
+        assert monster.pos
+        path = self.pathfinder.get_simple_path_between(monster.pos, destination)
+        return self._get_simple_movement(monster, path)
+
+    def get_movement_to_tower(self, monster: Monster) -> Movement:
         assert monster.pos
         path = self.pathfinder.get_path_to_tower(
             monster.pos)
         return self._get_movement(monster, path)
 
-    def get_movement_to_enemy_tile(self, monster: Monster) -> Movement:
-        path = self.pathfinder.get_path_to_enemy_terrain(monster.pos)
-        return self._get_movement(monster, path)
-
-    def get_movement_to_enemy_monster_or_tile(self,
-                                              monster: Monster) -> Movement:
-        path = self.pathfinder.get_path_to_enemy_monster_or_terrain(monster.pos)
-        return self._get_movement(monster, path)
-
-    def get_movement_to_own_tile(self, monster: Monster) -> Movement:
-        path = self.pathfinder.get_path_to_own_terrain(monster.pos)
-        return self._get_movement(monster, path)
-
     def _get_movement(self, monster, path):
+        movement = Movement()
+        if path:
+            movement.path = self._get_partial_path(monster, path)
+        return movement
+
+    def _get_simple_movement(self, monster, path):
         movement = Movement()
         if path:
             movement.path = self._get_partial_path(monster, path)
