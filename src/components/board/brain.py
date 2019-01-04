@@ -1,3 +1,4 @@
+import logging
 import random
 from math import ceil
 
@@ -272,21 +273,55 @@ class MonsterBrain:
         return self.matrix.enemies
 
     def _get_optimal_attack(self, enemies):
-        min_turns_to_defeat = 1000
         monster_to_attack = None
         range_to_use = None
+        # the best_score we start with influences how agressive the monster is
+        # if it's low, the monster will attack just anything
+        # if it's high, the monster will only attack when it has a massive
+        # advantage
+        # if it's 0, the monster will be picky. keep it slightly below 0
+        best_score = -0.4
         for enemy in enemies:
             for attack_range in range(2):
-                damage = self.model.get_expected_damage_between(
-                    self.monster, enemy, attack_range)
-                if damage <= 0:
-                    continue
-                turns_to_defeat = ceil(self.monster.hp / damage)
-                if turns_to_defeat < min_turns_to_defeat:
-                    min_turns_to_defeat = turns_to_defeat
-                    monster_to_attack = enemy
-                    range_to_use = attack_range
+                monster_to_attack, range_to_use, best_score = \
+                    self._calculate_attack_score(
+                        attack_range, enemy, monster_to_attack, range_to_use,
+                        best_score)
         return monster_to_attack, range_to_use
+
+    def _calculate_attack_score(self, attack_range, enemy, monster_to_attack,
+                                range_to_use, best_score):
+        damage1, damage2 = self.model.get_expected_damage_between(
+            self.monster, enemy, attack_range)
+        if damage1 <= 0:
+            return monster_to_attack, range_to_use, best_score
+        # 1 turn defeats should always be attacked
+        turns_to_defeat = ceil(enemy.hp / damage1)
+        if turns_to_defeat == 1:
+            score = 1000
+        # also attack lord unless better targets are available
+        elif enemy.is_lord():
+            score = 0
+        # prioritize the biggest difference in damage
+        else:
+            damage_percent1 = damage1 / enemy.stats.max_hp
+            damage_percent2 = damage2 / self.monster.stats.max_hp
+            cost1 = enemy.stats.summon_cost
+            # some enemies don't have a summon cost, typically powerful ones
+            if cost1 == 0:
+                cost1 = 200
+            cost2 = self.monster.stats.summon_cost
+            if cost2 == 0:
+                cost2 = 200
+            cost_damage1 = damage_percent1 * cost1
+            cost_damage2 = damage_percent2 * cost2
+            print(cost_damage1, cost_damage2)
+            score = cost_damage1 - cost_damage2
+        if score > best_score:
+            best_score = score
+            monster_to_attack = enemy
+            range_to_use = attack_range
+        return monster_to_attack, range_to_use, best_score
 
     def _get_pos_closest_to_target(self):
         # unused right now
@@ -301,7 +336,7 @@ class MonsterBrain:
         return closest_pos
 
     def _attack_monster(self):
-        print(f'I\'m supposed to be attacking {self.monster_to_attack}')
+        logging.info(f'{self.monster} is attacking {self.monster_to_attack}')
         monsters = (self.monster, self.monster_to_attack)
         range_ = self.range_to_attack_with
         self.controller.handle_attack_order(monsters, range_)

@@ -42,10 +42,15 @@ class CombatLog:
             if monster == self.winner:
                 winner_level = self.winner.stats.level
                 loser_level = self.loser.stats.level
-                winner_exp = self.exp_table[winner_level][loser_level]
+                winner_exp = self._get_winner_exp(winner_level, loser_level)
                 self.exp.append(winner_exp)
             else:
                 self.exp.append(0)
+
+    def _get_winner_exp(self, winner_level, loser_level):
+        """Returns the exp the winner gets for defeating the loser"""
+        # is 0-indexed, so correction is needed
+        return self.exp_table[winner_level - 1][loser_level - 1]
 
     def _add_promotions(self):
         self.promotions = []

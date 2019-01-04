@@ -33,7 +33,7 @@ class Attack:
         return self.damage
 
     def get_expected_damage(self):
-        return self.damage * self.accuracy * self.hits
+        return self.damage * self.accuracy * 0.01 * self.hits
 
 
 class AttackCollection:

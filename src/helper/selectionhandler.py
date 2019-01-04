@@ -97,7 +97,7 @@ class SelectionHandler:
         if self._selected_monster_can_be_moved_to_pos():
             self._handle_move_monster_to_pos()
         if self._monster_can_be_summoned_at_pos():
-            self.controller.handle_summon_window_at(self.pos)
+            self.controller.handle_summon_order_at(self.pos)
 
     def _selected_monster_can_be_moved_to_pos(self):
         return (self.selected_monster and

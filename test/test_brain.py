@@ -76,7 +76,7 @@ class TestCase:
             Monster.Type.CHIMERA, chim_start_pos, 1)
 
     def summon_troll_at(self, pos):
-        return self.board.summon_monster(Monster.Type.TROLL, pos, 0)
+        return self.summon_monster_at(Monster.Type.TROLL, pos)
 
     def ensure_player_x_turn(self, number):
         assert self.board.get_current_player_id() == number, (
@@ -101,6 +101,11 @@ class TestCase:
         assert self.chim.pos == pos, \
             f'Monster was at {self.chim.pos} instead of {pos} \
                       {self.board.debug_print()}'
+
+    def summon_monster_at(self, type_, pos):
+        monster = self.board.place_new_monster(type_, pos, 0)
+        assert monster is not None
+        return monster
 
 
 class TestIdleBrain(TestCase):
@@ -133,22 +138,49 @@ class TestMoveToNearbyTarget(TestCase):
         self.check_move_action((18, 0))
 
 
-class TestAttackNearbyTarget(TestCase):
-    def test_attack_weak_monster(self, before):
-        troll_pos = (5, 3)
-        self.summon_weakened_troll_at(troll_pos)
+class TestHandleNearbyEnemy(TestCase):
+    def test_attack_weakened_monster(self, before):
+        dragon_pos = (5, 3)
+        self.summon_weakened_dragon_at(dragon_pos)
         self.end_turn()
         self.tick_event(5000)
         self.ensure_player_x_turn(0)
         self.check_chim_pos((4, 3))
-        self.ensure_troll_is_dead(troll_pos)
+        self.ensure_monster_is_dead(dragon_pos)
+        self.end_turn()
 
-    def ensure_troll_is_dead(self, troll_pos):
-        assert self.board.monster_at(troll_pos) is None
+    def test_ignore_phys_immune_monster(self, before):
+        # ignore this monster because chim's attacks are ineffective
+        wraith_pos = (5, 3)
+        self.summon_wraith_at(wraith_pos)
+        self.end_turn()
+        self.tick_event(200)
+        self.ensure_player_x_turn(0)
+        self.check_chim_pos((7, 0))
 
-    def summon_weakened_troll_at(self, troll_pos):
-        troll = self.summon_troll_at(troll_pos)
-        troll.hp = 1
+    def test_attack_other_chim(self, before):
+        other_chim_pos = (5, 3)
+        self.summon_chim_at(other_chim_pos)
+        self.end_turn()
+        self.tick_event(5000)
+        self.ensure_player_x_turn(0)
+        self.check_chim_pos((4, 3))
+
+    def ensure_monster_is_dead(self, pos):
+        assert self.board.monster_at(pos) is None
+
+    def summon_weakened_dragon_at(self, pos):
+        dragon = self.summon_dragon_at(pos)
+        dragon.hp = 1
+
+    def summon_dragon_at(self, pos):
+        return self.summon_monster_at(Monster.Type.KING_D, pos)
+
+    def summon_wraith_at(self, pos):
+        self.summon_monster_at(Monster.Type.BLACK_W, pos)
+
+    def summon_chim_at(self, pos):
+        self.summon_monster_at(Monster.Type.CHIMERA, pos)
 
 
 class TestMoveToFarTower(TestCase):

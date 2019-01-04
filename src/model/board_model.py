@@ -99,7 +99,8 @@ class BoardModel:
     def get_expected_damage_between(self, attacker, defender, attack_range):
         """This uses current sun stance"""
         attacks = self.get_short_and_long_attacks((attacker, defender))
-        return attacks.get_attack(0, attack_range).get_expected_damage()
+        return (attacks.get_attack(0, attack_range).get_expected_damage(),
+                attacks.get_attack(1, attack_range).get_expected_damage())
 
     def get_short_and_long_attacks(self, monsters) -> AttackCollection:
         attack_factory = AttackFactory()

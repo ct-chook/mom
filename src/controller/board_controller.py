@@ -153,18 +153,6 @@ class BoardController(Window):
     def _handle_arrow_key(self, key):
         self.view.move_camera(self.directions[key])
 
-    def handle_end_of_turn(self):
-        self.selection_handler.unselect_current_monster()
-        self.selection_handler.unselect_enemy()
-        self.model.on_end_turn()
-        current_player = self.model.players.get_current_player()
-        self.sidebar.display_turn_info(current_player, self.model.sun_stance)
-        if current_player.ai_type == AiType.human:
-            self.is_ai_controlled = False
-        else:
-            self.is_ai_controlled = True
-            EventList(EventCallback(self._handle_ai_action))
-
     def handle_move_monster(self, monster, path):
         """Accessed by either the selection handler or the brain
 
@@ -194,8 +182,7 @@ class BoardController(Window):
             eventlist.append(self.get_ai_action_event())
 
     def get_ai_action_event(self):
-        return EventCallback(
-                self._handle_ai_action, name='ai action')
+        return EventCallback(self._handle_ai_action, name='ai action')
 
     def add_movement_event_to_view(self, monster, path):
         """Movement can work in two ways, either by player or by computer
@@ -261,7 +248,7 @@ class BoardController(Window):
         if self.is_ai_controlled:
             EventList(self.get_ai_action_event())
 
-    def handle_summon_window_at(self, pos):
+    def handle_summon_order_at(self, pos):
         x, y = pos
         logging.info(f'Picked {(x, y)} for summon location')
         self.summon_window.show()
@@ -271,8 +258,20 @@ class BoardController(Window):
         summoned_monster = self.model.summon_monster_at(
             monster_type, pos)
         if self.is_ai_controlled:
-            EventList(EventCallback(self._handle_ai_action, name='ai action'))
+            EventList(self.get_ai_action_event())
         return summoned_monster
+
+    def handle_end_of_turn(self):
+        self.selection_handler.unselect_current_monster()
+        self.selection_handler.unselect_enemy()
+        self.model.on_end_turn()
+        current_player = self.model.players.get_current_player()
+        self.sidebar.display_turn_info(current_player, self.model.sun_stance)
+        if current_player.ai_type == AiType.human:
+            self.is_ai_controlled = False
+        else:
+            self.is_ai_controlled = True
+            EventList(EventCallback(self._handle_ai_action))
 
     def highlight_tiles(self, posses):
         self.view.highlight_tiles(posses)
