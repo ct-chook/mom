@@ -90,7 +90,7 @@ class SelectionHandler:
                 self.enemy_selection in self.adjacent_enemies)
 
     def _handle_target_enemy_for_attack(self, attacker, defender):
-        self.controller.show_combat_window_for(attacker, defender)
+        self.controller.show_precombat_window_for(attacker, defender)
 
     def _click_terrain(self):
         logging.info('Selected terrain')

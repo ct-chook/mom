@@ -4,31 +4,6 @@ from src.helper.Misc.constants import AttackType, DayTime
 from src.helper.Misc.datatables import DataTables
 
 
-class AttackCollection:
-    def __init__(self):
-        self.attacks_attacker = {}
-        self.attacks_defender = {}
-
-    def add_attack(self, attack, side, attack_range):
-        container = self._get_container(side)
-        container[attack_range] = attack
-
-    def _get_container(self, side):
-        if side == 0:
-            container = self.attacks_attacker
-        else:
-            container = self.attacks_defender
-        return container
-
-    def get_attack(self, side, attack_range):
-        container = self._get_container(side)
-        if attack_range in container:
-            return container[attack_range]
-
-    def get_all_ranges(self, side):
-        return self._get_container(side)
-
-
 class Attack:
     def __init__(
             self, base_damage, ali_bonus, exp, resistance, hits, accuracy,
@@ -59,6 +34,31 @@ class Attack:
 
     def get_expected_damage(self):
         return self.damage * self.accuracy * self.hits
+
+
+class AttackCollection:
+    def __init__(self):
+        self.attacks_attacker = {}
+        self.attacks_defender = {}
+
+    def add_attack(self, attack, side, attack_range):
+        container = self._get_container(side)
+        container[attack_range] = attack
+
+    def get_attack(self, side, attack_range) -> Attack:
+        container = self._get_container(side)
+        if attack_range in container:
+            return container[attack_range]
+
+    def get_all_ranges(self, side):
+        return self._get_container(side)
+
+    def _get_container(self, side):
+        if side == 0:
+            container = self.attacks_attacker
+        else:
+            container = self.attacks_defender
+        return container
 
 
 class AttackFactory:

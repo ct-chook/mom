@@ -2,7 +2,7 @@ from src.components.board import players
 from src.components.board.board import Board, MapLoader
 from src.components.board.pathing import PathMatrixFactory, PathFinder
 from src.components.board.pathing_components import PathMatrix
-from src.components.combat.attack import AttackFactory
+from src.components.combat.attack import AttackFactory, AttackCollection
 from src.components.combat.combat import Combat
 from src.components.combat.combatlog import CombatLog
 from src.helper.Misc.constants import AiType
@@ -101,7 +101,7 @@ class BoardModel:
         attacks = self.get_short_and_long_attacks((attacker, defender))
         return attacks.get_attack(0, attack_range).get_expected_damage()
 
-    def get_short_and_long_attacks(self, monsters):
+    def get_short_and_long_attacks(self, monsters) -> AttackCollection:
         attack_factory = AttackFactory()
         return attack_factory.get_all_attacks_between_monsters(
             monsters, self.sun_stance)

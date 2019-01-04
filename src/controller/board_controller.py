@@ -4,6 +4,7 @@ from math import floor
 import pygame
 from pygame.rect import Rect
 
+from components.combat.attack import AttackCollection
 from src.abstract.view import View
 from src.abstract.window import Window, YesNoWindow
 from src.components.board.brain import PlayerIdleBrain, PlayerDefaultBrain
@@ -236,20 +237,29 @@ class BoardController(Window):
             raise AttributeError(f'Brain not found for player {player.id_}')
         return self.brains[player]
 
-    def show_combat_window_for(self, attacker, defender):
+    def show_precombat_window_for(self, attacker, defender):
         assert attacker
         assert defender
         assert attacker is not defender
         self.precombat_window.show()
         self.precombat_window.set_attackers((attacker, defender))
 
-    def handle_attack_order(self, monsters, range_):
-        attacker, defender = monsters
-        attacker.moved = True
+    def handle_attack_order(self, monsters, attack_range):
+        self.combat_window.show()
+        attacks = self.model.get_short_and_long_attacks(monsters)
+        self.combat_window.on_combat(attacks, attack_range)
+        attacker = attacks.get_attack(0, attack_range).monster
+        defender = attacks.get_attack(1, attack_range).monster
         logging.info(f'{attacker} is attacking monster {defender}')
-        combat_log = self.model.get_combat_result(attacker, defender, range_)
+        combat_log = self.model.get_combat_result(
+            attacker, defender, attack_range)
         if combat_log.loser:
             logging.info(f'{combat_log.loser} was defeated!')
+
+    def handle_combat_end(self, combat_log):
+        self.model.process_combat_log(combat_log)
+        if self.is_ai_controlled:
+            EventList(self.get_ai_action_event())
 
     def handle_summon_window_at(self, pos):
         x, y = pos

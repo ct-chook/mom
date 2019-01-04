@@ -1,3 +1,4 @@
+from components.combat.attack import AttackCollection
 from src.abstract.view import View
 from src.abstract.window import Window, Button
 from src.controller import board_controller
@@ -12,9 +13,8 @@ class PreCombatWindow(Window):
         self.board_model: board_controller.BoardModel = board_model
         self.combat_window: CombatWindow = combat_window
 
-        self.model = None
+        self.attacks: AttackCollection = None
         self.view: PreCombatView = self.add_view(PreCombatView)
-        self.attacks = None
         self.short_range_button: AttackButton = self.attach_controller(
             AttackButton(
                 0, 75, 200, 50, self.handle_attack_choice, Range.CLOSE))
@@ -26,8 +26,9 @@ class PreCombatWindow(Window):
         self.hide()
 
     def handle_attack_choice(self, attack_range):
-        self.combat_window.show()
-        self.combat_window.on_combat(self.attacks, attack_range)
+        monsters = (self.attacks.get_attack(0, attack_range).monster,
+                    self.attacks.get_attack(1, attack_range).monster)
+        self.parent.handle_attack_order(monsters, attack_range)
         self.hide()
 
     def handle_mouseclick(self):

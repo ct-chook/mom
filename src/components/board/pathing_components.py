@@ -21,6 +21,7 @@ class PathMatrix:
         self.dist_values = {}
         self.heuristic = {}
         self.accessible_positions = set()
+        self.enemies = set()
 
     def set_heuristic_value_at(self, pos, value):
         self.heuristic[pos] = value
@@ -177,8 +178,7 @@ class MatrixProcessor:
         assert self.pos[0] >= 0
         assert self.pos[1] >= 0
         self.cannot_move_from_pos = False
-        adjacent_enemies = self.board.get_enemies_adjacent_to(self.pos)
-        self._handle_adjacent_enemies(adjacent_enemies)
+        self._handle_adjacent_enemies()
         if self.cannot_move_from_pos:
             return
         if self._found_tile_to_search_for():
@@ -191,9 +191,12 @@ class MatrixProcessor:
     def _found_tile_to_search_for(self):
         return False
 
-    def _handle_adjacent_enemies(self, adjacent_enemies):
+    def _handle_adjacent_enemies(self):
+        adjacent_enemies = self.board.get_enemies_adjacent_to(self.pos)
         # if tile has enemies adjacent, you cannot move from it, unless
         # this is the tile the moving monster starts on
+        for enemy in adjacent_enemies:
+            self.matrix.enemies.add(enemy)
         if adjacent_enemies and self.monster.pos != self.pos:
             self.cannot_move_from_pos = True
             self._highlight_tiles_with_enemies(adjacent_enemies)
@@ -304,8 +307,8 @@ class TowerSearchMatrixProcessor(SearchMatrixProcessor):
         self.max_dist_value = max_dist_value
         self._process_tiles(start)
 
-    def _handle_adjacent_enemies(self, enemies):
-        """Ignore enemies for this processor"""
+    def _handle_adjacent_enemies(self):
+        """This processor ignores blocking enemies"""
         pass
 
     def _tile_is_not_passable(self, pos):
@@ -342,8 +345,8 @@ class AStarMatrixProcessor(MatrixProcessor):
             return True
         return self.destination_reached
 
-    def _handle_adjacent_enemies(self, enemies):
-        """Ignore enemies for this processor"""
+    def _handle_adjacent_enemies(self):
+        """Enemies don't block matrix for this processor"""
         pass
 
     def _tile_is_not_passable(self, pos):

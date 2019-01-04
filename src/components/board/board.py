@@ -132,8 +132,9 @@ class Board:
         adjacent_tiles = self.get_posses_adjacent_to(pos)
         for adj_pos in adjacent_tiles:
             adj_tile = self.tile_at(adj_pos)
-            if (adj_tile.monster and
-                    adj_tile.monster.owner != self.get_current_player_id()):
+            if (adj_tile.monster
+                    and not self.is_friendly_player(
+                        adj_tile.monster.owner, self.get_current_player_id())):
                 enemies.append(adj_tile.monster)
         return enemies
 

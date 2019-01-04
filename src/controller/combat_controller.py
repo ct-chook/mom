@@ -26,9 +26,11 @@ class CombatWindow(Window):
         combat = Combat()
         self.combat_log = combat.monster_combat2(attacks, attack_range)
         draw_screen_event = EventCallback(self.view.draw_screen, attacks)
-        show_attacks_event = EventCallback(self.view.show_attack, self.combat_log)
+        show_attacks_event = EventCallback(
+            self.view.show_attack, self.combat_log)
         close_window_event = EventCallback(self.handle_combat_end)
-        clear_selection_event = EventCallback(self.parent.view.clear_highlighted_tiles)
+        clear_selection_event = EventCallback(
+            self.parent.view.clear_highlighted_tiles)
         combat_events = (
             draw_screen_event, show_attacks_event, close_window_event,
             clear_selection_event)
@@ -38,9 +40,8 @@ class CombatWindow(Window):
         self.event_list.skip()
 
     def handle_combat_end(self):
-        self.parent.model.process_combat_log(self.combat_log)
+        self.parent.handle_combat_end(self.combat_log)
         self.hide()
-        logging.info('closing')
 
 
 class CombatView(View):

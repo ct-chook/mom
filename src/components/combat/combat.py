@@ -30,6 +30,7 @@ class Combat:
         return self._do_actual_combat(monsters)
 
     def monster_combat2(self, attacks, attack_range):
+        # todo merge these methods
         self._attacks = attacks
         self._attack_range = attack_range
         self._monsters = (

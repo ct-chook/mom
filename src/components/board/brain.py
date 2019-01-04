@@ -1,6 +1,7 @@
 import random
 from math import ceil
 
+from components.combat.attack import AttackFactory
 from src.components.board.pathing import MovementFinder, PathFinder, \
     PathMatrixFactory
 from src.components.board.pathing_components import PathMatrix, \
@@ -87,10 +88,13 @@ class PlayerDefaultBrain(PlayerBrain):
         if not monster.moved:
             monster_brain = monster.brain
             assert monster_brain, f'{self._get_current_monster()} has no brain'
-            monster_brain.do_action()
+            do_another_monster_action = monster_brain.do_action()
+            if do_another_monster_action:
+                # ugly hack to make monster act again
+                self.monster_index -= 1
         else:
             # make it queue up another AI action
-            EventList(self.controller.get_ai_action_event())
+            make_player_brain_act_again(self.controller)
         self.did_action = True
         self.monster_index += 1
 
@@ -142,21 +146,33 @@ class MonsterBrain:
             self.board)
         self.matrix: PathMatrix = None
         self.target_pos = None
+        self.monster_to_attack = None
+        self.range_to_attack_with = None
 
     def do_action(self):
         """Uses the board controller to execute a monster-related action
 
         How it works: it follows the following steps:
-        0. Find target (tower or enemy lord). Save this target.
-        1. Get an 1-turn matrix to see what's nearby.
-        2. Check if destination is on it. If so, move to it.
-        3. Get all possible monsters on matrix to attack. Check if attacking any
-           of them has a high score. If so, move to them and attack.
-        4. Otherwise, generate a-star matrix to destination and move toward it.
-        5. If the tile leading to destination is blocked, move to tile adjacent
+        1. If it has an adjacent monster to attack, attack it and stop
+        2. Find target (tower or enemy lord). Save this target.
+        3. Get an 1-turn matrix to see what's nearby.
+        4. Check if destination is on it. If so, move to it and stop
+        5. Get all possible monsters on matrix to attack. Check if attacking any
+           of them has a high score. If so, move to them, store monster as
+           target to attack and stop
+        6. Otherwise, generate a-star matrix to destination, move toward it and
+           stop.
+        7. If the tile leading to destination is blocked, move to tile adjacent
            of it. If all those are blocked too, move to a tile adjacent to them.
            If those are also blocked, move to a random tile.
         """
+
+        if self.monster_to_attack:
+            self._attack_monster()
+            self.monster_to_attack = None
+            self.range_to_attack_with = None
+            self.monster.moved = True
+            return
 
         assert self.monster is not None
         self._find_target()
@@ -167,13 +183,15 @@ class MonsterBrain:
             return
 
         enemy, attack_range = self._get_best_enemy_to_attack()
+        self.matrix.print_dist_values()
         if enemy:
             tile_to_attack_from = self._get_tile_to_attack_from(enemy)
             if tile_to_attack_from:
                 self._move_to_tile_inside_matrix(tile_to_attack_from)
-                # todo: issue attack, chain these commands?
-                self._attack_monster()
-                return
+                self.monster_to_attack = enemy
+                self.range_to_attack_with = attack_range
+                self.monster.moved = False  # so it can move again next time
+                return True
 
         destination = self._get_tile_leading_to_destination()
         new_destination = None
@@ -210,11 +228,9 @@ class MonsterBrain:
 
     def _get_tile_to_attack_from(self, enemy):
         adjacent_tiles = self.board.get_posses_adjacent_to(enemy.pos)
-        tile_to_use = None
         for tile in adjacent_tiles:
-            if tile in self.matrix.dist_values:
-                tile_to_use = tile
-        return tile_to_use
+            if tile in self.matrix:
+                return tile
 
     def _find_target(self):
         player_id = self.monster.owner
@@ -244,8 +260,7 @@ class MonsterBrain:
         if destination:
             self.controller.handle_move_monster(self.monster, movement.path)
         else:
-            # add callback for next turn, which normally comes with move monster
-            EventList(self.controller.get_ai_action_event())
+            make_player_brain_act_again(self.controller)
 
     def _get_best_enemy_to_attack(self):
         enemies = self._get_enemies_in_matrix()
@@ -253,12 +268,8 @@ class MonsterBrain:
         return best_target, attack_range
 
     def _get_enemies_in_matrix(self):
-        enemies = []
-        for pos in self.matrix:
-            monster = self.model.board.monster_at(pos)
-            if monster and self.model.is_enemy(monster):
-                enemies.append(monster)
-        return enemies
+        # todo enemies won't show up for dist values since enemies block tiles
+        return self.matrix.enemies
 
     def _get_optimal_attack(self, enemies):
         min_turns_to_defeat = 1000
@@ -290,4 +301,11 @@ class MonsterBrain:
         return closest_pos
 
     def _attack_monster(self):
-        pass
+        print(f'I\'m supposed to be attacking {self.monster_to_attack}')
+        monsters = (self.monster, self.monster_to_attack)
+        range_ = self.range_to_attack_with
+        self.controller.handle_attack_order(monsters, range_)
+
+
+def make_player_brain_act_again(controller):
+    EventList(controller.get_ai_action_event())
