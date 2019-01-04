@@ -13,6 +13,7 @@ class Sprite(pygame.sprite.Sprite):
     def __init__(self, surface, offset):
         super().__init__()
         self.offset = offset
+        self.new_pos = None
         self.image = surface
         if surface:
             self.rect = pygame.Rect(
@@ -20,14 +21,12 @@ class Sprite(pygame.sprite.Sprite):
                 surface.get_width(), surface.get_height())
         else:
             self.rect = pygame.Rect(offset[0], offset[1], 0, 0)
-        self.new_pos = None
 
     def update(self):
         """Switches to next pos, do this after undrawing"""
         if not self.new_pos:
             return
-        self.rect.x = self.new_pos[0]
-        self.rect.y = self.new_pos[1]
+        self.rect.x, self.rect.y = self.new_pos
         self.new_pos = None
 
     def set_surface(self, new_surface):
@@ -48,9 +47,8 @@ class Text(pygame.sprite.Sprite):
 
         super().__init__()
         self.image = None
-        self.rect = pygame.Rect((offset[0], offset[1], 0, 0))
-        self.x = offset[0]
-        self.y = offset[1]
+        self.x, self.y = offset
+        self.rect = pygame.Rect((self.x, self.y, 0, 0))
 
         self.text = text
         self.new_text = None

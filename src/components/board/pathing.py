@@ -51,9 +51,9 @@ class PathFinder:
     def get_path_on_matrix_to(self, matrix, end):
         """Returns path to end on given matrix"""
         matrix.end = end
-        return self.get_path_of_matrix(matrix)
+        return self.get_path_on_matrix(matrix)
 
-    def get_path_of_matrix(self, matrix):
+    def get_path_on_matrix(self, matrix):
         """Returns path between start and end positions on given matrix"""
         self.path_generator.set_path_matrix(matrix)
         return self.path_generator.get_path_on(matrix)

@@ -95,12 +95,12 @@ class TestAttacksBetweenRomans(TestRomanCombat):
         self.attack1 = self.combat._attacks.get_attack(1, CLOSE_RANGE)
 
     def test_attacks(self, before):
-        assert 4 == self.attack0.damage
-        assert 4 == self.attack1.damage
-        assert 3 == self.attack0.hits
-        assert 3 == self.attack1.hits
-        assert 60 == self.attack0.accuracy
-        assert 60 == self.attack1.accuracy
+        assert self.attack0.damage == 4
+        assert self.attack1.damage == 4
+        assert self.attack0.hits == 3
+        assert self.attack1.hits == 3
+        assert self.attack0.accuracy == 60
+        assert self.attack1.accuracy == 60
 
 
 class TestInvalidAttacksBetweenRomans(TestRomanCombat):

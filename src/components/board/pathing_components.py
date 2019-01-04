@@ -6,6 +6,128 @@ from src.helper.Misc.constants import IMPASSIBLE, UNEXPLORED
 from src.helper.Misc.datatables import DataTables
 
 
+class PathMatrix:
+    """Holds distance values used for movement and path calculation
+
+    Is created by PathMatrixFactory. Makes use of the board to refer to
+    terrain types.
+    """
+
+    def __init__(self, board):
+        self.board = board
+        self.monster = None
+        self.start = None
+        self.end = None
+        self.dist_values = {}
+        self.heuristic = {}
+        self.accessible_positions = set()
+
+    def set_heuristic_value_at(self, pos, value):
+        self.heuristic[pos] = value
+
+    def set_distance_value_at(self, pos, value):
+        self.dist_values[pos] = value
+
+    def get_distance_value_at(self, pos):
+        if pos in self.dist_values:
+            return self.dist_values[pos]
+        else:
+            return UNEXPLORED
+
+    def get_heuristic_value_at(self, pos):
+        if pos in self.heuristic:
+            return self.heuristic[pos]
+        else:
+            return UNEXPLORED
+
+    def is_legal_destination(self, pos):
+        if pos in self.accessible_positions:
+            return True
+
+    def set_monster(self, monster):
+        self.monster = monster
+        self.start = monster.pos
+
+    def print_dist_values(self):
+        print(self.get_printable_dist_values())
+
+    def get_printable_dist_values(self):
+        printer = MatrixPrinter(self)
+        return printer.get_printable_dist_values()
+
+    def __iter__(self):
+        return iter(self.dist_values)
+
+
+class MatrixPrinter:
+    def __init__(self, matrix):
+        self.matrix = matrix
+
+    def get_printable_dist_values(self, mode=0):
+        min_x, min_y, max_x, max_y = self._get_row_and_col_count()
+        row_count = (max_y - min_y + 1)
+        col_count = max_x - min_x + 1
+        to_print = []
+        for _ in range(row_count):
+            to_print.append([''] * col_count)
+
+        for x in range(min_x, max_x + 1):
+            for y in range(min_y, max_y + 1):
+                index_y = y - min_y
+                index_x = x - min_x
+                to_print[index_y][index_x] = \
+                    self._get_dist_value_representation((x, y), mode)
+        result = []
+        for row in range(row_count):
+            if row % 2 == 0:
+                prefix = '   '
+            else:
+                prefix = ''
+            result.append('{:2d}  '.format(min_y + row) + prefix
+                          + '    '.join(to_print[row]) + '\n')
+        last_line = ['  ']
+        for col in range(col_count):
+            last_line.append('{:2d}'.format(col + min_x))
+        result.append('    '.join(last_line))
+        return '\n' + ''.join(result)
+
+    def _get_row_and_col_count(self):
+        min_x = 1000
+        min_y = 1000
+        max_x = 0
+        max_y = 0
+        for key in self.matrix:
+            x, y = key
+            if x < min_x:
+                min_x = x
+            if y < min_y:
+                min_y = y
+            if x > max_x:
+                max_x = x
+            if y > max_y:
+                max_y = y
+
+        return min_x, min_y, max_x, max_y
+
+    def _get_dist_value_representation(self, pos, mode):
+        if mode == 0:
+            val = self.matrix.get_distance_value_at(pos)
+        else:
+            val = self.matrix.get_heuristic_value_at(pos)
+        if val is None:
+            return '  '
+        else:
+            if val == IMPASSIBLE:
+                return '. '
+            if val == UNEXPLORED:
+                return '  '
+            if val < 10:
+                return ' ' + str(floor(val))
+            else:
+                return str(floor(val))
+        pass
+
+
 class MatrixProcessor:
     """Generates a distance value matrix using a move point limit given
 
@@ -196,52 +318,8 @@ class TowerSearchMatrixProcessor(SearchMatrixProcessor):
                 and self.board.tower_is_capturable_by(self.pos, self.player_id))
 
 
-class EnemyTerrainSearchMatrixProcessor(SearchMatrixProcessor):
-    """Searches for the nearest tile owned by the enemy"""
-    def fill_distance_values(self, start, max_dist_value):
-        self.max_dist_value = max_dist_value
-        self._process_tiles(start)
-
-    def _found_tile_to_search_for(self):
-        return (self.board.tile_at(self.pos).owner is not None and
-                self.board.tile_at(self.pos).owner != self.player_id)
-
-
-class OwnTerrainSearchMatrixProcessor(SearchMatrixProcessor):
-    """Searches for the nearest tile owned by self"""
-    def fill_distance_values(self, start, max_dist_value):
-        self.max_dist_value = max_dist_value
-        self._process_tiles(start)
-
-    def _found_tile_to_search_for(self):
-        return (self.board.tile_at(self.pos).owner ==
-                self.player_id)
-
-
-class EnemySearchMatrixProcessor(SearchMatrixProcessor):
-    """Searches for the nearest tile or monster owned by the enemy"""
-    def fill_distance_values(self, start, max_dist_value):
-        self.max_dist_value = max_dist_value
-        self._process_tiles(start)
-
-    def _found_tile_to_search_for(self):
-        if self._tile_is_enemy_terrain() or self.tile_found:
-            return True
-
-    def _tile_is_enemy_terrain(self):
-        return self.board.pos_is_enemy_terrain(self.pos)
-
-    def _tile_has_adjacent_enemy(self):
-        return self.board.get_enemies_adjacent_to(self.pos)
-
-    def _handle_adjacent_enemies(self, adjacent_enemies):
-        if adjacent_enemies:
-            self.tile_found = True
-            self._highlight_tiles_with_enemies(adjacent_enemies)
-
-
 class AStarMatrixProcessor(MatrixProcessor):
-    """Processes a matrix using the a* algorithm.
+    """Processes a matrix using the a star algorithm.
 
     This is faster but will only work when given a specific pos that it should
     search for. It will stop building the matrix once that pos is reached.
@@ -469,119 +547,6 @@ class SimplePathGenerator(PathGenerator):
 
     def _next_tile_is_not_blocked(self):
         return False
-
-
-class PathMatrix:
-    """Holds distance values used for movement and path calculation
-
-    Is created by PathMatrixFactory. Makes use of the board to refer to
-    terrain types.
-    """
-
-    def __init__(self, board):
-        self.board = board
-        self.monster = None
-        self.start = None
-        self.end = None
-        self.dist_values = {}
-        self.heuristic = {}
-        self.accessible_positions = set()
-
-    def set_heuristic_value_at(self, pos, value):
-        self.heuristic[pos] = value
-
-    def set_distance_value_at(self, pos, value):
-        self.dist_values[pos] = value
-
-    def get_distance_value_at(self, pos):
-        if pos in self.dist_values:
-            return self.dist_values[pos]
-        else:
-            return UNEXPLORED
-
-    def get_heuristic_value_at(self, pos):
-        if pos in self.heuristic:
-            return self.heuristic[pos]
-        else:
-            return UNEXPLORED
-
-    def is_legal_destination(self, pos):
-        if pos in self.accessible_positions:
-            return True
-
-    def set_monster(self, monster):
-        self.monster = monster
-        self.start = monster.pos
-
-    def print_dist_values(self):
-        print(self.get_printable_dist_values())
-
-    def get_printable_dist_values(self, mode=0):
-        min_x, min_y, max_x, max_y = self._get_row_and_col_count()
-        row_count = (max_y - min_y + 1)
-        col_count = max_x - min_x + 1
-        to_print = []
-        for _ in range(row_count):
-            to_print.append([''] * col_count)
-
-        for x in range(min_x, max_x + 1):
-            for y in range(min_y, max_y + 1):
-                index_y = y - min_y
-                index_x = x - min_x
-                to_print[index_y][index_x] = \
-                    self._get_dist_value_representation((x, y), mode)
-        result = []
-        for row in range(row_count):
-            if row % 2 == 0:
-                prefix = '  '
-            else:
-                prefix = ''
-            result.append('{:2d}  '.format(min_y + row) + prefix
-                          + '  '.join(to_print[row]) + '\n')
-        last_line = ['   ']
-        for col in range(col_count):
-            last_line.append('{:2d}'.format(col + min_x))
-        result.append('  '.join(last_line))
-        return '\n' + ''.join(result)
-
-    def _get_row_and_col_count(self):
-        min_x = 1000
-        min_y = 1000
-        max_x = 0
-        max_y = 0
-        for key in self.dist_values:
-            x, y = key
-            if x < min_x:
-                min_x = x
-            if y < min_y:
-                min_y = y
-            if x > max_x:
-                max_x = x
-            if y > max_y:
-                max_y = y
-
-        return min_x, min_y, max_x, max_y
-
-    def _get_dist_value_representation(self, pos, mode):
-        if mode == 0:
-            val = self.get_distance_value_at(pos)
-        else:
-            val = self.get_heuristic_value_at(pos)
-        if val is None:
-            return '  '
-        else:
-            if val == IMPASSIBLE:
-                return '. '
-            if val == UNEXPLORED:
-                return '  '
-            if val < 10:
-                return str(floor(val)) + ' '
-            else:
-                return str(floor(val))
-        pass
-
-    def __iter__(self):
-        return iter(self.dist_values)
 
 
 class MatrixFactory:

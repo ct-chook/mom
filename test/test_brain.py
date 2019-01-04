@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 
 from src.components.board.brain import PlayerDefaultBrain, PlayerIdleBrain
@@ -11,45 +13,45 @@ from src.helper.events.events import EventList, EventQueue
 Options.headless = True
 
 
-class PlayerNoSummonBrain(PlayerDefaultBrain):
-    def _handle_summon(self):
-        """Doesn't summon anything so the set of monsters remains the same"""
-        self.did_action = False
-
-
-class PlayerScoutBrain(PlayerNoSummonBrain):
-    """Only makes scouts"""
-
-    def _create_brain_for_monster(self, monster):
-        super()._create_brain_for_monster(monster)
-        monster.brain.type = MonsterBehavior.SCOUT
-
-
-class PlayerAttackerBrain(PlayerNoSummonBrain):
-    """Only makes attackers"""
-
-    def _create_brain_for_monster(self, monster):
-        super()._create_brain_for_monster(monster)
-        monster.brain.type = MonsterBehavior.ATTACKER
-
-
-class PlayerDefenderBrain(PlayerNoSummonBrain):
-    """Only makes attackers"""
-
-    def _create_brain_for_monster(self, monster):
-        super()._create_brain_for_monster(monster)
-        monster.brain.type = MonsterBehavior.DEFENDER
-
-
-class PlayerSummonBrain(PlayerDefaultBrain):
-    """Only summons monsters, doesn't move them"""
-
-    def _handle_monsters(self):
-        pass
+# class PlayerNoSummonBrain(PlayerDefaultBrain):
+#     def _handle_summon(self):
+#         """Doesn't summon anything so the set of monsters remains the same"""
+#         self.did_action = False
+#
+#
+# class PlayerScoutBrain(PlayerNoSummonBrain):
+#     """Only makes scouts"""
+#
+#     def _create_brain_for_monster(self, monster):
+#         super()._create_brain_for_monster(monster)
+#         monster.brain.type = MonsterBehavior.SCOUT
+#
+#
+# class PlayerAttackerBrain(PlayerNoSummonBrain):
+#     """Only makes attackers"""
+#
+#     def _create_brain_for_monster(self, monster):
+#         super()._create_brain_for_monster(monster)
+#         monster.brain.type = MonsterBehavior.ATTACKER
+#
+#
+# class PlayerDefenderBrain(PlayerNoSummonBrain):
+#     """Only makes attackers"""
+#
+#     def _create_brain_for_monster(self, monster):
+#         super()._create_brain_for_monster(monster)
+#         monster.brain.type = MonsterBehavior.DEFENDER
+#
+#
+# class PlayerSummonBrain(PlayerDefaultBrain):
+#     """Only summons monsters, doesn't move them"""
+#
+#     def _handle_monsters(self):
+#         pass
 
 
 class AiType:
-    (human, idle, default, scout, attacker, defender, summoner) = range(7)
+    (human, idle, default) = range(3)
 
 
 class TestCase:
@@ -91,14 +93,14 @@ class TestCase:
         player.ai_type = ai_type
         if ai_type == AiType.idle:
             brain_class = PlayerIdleBrain
-        elif ai_type == AiType.scout:
-            brain_class = PlayerScoutBrain
-        elif ai_type == AiType.attacker:
-            brain_class = PlayerAttackerBrain
-        elif ai_type == AiType.defender:
-            brain_class = PlayerDefenderBrain
-        elif ai_type == AiType.summoner:
-            brain_class = PlayerSummonBrain
+        # elif ai_type == AiType.scout:
+        #     brain_class = PlayerScoutBrain
+        # elif ai_type == AiType.attacker:
+        #     brain_class = PlayerAttackerBrain
+        # elif ai_type == AiType.defender:
+        #     brain_class = PlayerDefenderBrain
+        # elif ai_type == AiType.summoner:
+        #     brain_class = PlayerSummonBrain
         elif ai_type == AiType.default:
             brain_class = PlayerDefaultBrain
         else:
@@ -120,7 +122,8 @@ class TestCase:
         self.chim.moved = False
 
     def ensure_player_x_turn(self, number):
-        assert self.board.get_current_player_id() == number
+        assert self.board.get_current_player_id() == number, (
+            f'It is still player {self.board.get_current_player_id()}\'s turn')
 
     def end_turn(self):
         self.controller.end_of_turn_window.yes.handle_mouseclick()
@@ -147,7 +150,7 @@ class TestIdleBrain(TestCase):
 class TestScoutBrain(TestCase):
     def before_more(self):
         # set the player to scout and create brain for it
-        self.set_ai_type(AiType.scout)
+        self.set_ai_type(AiType.default)
 
     def test_move_to_nearby_tower(self, before):
         # Set tower next to monster
@@ -197,7 +200,7 @@ class TestScoutBrain(TestCase):
 class TestAttackerBrain(TestCase):
     def before_more(self):
         # set the player to attacker and create brain for it
-        self.set_ai_type(AiType.attacker)
+        self.set_ai_type(AiType.default)
         self.tower = (8, 3)
         self.board.on_tile(self.tower).set_terrain_to(
             Terrain.TOWER)
@@ -234,7 +237,9 @@ class TestSummonBrain(TestCase):
     def before_more(self):
         self.wizard = self.board.lords[1]
         self.board.set_monster_pos(self.wizard, (1, 1))
-        self.set_ai_type(AiType.summoner)
+        self.chim.moved = True
+        self.set_ai_type(AiType.default)
+        logging.getLogger().setLevel(logging.INFO)
 
     def test_summon_monsters(self, before):
         self.set_mana_of_player_to(1, 220)
@@ -276,12 +281,13 @@ class TestDefaultBrain(TestCase):
     def test_ai_doesnt_lock_up_the_game(self, before):
         self.end_turn()
         self.tick_event(200)
+        self.ensure_player_x_turn(0)
 
     def test_move_two_monsters(self, before):
         # make AI move to the tower created
         self.set_mana_of_player_to(1, 0)  # prevents summoning
         self.add_troll()
-        self.set_ai_type(AiType.scout)
+
         self.check_if_ai_monsters_move_after_ending_turn()
         self.check_if_ai_monsters_move_after_ending_turn()
 
@@ -294,6 +300,7 @@ class TestDefaultBrain(TestCase):
         self.tick_event(90)  # wait for monsters to move
         assert_new_pos(self.chim, old_chim_pos)
         assert_new_pos(self.troll, old_troll_pos)
+        self.board.debug_print()
 
     def add_troll(self):
         # noinspection PyAttributeOutsideInit

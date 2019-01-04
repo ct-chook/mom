@@ -222,10 +222,10 @@ class BoardController(Window):
     def _handle_ai_action(self):
         """The ai must take over the controller until they end their turn
 
-        Every event should fetch an ai action from the brain, display this
-        action to the controller/view, and then send it to the model.
-        this happens until the brain decides to end its turn.
-        Each event
+        Every event should fetch an ai action from the brain, and send this
+        action to the controller/view.
+        The event should also include another call to this method if the AI's
+        turn is not over yet.
         """
         brain = self._get_current_player_brain()
         brain.do_action()
@@ -272,8 +272,6 @@ PATH_ANIMATION_DELAY = 6
 
 
 class BoardView(View):
-    verbose = 1
-
     def __init__(self, rectangle, arguments):
         camera, board_model = arguments
         super().__init__(rectangle)

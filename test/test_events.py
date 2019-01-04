@@ -101,14 +101,14 @@ class NoEvents(EventTester):
 class TestOneEvent(EventTester):
     def test_callback(self, before):
         self.add_queue_with_callback(self.dummy.increase_x)
-        assert 1 == len(self.publisher.events)
-        assert 0 == self.dummy.x
+        assert len(self.publisher.events) == 1
+        assert self.dummy.x == 0
         self.assert_x_after_ticks(1, 1)
         self.assert_x_after_ticks(2, 1)
 
     def test_callback_with_delay(self, before):
         self.add_queue_with_callback(self.dummy.increase_x_long)
-        assert 1 == len(self.publisher.events)
+        assert len(self.publisher.events) == 1
         self.assert_x_after_ticks(0, 0)  # 1
         self.assert_x_after_ticks(1, 1)  # 1
         self.assert_x_after_ticks(1, 4)  # 4
@@ -118,18 +118,18 @@ class TestOneEvent(EventTester):
 
     def test_callback_once(self, before):
         self.add_queue_with_callback(self.dummy.increase_x_once)
-        assert 1 == len(self.publisher.events)
+        assert len(self.publisher.events) == 1
         self.assert_x_after_ticks(0, 0)
         self.assert_x_after_ticks(1, 1)
-        assert 0 == len(self.publisher.events)
+        assert len(self.publisher.events) == 0
         self.assert_x_after_ticks(1, 10)
 
     def test_callback_no_return(self, before):
         self.add_queue_with_callback(self.dummy.increase_x_no_return)
-        assert 1 == len(self.publisher.events)
+        assert len(self.publisher.events) == 1
         self.assert_x_after_ticks(0, 0)
         self.assert_x_after_ticks(1, 1)
-        assert 0 == len(self.publisher.events)
+        assert len(self.publisher.events) == 0
         self.assert_x_after_ticks(1, 10)
 
     def test_multiple_no_return(self, before):
@@ -137,37 +137,37 @@ class TestOneEvent(EventTester):
             self.dummy.increase_x_no_return,
             self.dummy.increase_x_no_return,
             self.dummy.increase_x_no_return))
-        assert 1 == len(self.publisher.events)
+        assert len(self.publisher.events) == 1
         self.assert_x_after_ticks(0, 0)
         self.assert_x_after_ticks(3, 1)
-        assert 0 == len(self.publisher.events)
+        assert len(self.publisher.events) == 0
         self.assert_x_after_ticks(3, 10)
 
     def test_callback_delay(self, before):
         self.add_queue_with_callbacks(
             (self.dummy.increase_x_once_delay,
              self.dummy.increase_x))
-        assert 1 == len(self.publisher.events)
+        assert len(self.publisher.events) == 1
         self.assert_x_after_ticks(0, 0)
         self.assert_x_after_ticks(1, 1)
         self.assert_x_after_ticks(1, 4)
         self.assert_x_after_ticks(2, 1)
         self.assert_x_after_ticks(3, 1)
-        assert 1 == len(self.publisher.events)
+        assert len(self.publisher.events) == 1
 
     def test_multiple_delays(self, before):
         self.add_queue_with_callbacks(
             (self.dummy.increase_x_once_delay,
              self.dummy.increase_x_once_delay,
              self.dummy.increase_x_once_delay))
-        assert 1 == len(self.publisher.events)
+        assert len(self.publisher.events) == 1
         self.assert_x_after_ticks(0, 0)
         self.assert_x_after_ticks(1, 1)
         self.assert_x_after_ticks(1, 4)
         self.assert_x_after_ticks(2, 1)
         self.assert_x_after_ticks(2, 4)
         self.assert_x_after_ticks(3, 1)
-        assert 0 == len(self.publisher.events)
+        assert len(self.publisher.events) == 0
 
 
 class TestTwoQueues(EventTester):
