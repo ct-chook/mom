@@ -257,8 +257,9 @@ class MonsterBrain:
             .generate_path_matrix(self.monster.pos)
         if tower_matrix.end:
             self.target_pos = tower_matrix.end
-        assert self.target_pos, \
-            f'{tower_matrix.get_printable_dist_values()}'
+        assert self.target_pos, (
+            'No target pos for tower could be found '
+            f'{tower_matrix.get_printable_dist_values()}')
 
     def _set_destination_to_enemy_lord(self, player_id):
         # go to enemy lord

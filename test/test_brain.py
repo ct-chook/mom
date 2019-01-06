@@ -383,6 +383,8 @@ class TestHandleEnemy(TestCase):
 class TestNormalScenario(TestCase):
     def before_more(self):
         self.set_ai_type(AiType.default)
+        self.surround_pos_with_towers_for(self.board.lords[0].pos, 0)
+        self.surround_pos_with_towers_for(self.board.lords[1].pos, 1)
         self.create_tower_at((9, 9))
         self.create_tower_at((11, 11))
         self.create_tower_at((13, 13))
@@ -391,6 +393,12 @@ class TestNormalScenario(TestCase):
     def test_ai_doesnt_lock_up_the_game(self, before):
         for _ in range(100):
             self.do_enemy_turn()
+
+    def surround_pos_with_towers_for(self, pos, owner):
+        posses = self.board.get_posses_adjacent_to(pos)
+        for pos in posses:
+            self.board.set_terrain_to(pos, Terrain.TOWER)
+            self.board.capture_terrain_at(pos, owner)
 
 
 def assert_new_pos(monster, old_monster_pos):
