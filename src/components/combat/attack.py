@@ -8,13 +8,13 @@ class Attack:
     def __init__(
             self, base_damage, ali_bonus, exp, resistance, hits, accuracy,
             monster):
-        self.damage = self.set_final_damage(
+        self.damage = self._get_final_damage(
             base_damage, ali_bonus, exp, resistance)
         self.hits = hits
         self.accuracy = accuracy
         self.monster = monster
 
-    def set_final_damage(self, base_damage, ali_bonus, exp, resistance):
+    def _get_final_damage(self, base_damage, ali_bonus, exp, resistance):
         """Snippet from the FAQ:
 
         The fight conditions show the base damage. This is used to calculate the
@@ -29,8 +29,8 @@ class Attack:
         """
         damage1 = base_damage + floor(base_damage * ali_bonus)
         damage2 = damage1 + floor(exp / 30)
-        self.damage = damage2 - floor(damage2 * resistance / 100)
-        return self.damage
+        damage = damage2 - floor(damage2 * resistance / 100)
+        return damage
 
     def get_expected_damage(self):
         return self.damage * self.accuracy * 0.01 * self.hits

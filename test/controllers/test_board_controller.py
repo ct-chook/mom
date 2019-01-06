@@ -195,6 +195,11 @@ class TestAttacking(TestCase):
 
 
 class TestSummoning(TestCase):
+    def before_more(self):
+        self.surround_pos_with_captured_towers(daimyou_pos)
+        # add some more towers to compensate for starting monsters
+        self.surround_pos_with_captured_towers((15, 15))
+
     def test_summon_monster(self, make_board):
         left_of_daimyou = self.board.tile_at(left_of_daimyou_pos)
         assert left_of_daimyou.monster is None
@@ -233,6 +238,12 @@ class TestSummoning(TestCase):
         self.click_on(right_of_daimyou_pos)
         assert not self.controller.summon_window.visible
 
+    def surround_pos_with_captured_towers(self, pos):
+        posses = self.board.get_posses_adjacent_to(pos)
+        for adj_pos in posses:
+            self.board.on_tile(adj_pos).set_terrain_to(Terrain.TOWER)
+            self.board.capture_terrain_at(adj_pos, 0)
+
 
 class TestTowerCapture(TestCase):
     def before_more(self):
@@ -261,7 +272,8 @@ class TestTowerCapture(TestCase):
         enemy.ai_type = AiType.human
         # create enemy unit
         enemy_pos = (3, 3)
-        roc = self.board.summon_monster(MonsterType.LOC, enemy_pos, 1)
+        roc = self.board.place_new_monster(MonsterType.LOC, enemy_pos, 1)
+        old_tower_count = self.model.get_current_player().tower_count
         # player 1 turn
         self.move_crusader_to_tower()
         self.controller.tower_capture_window.handle_mouseclick()
@@ -277,7 +289,8 @@ class TestTowerCapture(TestCase):
         self.click_on(enemy_pos)
         self.click_on(tower_pos)
         self.assert_tower_captured_by(roc)
-        assert self.model.players.get_player_by_id(0).tower_count == 0
+        assert self.model.players.get_player_by_id(0).tower_count \
+            == old_tower_count
 
     def move_crusader_to_tower(self):
         crusader = self.board.monster_at(crusader_start_pos)

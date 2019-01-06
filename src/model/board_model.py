@@ -5,7 +5,7 @@ from src.components.board.pathing_components import PathMatrix
 from src.components.combat.attack import AttackFactory, AttackCollection
 from src.components.combat.combat import Combat
 from src.components.combat.combatlog import CombatLog
-from src.helper.Misc.constants import AiType
+from src.helper.Misc.constants import AiType, Terrain
 
 
 class BoardModel:
@@ -167,3 +167,12 @@ class BoardModel:
 
     def is_friendly_player(self, player_id):
         return player_id == self.get_current_player_id()
+
+    def is_valid_pos_for_summon(self, pos):
+        return self.board.monster_at(pos) is None \
+               and self._is_valid_terrain_for_summon(pos)
+
+    def _is_valid_terrain_for_summon(self, pos):
+        terrain = self.board.terrain_at(pos)
+        return (terrain == Terrain.TOWER or terrain == Terrain.FORTRESS
+            or terrain == Terrain.MAIN_FORTRESS)

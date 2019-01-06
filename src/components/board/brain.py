@@ -2,14 +2,12 @@ import logging
 import random
 from math import ceil
 
-from components.combat.attack import AttackFactory
 from src.components.board.pathing import MovementFinder, PathFinder, \
     PathMatrixFactory
 from src.components.board.pathing_components import PathMatrix, \
     TowerSearchMatrixFactory
 from src.helper.Misc.datatables import DataTables
 from src.helper.events.events import EventList
-from src.helper.functions import get_hexagonal_manhattan_distance
 from src.model import board_model
 
 
@@ -107,7 +105,7 @@ class PlayerDefaultBrain(PlayerBrain):
             summon_options = DataTables.get_summon_options(
                 self.player.lord_type)
             self.monster_to_summon = random.choice(summon_options)
-        if self._have_enough_mana_to_summon():
+        if self._possible_to_summon():
             pos = self._get_pos_to_summon()
             if pos:
                 monster = self.controller.handle_summon_monster(
@@ -116,16 +114,22 @@ class PlayerDefaultBrain(PlayerBrain):
                 self.did_action = True
                 self.monster_to_summon = None
 
-    def _have_enough_mana_to_summon(self):
+    def _possible_to_summon(self):
+        return self._have_enough_mana_to_summon_() \
+               and self._have_enough_towers_to_summon()
+
+    def _have_enough_mana_to_summon_(self):
         return self.player.mana >= \
                DataTables.get_monster_stats(self.monster_to_summon).summon_cost
+
+    def _have_enough_towers_to_summon(self):
+        return len(self.monsters) <= self.player.tower_count
 
     def _get_pos_to_summon(self):
         lord = self.model.get_lord_of_player()
         posses = self.model.board.get_posses_adjacent_to(lord.pos)
         for pos in posses:
-            tile = self.model.board.tile_at(pos)
-            if not tile.monster:
+            if self.model.is_valid_pos_for_summon(pos):
                 return pos
 
     def _finish_turn(self):
@@ -184,7 +188,6 @@ class MonsterBrain:
             return
 
         enemy, attack_range = self._get_best_enemy_to_attack()
-        self.matrix.print_dist_values()
         if enemy:
             tile_to_attack_from = self._get_tile_to_attack_from(enemy)
             if tile_to_attack_from:
@@ -223,6 +226,7 @@ class MonsterBrain:
         return destination
 
     def _move_to_tile_inside_matrix(self, tile):
+        assert tile in self.matrix
         self.matrix.end = tile
         path = self.path_finder.get_path_on_matrix(self.matrix)
         self.controller.handle_move_monster(self.monster, path)
@@ -230,8 +234,13 @@ class MonsterBrain:
     def _get_tile_to_attack_from(self, enemy):
         adjacent_tiles = self.board.get_posses_adjacent_to(enemy.pos)
         for tile in adjacent_tiles:
-            if tile in self.matrix:
+            if self._is_valid_destination(tile):
                 return tile
+
+    def _is_valid_destination(self, tile):
+        return (tile in self.matrix
+                and self.matrix.get_distance_value_at(tile) < 99
+                and self.board.monster_at(tile) is None)
 
     def _find_target(self):
         player_id = self.monster.owner
@@ -256,90 +265,64 @@ class MonsterBrain:
         enemy_lord = self.board.get_enemy_lord_for_player(player_id)
         self.target_pos = enemy_lord.pos
 
-    def _move_monster(self, movement):
-        destination = movement.get_destination()
-        if destination:
-            self.controller.handle_move_monster(self.monster, movement.path)
-        else:
-            make_player_brain_act_again(self.controller)
-
     def _get_best_enemy_to_attack(self):
-        enemies = self._get_enemies_in_matrix()
-        best_target, attack_range = self._get_optimal_attack(enemies)
-        return best_target, attack_range
-
-    def _get_enemies_in_matrix(self):
-        # todo enemies won't show up for dist values since enemies block tiles
-        return self.matrix.enemies
-
-    def _get_optimal_attack(self, enemies):
-        monster_to_attack = None
-        range_to_use = None
-        # the best_score we start with influences how agressive the monster is
-        # if it's low, the monster will attack just anything
-        # if it's high, the monster will only attack when it has a massive
-        # advantage
-        # if it's 0, the monster will be picky. keep it slightly below 0
-        best_score = -0.4
-        for enemy in enemies:
-            for attack_range in range(2):
-                monster_to_attack, range_to_use, best_score = \
-                    self._calculate_attack_score(
-                        attack_range, enemy, monster_to_attack, range_to_use,
-                        best_score)
-        return monster_to_attack, range_to_use
-
-    def _calculate_attack_score(self, attack_range, enemy, monster_to_attack,
-                                range_to_use, best_score):
-        damage1, damage2 = self.model.get_expected_damage_between(
-            self.monster, enemy, attack_range)
-        if damage1 <= 0:
-            return monster_to_attack, range_to_use, best_score
-        # 1 turn defeats should always be attacked
-        turns_to_defeat = ceil(enemy.hp / damage1)
-        if turns_to_defeat == 1:
-            score = 1000
-        # also attack lord unless better targets are available
-        elif enemy.is_lord():
-            score = 0
-        # prioritize the biggest difference in damage
-        else:
-            damage_percent1 = damage1 / enemy.stats.max_hp
-            damage_percent2 = damage2 / self.monster.stats.max_hp
-            cost1 = enemy.stats.summon_cost
-            # some enemies don't have a summon cost, typically powerful ones
-            if cost1 == 0:
-                cost1 = 200
-            cost2 = self.monster.stats.summon_cost
-            if cost2 == 0:
-                cost2 = 200
-            cost_damage1 = damage_percent1 * cost1
-            cost_damage2 = damage_percent2 * cost2
-            print(cost_damage1, cost_damage2)
-            score = cost_damage1 - cost_damage2
-        if score > best_score:
-            best_score = score
-            monster_to_attack = enemy
-            range_to_use = attack_range
-        return monster_to_attack, range_to_use, best_score
-
-    def _get_pos_closest_to_target(self):
-        # unused right now
-        start = self.monster.pos
-        closest_pos = None
-        lowest_delta = 99999
-        for pos in self.matrix:
-            delta = get_hexagonal_manhattan_distance(start, pos)
-            if delta < lowest_delta:
-                lowest_delta = delta
-                closest_pos = pos
-        return closest_pos
+        attack_finder = OptimalAttackFinder(self.model)
+        return attack_finder.get_optimal_attack(
+            self.monster, self.matrix.enemies)
 
     def _attack_monster(self):
         logging.info(f'{self.monster} is attacking {self.monster_to_attack}')
         monsters = (self.monster, self.monster_to_attack)
         range_ = self.range_to_attack_with
         self.controller.handle_attack_order(monsters, range_)
+
+    def _move_monster(self, movement):
+        """UNUSED"""
+        destination = movement.get_destination()
+        if destination:
+            self.controller.handle_move_monster(self.monster, movement.path)
+        else:
+            make_player_brain_act_again(self.controller)
+
+
+class OptimalAttackFinder:
+    def __init__(self, model):
+        self.monster = None
+        self.model = model
+        self.monster_to_attack = None
+        self.range_to_use = None
+        self.best_score = -1
+
+    def get_optimal_attack(self, monster, enemies):
+        self.monster = monster
+        # the best_score we start with influences how agressive the monster is
+        # if it's low, the monster will attack just anything
+        # if it's high, the monster will only attack when it has a massive
+        # advantage
+        # if it's 0, the monster will be picky. keep it slightly below 0
+        for enemy in enemies:
+            for attack_range in range(2):
+                self._update_best_score(attack_range, enemy)
+        return self.monster_to_attack, self.range_to_use
+
+    def _update_best_score(self, attack_range, enemy):
+        damage1, damage2 = self.model.get_expected_damage_between(
+            self.monster, enemy, attack_range)
+        if damage1 <= 0:
+            return
+        # 1 turn defeats should always be attacked
+        turns_to_defeat = ceil(enemy.hp / damage1)
+        if turns_to_defeat == 1:
+            score = 1
+        # prioritize highest % of hp caused in damage
+        else:
+            damage_percent1 = damage1 / enemy.stats.max_hp
+            damage_percent2 = damage2 / self.monster.stats.max_hp
+            score = damage_percent1 - damage_percent2
+        if score > self.best_score:
+            self.best_score = score
+            self.monster_to_attack = enemy
+            self.range_to_use = attack_range
 
 
 def make_player_brain_act_again(controller):

@@ -444,8 +444,9 @@ class PathGenerator:
             self._search_for_adjacent_tiles()
         # check
         for part in self.path:
-            assert part in self.path_matrix.dist_values, (
-                'Path is not fully present in dist values')
+            assert part in self.path_matrix, (
+                f'Path is not fully present in matrix: {self.path}'
+                f'{self.path_matrix.get_printable_dist_values()}')
         return self.path
 
     def _destination_not_reachable(self):
@@ -469,23 +470,12 @@ class PathGenerator:
             (self.x0, self.y0))
         for self.x1, self.y1 in adjacent_tiles:
             self._inspect_tile()
-        if not self.adj_found:
-            # now make the brave assumption that this is because the next
-            # step requires you to wait for the next turn, so the move cost
-            # difference is a little higher
-            for self.x1, self.y1 in adjacent_tiles:
-                next_tile_found = False
-                if self._has_proper_move_cost_difference():
-                    self.path.insert(0, (self.x1, self.y1))
-                    self.x0 = self.x1
-                    self.y0 = self.y1
-                    next_tile_found = True
-                if not self.adj_found:
-                    self.adj_found = next_tile_found
-            assert self.adj_found, \
-                (f'Could not retrace path. Stuck at {self.x0}:{self.y0}\n'
-                 f'Path so far: {self.path}\n'
-                 f'{self.path_matrix.get_printable_dist_values()}')
+            if self.adj_found:
+                break
+        assert self.adj_found, \
+            (f'Could not retrace path. Stuck at {self.x0}:{self.y0}\n'
+             f'Path so far: {self.path}\n'
+             f'{self.path_matrix.get_printable_dist_values()}')
 
     def _has_proper_move_cost_difference(self):
         path_cost_difference = (
@@ -497,19 +487,19 @@ class PathGenerator:
         return path_cost_difference > move_cost
 
     def _inspect_tile(self):
-        next_tile_found = False
         if self._tile_can_be_moved_to():
-            # if tile isn't the last tile, it can't be adjacent to enemy
-            self.path.insert(0, (self.x1, self.y1))
-            self.x0 = self.x1
-            self.y0 = self.y1
-            next_tile_found = True
-        if not self.adj_found:
-            self.adj_found = next_tile_found
+            self._add_tile_to_path()
 
     def _tile_can_be_moved_to(self):
         return (self._move_cost_difference_is_correct()
                 and self._next_tile_is_not_blocked())
+
+    def _add_tile_to_path(self):
+        # if tile isn't the last tile, it can't be adjacent to enemy
+        self.path.insert(0, (self.x1, self.y1))
+        self.x0 = self.x1
+        self.y0 = self.y1
+        self.adj_found = True
 
     def _move_cost_difference_is_correct(self):
         path_cost_difference = (
@@ -549,7 +539,7 @@ class SimplePathGenerator(PathGenerator):
     """Gives the shorest possible path, ignores monsters blocking the path"""
 
     def _next_tile_is_not_blocked(self):
-        return False
+        return True
 
 
 class MatrixFactory:

@@ -69,6 +69,10 @@ class Board:
         if self._get_current_player().mana < summon_cost:
             logging.info('Not enough mana to summon monster')
             return None
+        assert (self._get_current_player().tower_count + 1
+                >= len(self.monsters[self.get_current_player_id()])), (
+            f'Not enough towers, only have '
+            f'{self._get_current_player().tower_count}')
         monster = self.place_new_monster(monster_type, pos, owner)
         self._players.get_current_player().decrease_mana_by(summon_cost)
         monster.moved = True

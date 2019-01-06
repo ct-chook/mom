@@ -1,17 +1,19 @@
-import logging
-
 import pytest
 
 from src.components.board.brain import PlayerDefaultBrain, PlayerIdleBrain
 from src.components.board.monster import Monster
+from src.components.combat.combat import Combat
 from src.controller.board_controller import BoardController
 from src.controller.mainmenu_controller import MapOptions
-from src.helper.Misc.constants import Terrain, MonsterBehavior
+from src.helper.Misc.constants import Terrain
 from src.helper.Misc.options_game import Options
 from src.helper.events.events import EventList, EventQueue
 
-Options.headless = True
 
+Options.headless = True
+Combat.perfect_accuracy = True
+
+Type = Monster.Type
 chim_start_pos = (3, 3)
 
 
@@ -76,11 +78,14 @@ class TestCase:
             Monster.Type.CHIMERA, chim_start_pos, 1)
 
     def summon_troll_at(self, pos):
-        return self.summon_monster_at(Monster.Type.TROLL, pos)
+        return self.summon_monster(Monster.Type.TROLL, pos)
 
     def ensure_player_x_turn(self, number):
-        assert self.board.get_current_player_id() == number, (
+        assert self.is_player_x_turn(number), (
             f'It is still player {self.board.get_current_player_id()}\'s turn')
+
+    def is_player_x_turn(self, number):
+        return self.board.get_current_player_id() == number
 
     def end_turn(self):
         self.controller.end_of_turn_window.yes.handle_mouseclick()
@@ -102,10 +107,18 @@ class TestCase:
             f'Monster was at {self.chim.pos} instead of {pos} \
                       {self.board.debug_print()}'
 
-    def summon_monster_at(self, type_, pos):
+    def summon_monster(self, type_, pos):
         monster = self.board.place_new_monster(type_, pos, 0)
         assert monster is not None
         return monster
+
+    def do_enemy_turn(self):
+        self.end_turn()
+        for _ in range(2000):
+            if self.is_player_x_turn(0):
+                break
+            self.tick_event(60)
+        self.ensure_player_x_turn(0)
 
 
 class TestIdleBrain(TestCase):
@@ -138,49 +151,65 @@ class TestMoveToNearbyTarget(TestCase):
         self.check_move_action((18, 0))
 
 
-class TestHandleNearbyEnemy(TestCase):
+class TestHandleNearbyEnemies(TestCase):
     def test_attack_weakened_monster(self, before):
-        dragon_pos = (5, 3)
-        self.summon_weakened_dragon_at(dragon_pos)
-        self.end_turn()
-        self.tick_event(5000)
-        self.ensure_player_x_turn(0)
-        self.check_chim_pos((4, 3))
-        self.ensure_monster_is_dead(dragon_pos)
-        self.end_turn()
+        """Finish off monster with 1 hp"""
+        wraith_pos = (3, 5)
+        other_chim_pos = (5, 3)
+        self.summon_weakened_monster_at(Type.WRAITH, wraith_pos)
+        self.summon_monster(Type.CHIMERA, other_chim_pos)
+        self.ensure_monster_gets_killed(wraith_pos)
 
-    def test_ignore_phys_immune_monster(self, before):
-        # ignore this monster because chim's attacks are ineffective
-        wraith_pos = (5, 3)
-        self.summon_wraith_at(wraith_pos)
-        self.end_turn()
-        self.tick_event(200)
-        self.ensure_player_x_turn(0)
-        self.check_chim_pos((7, 0))
+    def test_ignore_phys_resistant_monster(self, before):
+        """ignore this monster because chim's attacks are ineffective"""
+        self.ensure_first_monster_is_attacked(Type.LIZARD, Type.DARK_W)
 
     def test_attack_other_chim(self, before):
-        other_chim_pos = (5, 3)
-        self.summon_chim_at(other_chim_pos)
+        """Mirror match"""
+        self.ensure_first_monster_is_attacked(Type.CHIMERA, Type.KING_D)
+
+    def test_attack_ranged_monster(self, before):
+        """Sneak in a close attack on a ranged monster"""
+        self.ensure_first_monster_is_attacked(Type.ARCH_A, Type.ICEGIANT)
+
+    def test_attack_melee_monster(self, before):
+        """Use a ranged attack on a monster bad in range combat"""
+        self.chim.set_monster_type(Type.VALKYRIE)
+        self.ensure_first_monster_is_attacked(Type.ATTACKER, Type.VALKYRIE)
+
+    def test_ignore_immune_monster(self, before):
+        """Ignore monster you can't deal damage to"""
+        self.chim.set_monster_type(Type.VALKYRIE)
+        self.ensure_first_monster_is_attacked(Type.FIRBOLG, Type.IRON_G)
+
+    def ensure_first_monster_is_attacked(self, type1, type2):
+        pos1 = (3, 5)
+        pos2 = (5, 3)
+        self.summon_monster(type1, pos1)
+        self.summon_monster(type2, pos2)
+        self.ensure_monster_gets_attacked(pos1)
+
+    def ensure_monster_gets_killed(self, pos):
+        self.ensure_monster_gets_attacked(pos)
+        self.ensure_monster_is_dead(pos)
+
+    def ensure_monster_gets_attacked(self, pos):
+        enemy = self.board.monster_at(pos)
+        old_hp = enemy.hp
         self.end_turn()
-        self.tick_event(5000)
+        self.tick_event(700)
         self.ensure_player_x_turn(0)
-        self.check_chim_pos((4, 3))
+        adjacent_tiles = self.board.get_posses_adjacent_to(pos)
+        assert self.chim.pos in adjacent_tiles, f'Chim was not next to {pos}'
+        assert enemy.hp < old_hp, 'Enemy hp did not change'
 
     def ensure_monster_is_dead(self, pos):
-        assert self.board.monster_at(pos) is None
+        assert self.board.monster_at(pos) is None, 'Monster is still alive'
 
-    def summon_weakened_dragon_at(self, pos):
-        dragon = self.summon_dragon_at(pos)
-        dragon.hp = 1
-
-    def summon_dragon_at(self, pos):
-        return self.summon_monster_at(Monster.Type.KING_D, pos)
-
-    def summon_wraith_at(self, pos):
-        self.summon_monster_at(Monster.Type.BLACK_W, pos)
-
-    def summon_chim_at(self, pos):
-        self.summon_monster_at(Monster.Type.CHIMERA, pos)
+    def summon_weakened_monster_at(self, type_, pos):
+        monster = self.summon_monster(type_, pos)
+        monster.hp = 1
+        return monster
 
 
 class TestMoveToFarTower(TestCase):
@@ -253,25 +282,52 @@ class TestSummoning(TestCase):
 
     def test_summon_monsters(self, before):
         self.set_mana_of_player_to(1, 220)
+        self.add_towers_to_summon_on()
         monsters = self.get_monsters_after_turn()
         assert len(monsters) > 2
 
     def test_no_mana_to_summon(self, before):
         self.set_mana_of_player_to(1, 0)
+        self.add_towers_to_summon_on()
         monsters = self.get_monsters_after_turn()
         assert len(monsters) == 2
 
     def test_summon_6_monsters_on_single_turn(self, before):
         self.set_mana_of_player_to(1, 1000)
+        self.add_towers_to_summon_on()
         monsters = self.get_monsters_after_turn()
         assert len(monsters) == 8
 
     def test_summon_monsters_on_map_edge(self, before):
         self.set_mana_of_player_to(1, 1000)
         self.board.set_monster_pos(self.wizard, (0, 1))
+        self.add_towers_to_summon_on()
         monsters = self.get_monsters_after_turn()
         # should be 5 + chim and wizard
         assert len(monsters) == 7
+
+    def test_cannot_summon_on_grass(self, before):
+        """Make towers but then move wizard away, surrounded by grass"""
+        self.set_mana_of_player_to(1, 1000)
+        self.add_towers_to_summon_on()
+        self.board.set_monster_pos(self.wizard, (6, 6))
+        monsters = self.get_monsters_after_turn()
+        # should be 2: chim and wizard
+        assert len(monsters) == 2
+
+    def test_cannot_summon_without_towers(self, before):
+        """Don't make towers so wizard cannot summon more"""
+        self.set_mana_of_player_to(1, 1000)
+        self.board.set_monster_pos(self.wizard, (0, 1))
+        monsters = self.get_monsters_after_turn()
+        # should be 2: chim and wizard
+        assert len(monsters) == 2
+
+    def add_towers_to_summon_on(self):
+        posses = self.board.get_posses_adjacent_to(self.wizard.pos)
+        for pos in posses:
+            self.board.on_tile(pos).set_terrain_to(Terrain.TOWER)
+            self.board.capture_terrain_at(pos, 1)
 
     def get_monsters_after_turn(self):
         monsters = self.model.get_monsters_of_player(1)
@@ -326,13 +382,15 @@ class TestHandleEnemy(TestCase):
 
 class TestNormalScenario(TestCase):
     def before_more(self):
-        self.create_tower_at((19, 19))
-        self.create_tower_at((17, 19))
+        self.set_ai_type(AiType.default)
+        self.create_tower_at((9, 9))
+        self.create_tower_at((11, 11))
+        self.create_tower_at((13, 13))
+        self.create_tower_at((15, 15))
 
     def test_ai_doesnt_lock_up_the_game(self, before):
-        self.end_turn()
-        self.tick_event(200)
-        self.ensure_player_x_turn(0)
+        for _ in range(100):
+            self.do_enemy_turn()
 
 
 def assert_new_pos(monster, old_monster_pos):

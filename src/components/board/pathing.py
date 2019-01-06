@@ -63,7 +63,6 @@ class PathFinder:
         matrix_factory = AStarMatrixFactory(self.board)
         path_matrix = matrix_factory.generate_path_matrix(
             beginning, end)
-        path_matrix.print_dist_values()
         return self.path_generator.get_path_on(path_matrix)
 
     def get_simple_path_between(self, beginning, end):
@@ -71,7 +70,6 @@ class PathFinder:
         matrix_factory = AStarMatrixFactory(self.board)
         path_matrix = matrix_factory.generate_path_matrix(
             beginning, end)
-        path_matrix.print_dist_values()
         return self.path_generator.get_path_on(path_matrix)
 
     def get_path_to_tower(self, beginning):

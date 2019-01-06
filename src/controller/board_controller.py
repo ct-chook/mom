@@ -4,7 +4,6 @@ from math import floor
 import pygame
 from pygame.rect import Rect
 
-from components.combat.attack import AttackCollection
 from src.abstract.view import View
 from src.abstract.window import Window, YesNoWindow
 from src.components.board.brain import PlayerIdleBrain, PlayerDefaultBrain
