@@ -29,14 +29,21 @@ class TestCase:
         attacks = self.model.get_short_and_long_attacks(monsters)
         attacks_left = attacks.get_all_ranges(0)
         attacks_right = attacks.get_all_ranges(1)
-        assert 10 == attacks_left[Range.CLOSE].damage
-        assert 6 == attacks_left[Range.LONG].damage
-        assert 6 == attacks_right[Range.CLOSE].damage
-        assert 8 == attacks_right[Range.LONG].damage
+        assert attacks_left[Range.CLOSE].damage == 10
+        assert attacks_left[Range.LONG].damage == 6
+        assert attacks_right[Range.CLOSE].damage == 6
+        assert attacks_right[Range.LONG].damage == 8
 
     def test_lose_lord_self(self, before):
         blue_lord = self.model.get_lord_of_player(0)
         assert blue_lord.type == Monster.Type.DAIMYOU
         self.model.kill_monster(blue_lord)
         assert self.model.game_over is True
+
+    def test_capturing_tower_increases_counter(self, before):
+        towers = self.model.get_current_player().tower_count
+        pos = (4, 4)
+        self.model.board.on_tile(pos).set_terrain_to(Terrain.TOWER)
+        self.model.board.capture_terrain_at(pos, 0)
+        assert self.model.get_current_player().tower_count == towers + 1
 

@@ -6,10 +6,6 @@ from src.components.combat.combat import Combat
 from src.components.combat.attack import Attack
 from src.controller.board_controller import BoardModel
 
-attack = 10
-accuracy = 100
-hits = 3
-max_hp = 40
 
 DAY, SUNSET, NIGHT, SUNRISE = range(4)
 CLOSE_RANGE, LONG_RANGE = range(2)
@@ -72,6 +68,7 @@ class TestDamageCalculationCombined(CombatTest):
 
 
 class TestRomanCombat(CombatTest):
+    # noinspection PyAttributeOutsideInit
     @pytest.fixture
     def before(self):
         self.model = BoardModel()
@@ -111,12 +108,12 @@ class TestInvalidAttacksBetweenRomans(TestRomanCombat):
         self.attack1 = self.combat._attacks.get_attack(1, LONG_RANGE)
 
     def test_attacks(self, before):
-        assert 0 == self.attack0.damage
-        assert 0 == self.attack1.damage
-        assert 0 == self.attack0.hits
-        assert 0 == self.attack1.hits
-        assert 60 == self.attack0.accuracy
-        assert 60 == self.attack1.accuracy
+        assert self.attack0.damage == 0
+        assert self.attack1.damage == 0
+        assert self.attack0.hits == 0
+        assert self.attack1.hits == 0
+        assert self.attack0.accuracy == 60
+        assert self.attack1.accuracy == 60
 
 
 class TestAligmentMultiplier(TestRomanCombat):
@@ -186,11 +183,11 @@ class TestPromotionFromWinning(TestRomanCombat):
 
     def test_promotion_in_result(self, before):
         assert MonsterType.CARTHAGO == self.combat_result.promotions[0]
-        assert 44 == self.combat_result.hp_end[0]
+        assert self.combat_result.hp_end[0] == 44
 
     def test_no_promotion_outside_result(self, before):
         assert self.roman_a.type == MonsterType.ROMAN
-        assert 33 == self.roman_a.hp
+        assert self.roman_a.hp == 33
 
 
 class TestPromotionFromSurviving(TestRomanCombat):
@@ -203,14 +200,14 @@ class TestPromotionFromSurviving(TestRomanCombat):
     def test_combat_result(self, before):
         assert MonsterType.CARTHAGO == self.combat_result.promotions[0]
         assert MonsterType.CARTHAGO == self.combat_result.promotions[1]
-        assert 44 == self.combat_result.hp_end[0]
-        assert 44 == self.combat_result.hp_end[1]
+        assert self.combat_result.hp_end[0] == 44
+        assert self.combat_result.hp_end[1] == 44
 
     def test_outside_combat_result(self, before):
         assert MonsterType.ROMAN == self.roman_a.type
         assert MonsterType.ROMAN == self.roman_b.type
-        assert 33 == self.roman_a.hp
-        assert 33 == self.roman_b.hp
+        assert self.roman_a.hp == 33
+        assert self.roman_b.hp == 33
 
 
 class TestPromotionFromMultipleRounds(TestRomanCombat):

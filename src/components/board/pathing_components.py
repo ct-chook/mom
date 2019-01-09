@@ -55,32 +55,54 @@ class PathMatrix:
     def get_printable_dist_values(self):
         printer = MatrixPrinter(self)
         return printer.get_printable_dist_values()
+    
+    def get_printable_heuristic_values(self):
+        printer = MatrixPrinter(self)
+        return printer.get_printable_heuristic_values()
+
+    def get_printable_terrain_cost_values(self):
+        printer = MatrixPrinter(self)
+        return printer.get_printable_terrain_cost_values()
 
     def __iter__(self):
         return iter(self.dist_values)
 
 
 class MatrixPrinter:
+    PRINT_DIST, PRINT_HEURISTIC, PRINT_TERRAIN_COST = range(3)
+
     def __init__(self, matrix):
         self.matrix = matrix
+        self.mode = None
 
-    def get_printable_dist_values(self, mode=0):
+    def get_printable_dist_values(self):
+        self.mode = self.PRINT_DIST
+        return self._get_values()
+
+    def get_printable_heuristic_values(self):
+        self.mode = self.PRINT_HEURISTIC
+        return self._get_values()
+
+    def get_printable_terrain_cost_values(self):
+        self.mode = self.PRINT_TERRAIN_COST
+        return self._get_values()
+
+    def _get_values(self):
         min_x, min_y, max_x, max_y = self._get_row_and_col_count()
         row_count = (max_y - min_y + 1)
         col_count = max_x - min_x + 1
         to_print = []
         for _ in range(row_count):
             to_print.append([''] * col_count)
-
         for x in range(min_x, max_x + 1):
             for y in range(min_y, max_y + 1):
                 index_y = y - min_y
                 index_x = x - min_x
                 to_print[index_y][index_x] = \
-                    self._get_dist_value_representation((x, y), mode)
+                    self._get_dist_value_representation((x, y))
         result = []
         for row in range(row_count):
-            if row % 2 == 0:
+            if row % 2 == 1:
                 prefix = '   '
             else:
                 prefix = ''
@@ -110,11 +132,15 @@ class MatrixPrinter:
 
         return min_x, min_y, max_x, max_y
 
-    def _get_dist_value_representation(self, pos, mode):
-        if mode == 0:
+    def _get_dist_value_representation(self, pos):
+        if self.mode == self.PRINT_DIST:
             val = self.matrix.get_distance_value_at(pos)
-        else:
+        elif self.mode == self.PRINT_HEURISTIC:
             val = self.matrix.get_heuristic_value_at(pos)
+        else:
+            terrain_type = self.matrix.monster.terrain_type
+            terrain = self.matrix.board.terrain_at(pos)
+            val = DataTables.get_terrain_cost(terrain, terrain_type)
         if val is None:
             return '  '
         else:
@@ -215,7 +241,8 @@ class MatrixProcessor:
             return
         move_cost = self._get_move_cost_for(adj_pos)
         if move_cost == 99:
-            self.matrix.set_distance_value_at(adj_pos, IMPASSIBLE)
+            if self.matrix.get_distance_value_at(adj_pos) is UNEXPLORED:
+                self.matrix.set_distance_value_at(adj_pos, IMPASSIBLE)
             return
         self.move_points_next_tile = self.move_points_base_tile + move_cost
         if self._move_is_valid_and_better(adj_pos):
@@ -371,12 +398,9 @@ class AStarMatrixProcessor(MatrixProcessor):
         return dist_value > self.move_points_next_tile
 
     def _get_heuristic(self, pos):
-        heuristic = self.matrix.get_heuristic_value_at(pos)
-        if heuristic == UNEXPLORED:
-            dist_from_destination = \
-                self._get_manhattan_distance_to_destination(pos)
-            heuristic = self.matrix.get_distance_value_at(
-                pos) + dist_from_destination
+        dist_from_destination = \
+            self._get_manhattan_distance_to_destination(pos) * 1.001
+        heuristic = self.move_points_next_tile + dist_from_destination
         self.matrix.set_heuristic_value_at(pos, heuristic)
         return heuristic
 

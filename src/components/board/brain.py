@@ -181,6 +181,9 @@ class MonsterBrain:
 
         assert self.monster is not None
         self._find_target()
+        if not self.target_pos:
+            pass
+            # this is possible, target is too far away
         self.matrix = self.matrix_generator.generate_path_matrix(
             self.monster.pos)
         if self.target_pos and self.target_pos in self.matrix:
@@ -257,9 +260,6 @@ class MonsterBrain:
             .generate_path_matrix(self.monster.pos)
         if tower_matrix.end:
             self.target_pos = tower_matrix.end
-        assert self.target_pos, (
-            'No target pos for tower could be found '
-            f'{tower_matrix.get_printable_dist_values()}')
 
     def _set_destination_to_enemy_lord(self, player_id):
         # go to enemy lord

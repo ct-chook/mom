@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 
 from src.components.board.brain import PlayerDefaultBrain, PlayerIdleBrain
@@ -114,10 +116,11 @@ class TestCase:
 
     def do_enemy_turn(self):
         self.end_turn()
-        for _ in range(2000):
+        for _ in range(120):
             if self.is_player_x_turn(0):
                 break
             self.tick_event(60)
+            logging.info('60 frames passed')
         self.ensure_player_x_turn(0)
 
 

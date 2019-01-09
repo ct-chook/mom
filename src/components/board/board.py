@@ -82,8 +82,8 @@ class Board:
         """Places a new monster without checking/reducing mana or flagging it"""
         assert not self.monster_at(pos), \
             f'Tried to summon a ' \
-                f'{DataTables.get_monster_stats(monster_type).name} at {pos} ' \
-                f'but it is already occupied by a {self.monster_at(pos)} '
+            f'{DataTables.get_monster_stats(monster_type).name} at {pos} ' \
+            f'but it is already occupied by a {self.monster_at(pos)} '
         new_monster = Monster(monster_type, pos, owner, self.terrain_at(pos))
         self.monsters[owner].append(new_monster)
         self.tile_at(new_monster.pos).monster = new_monster
@@ -264,7 +264,7 @@ class BoardPrinter:
         elif terrain == Terrain.DUNE:
             return ':'
         elif terrain == Terrain.FOREST:
-            return 't'
+            return '🌲'
         elif terrain == Terrain.FORTRESS:
             return '='
         elif terrain == Terrain.GRASS:
@@ -272,9 +272,9 @@ class BoardPrinter:
         elif terrain == Terrain.MAIN_FORTRESS:
             return '@'
         elif terrain == Terrain.MOUNTAIN:
-            return 'm'
+            return '⛰'
         elif terrain == Terrain.OCEAN:
-            return '~'
+            return '🌊'
         elif terrain == Terrain.RIVER:
             return '-'
         elif terrain == Terrain.ROCKY:
@@ -284,7 +284,7 @@ class BoardPrinter:
         elif terrain == Terrain.TUNDRA:
             return '#'
         elif terrain == Terrain.VOLCANO:
-            return '^'
+            return '🌋'
         else:
             return '?'
 
@@ -307,9 +307,15 @@ class MapLoader:
             mapname = mapoptions.mapname
         self.mapname = mapname
         if self.mapname == 'random':
+            # todo below is ugly and bad
+            self.x_max = 20
+            self.y_max = 20
+            self.board.x_max = self.x_max
+            self.board.y_max = self.y_max
             self._fill_with_grass_tiles()
             self._randomize_terrain()
-            self._initialize_random_monsters()
+            self._create_players(mapoptions)
+            self.board.set_players(self.players)
         else:
             self._create_players(mapoptions)
             if self.mapname == 'test':
@@ -367,18 +373,6 @@ class MapLoader:
         self.board.place_new_monster(random.randint(1, 82), (8, 8), blue)
         self.board.place_new_monster(random.randint(1, 82), (8, 9), red)
 
-    def _add_random_monsters(self, player):
-        # adds phoenix for testing purposes
-        self.board.place_new_monster(
-            MonsterType.PHOENIX,
-            (self._get_random_x(), self._get_random_y()),
-            player)
-        for _ in range(5):
-            self.board.place_new_monster(
-                random.randint(10, 82),
-                (self._get_random_x(), self._get_random_y()),
-                player)
-
     def _get_random_y(self):
         return random.randint(0, self.y_max - 1)
 
@@ -429,19 +423,17 @@ class MapLoader:
             n += 1
 
     def _fill_with_grass_tiles(self):
+        assert self.x_max
+        assert self.y_max
         for x in range(self.x_max):
             self.board.tiles.append([])
             for y in range(self.y_max):
                 self.board.tiles[x].append(Tile(Terrain.GRASS))
 
     def _randomize_terrain(self):
-        pos = (1, 1)
+        pos = (self._get_random_x(), self._get_random_y())
         for terrain in range(13):
             for i in range(round(self.x_max * self.y_max * 0.05)):
                 while self.board.terrain_at(pos) != Terrain.GRASS:
                     pos = (self._get_random_x(), self._get_random_y())
-                    self.board.tile_at(pos).terrain = terrain
-
-    def _initialize_random_monsters(self):
-        for player_id in range(len(self.board._players)):
-            self._add_random_monsters(player_id)
+                self.board.on_tile(pos).set_terrain_to(terrain)
