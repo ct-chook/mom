@@ -1,6 +1,6 @@
 from decimal import Decimal
-from helper.Misc.datatables import DataTables
-from helper.dictionaryprinter import DictionaryPrinter
+from src.helper.Misc.datatables import DataTables
+from src.helper.dictionaryprinter import DictionaryPrinter
 
 
 class DijkstraPrinter(DictionaryPrinter):

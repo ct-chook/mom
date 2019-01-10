@@ -209,7 +209,9 @@ class MonsterBrain:
 
         if new_destination:
             destination = new_destination
+            assert destination in self.matrix
         assert destination is not None
+        assert destination in self.matrix
         # sometimes destination isn't inside matrix?
         # matrix seems to be faulty, dist values aren't always correct
         self._move_to_pos_inside_matrix(destination)

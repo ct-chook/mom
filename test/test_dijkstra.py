@@ -1,15 +1,13 @@
+import pytest
 import random
 
-import pytest
-
-from components.board.board import Board, MapLoader
-from components.board.dijkstra import DijkstraGraph, DijkstraPrinter
-from components.board.monster import Monster
-from components.board.pathing import PathMatrixFactory
-from components.board.pathing_components import AStarMatrixFactory, \
-    DictionaryPrinter
-from controller.mainmenu_controller import MapOptions
-from helper.Misc.constants import IMPASSIBLE, UNEXPLORED
+from src.components.board.board import Board, MapLoader
+from src.components.board.dijkstra import DijkstraGraph, DijkstraPrinter
+from src.components.board.monster import Monster
+from src.components.board.pathing import PathMatrixFactory
+from src.components.board.pathing_components import AStarMatrixFactory
+from src.controller.mainmenu_controller import MapOptions
+from src.helper.Misc.constants import IMPASSIBLE, UNEXPLORED
 
 
 class TestCase:

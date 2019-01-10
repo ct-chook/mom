@@ -1,8 +1,8 @@
 import heapq
 from math import floor
 
-from components.board.dijkstra import DijkstraGraph
-from helper.dictionaryprinter import DictionaryPrinter
+from src.components.board.dijkstra import DijkstraGraph
+from src.helper.dictionaryprinter import DictionaryPrinter
 from src.helper import functions
 from src.helper.Misc.constants import IMPASSIBLE, UNEXPLORED
 from src.helper.Misc.datatables import DataTables
