@@ -181,20 +181,20 @@ class MonsterBrain:
 
         assert self.monster is not None
         self._find_target()
-        if not self.target_pos:
-            pass
-            # this is possible, target is too far away
+        assert self.target_pos
         self.matrix = self.matrix_generator.generate_path_matrix(
             self.monster.pos)
+        # for now check for bugs
+        self.matrix.check_validitiy()
         if self.target_pos and self.target_pos in self.matrix:
-            self._move_to_tile_inside_matrix(self.target_pos)
+            self._move_to_pos_inside_matrix(self.target_pos)
             return
 
         enemy, attack_range = self._get_best_enemy_to_attack()
         if enemy:
             tile_to_attack_from = self._get_tile_to_attack_from(enemy)
             if tile_to_attack_from:
-                self._move_to_tile_inside_matrix(tile_to_attack_from)
+                self._move_to_pos_inside_matrix(tile_to_attack_from)
                 self.monster_to_attack = enemy
                 self.range_to_attack_with = attack_range
                 self.monster.moved = False  # so it can move again next time
@@ -205,11 +205,14 @@ class MonsterBrain:
         if self.board.monster_at(destination):
             new_destination = self._get_new_destination(destination)
             if not new_destination:
-                return
+                new_destination = self.monster.pos
 
         if new_destination:
             destination = new_destination
-        self._move_to_tile_inside_matrix(destination)
+        assert destination is not None
+        # sometimes destination isn't inside matrix?
+        # matrix seems to be faulty, dist values aren't always correct
+        self._move_to_pos_inside_matrix(destination)
 
     def _get_new_destination(self, destination):
         new_destination = None
@@ -228,9 +231,13 @@ class MonsterBrain:
         destination = path.get_destination()
         return destination
 
-    def _move_to_tile_inside_matrix(self, tile):
-        assert tile in self.matrix
-        self.matrix.end = tile
+    def _move_to_pos_inside_matrix(self, pos):
+        assert pos in self.matrix, f'{self.matrix.get_printable_dist_values()}'
+        if self.monster.pos == pos:
+            # don't move monster, just do the next action
+            make_player_brain_act_again(self.controller)
+            return
+        self.matrix.end = pos
         path = self.path_finder.get_path_on_matrix(self.matrix)
         self.controller.handle_move_monster(self.monster, path)
 

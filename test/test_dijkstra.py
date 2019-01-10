@@ -1,81 +1,19 @@
 import random
-from decimal import Decimal
-from math import floor
 
 import pytest
 
 from components.board.board import Board, MapLoader
+from components.board.dijkstra import DijkstraGraph, DijkstraPrinter
 from components.board.monster import Monster
 from components.board.pathing import PathMatrixFactory
-from components.board.pathing_components import AStarMatrixFactory
+from components.board.pathing_components import AStarMatrixFactory, \
+    DictionaryPrinter
 from controller.mainmenu_controller import MapOptions
 from helper.Misc.constants import IMPASSIBLE, UNEXPLORED
-from helper.Misc.datatables import DataTables
-from helper.functions import get_hexagonal_manhattan_distance
-
-INFINITY = Decimal('Infinity')
-
-
-class Edge:
-    def __init__(self, to_node, length):
-        self.to_node = to_node
-        self.length = length
-
-
-class Graph:
-    def __init__(self, node_count):
-        self.node_count = node_count
-        self.edges = {}
-
-    def add_edge(self, from_node, to_node, length):
-        edge = Edge(to_node, length)
-        if from_node in self.edges:
-            from_node_edges = self.edges[from_node]
-        else:
-            self.edges[from_node] = dict()
-            from_node_edges = self.edges[from_node]
-        from_node_edges[to_node] = edge
-
-    def dijkstra(self, source):
-        unvisited_nodes = set()
-        dist = {}
-        prev = {}
-
-        for node in range(self.node_count):
-            dist[node] = INFINITY
-            prev[node] = INFINITY
-            unvisited_nodes.add(node)
-
-        # distance from source to source
-        dist[source] = 0
-        while unvisited_nodes:
-            # node with the least distance selected first
-            node = self._min_dist(unvisited_nodes, dist)
-            unvisited_nodes.remove(node)
-            if node in self.edges:
-                for _, edge in self.edges[node].items():
-                    alt = dist[node] + edge.length
-                    if alt < dist[edge.to_node]:
-                        # a shorter path to edge has been found
-                        dist[edge.to_node] = alt
-                        prev[edge.to_node] = node
-        return dist, prev
-
-    def _min_dist(self, q, dist):
-        """
-        Returns the node with the smallest distance in q.
-        Implemented to keep the main algorithm clean.
-        """
-        min_node = None
-        for node in q:
-            if min_node is None:
-                min_node = node
-            elif dist[node] < dist[min_node]:
-                min_node = node
-        return min_node
 
 
 class TestCase:
+    # noinspection PyAttributeOutsideInit
     @pytest.fixture
     def before(self):
         self.board = Board()
@@ -84,7 +22,15 @@ class TestCase:
         mapoptions.mapname = 'random'
         mapload.load_map(mapoptions)
         self.terrain_type = None
+        self.generator = None
 
+    def _place_monster(self, start):
+        monster_type = random.randint(0, Monster.Type.TAITAN)
+        monster = self.board.place_new_monster(monster_type, start, 0)
+        return monster
+
+
+class TestDijkstraWithPathingComparison(TestCase):
     def test_single_turn(self, before):
         self.generator = PathMatrixFactory(self.board)
         for _ in range(10):
@@ -95,23 +41,22 @@ class TestCase:
         start = (9, 9)
         monster = self._place_monster(start)
         matrix = self.generator.generate_path_matrix(start)
-        graph = self.get_graph(self.board)
-        dist, prev = graph.dijkstra(self.pos_to_index(start))
+        graph = DijkstraGraph(self.board, monster)
+        dist, prev = graph.dijkstra(start)
         for index in dist:
-            pos = self.index_to_pos(index)
+            pos = index
             # convert pos to node index
-            index = self.pos_to_index(pos)
             matrix_val = matrix.get_distance_value_at(pos)
-            dijkstra_val = dist[index]
+            dijkstra_val = dist[pos]
             if matrix_val == UNEXPLORED:
                 assert dijkstra_val > monster.stats.move_points, (
-                    f'{self._get_error(matrix, pos)}')
+                    f'{self._get_error(matrix, pos, dist)}')
             elif matrix_val == IMPASSIBLE:
-                assert dijkstra_val == INFINITY, (
-                    f'{self._get_error(matrix, pos)}')
+                assert dijkstra_val == DijkstraGraph.INFINITY, (
+                    f'{self._get_error(matrix, pos, dist)}')
             else:
                 assert matrix_val == dijkstra_val, (
-                    f'{self._get_error(matrix, pos)}')
+                    f'{self._get_error(matrix, pos, dist)}')
         self.board.remove_monster(monster)
 
     def test_a_star(self, before):
@@ -125,52 +70,85 @@ class TestCase:
                random.randint(0, self.board.y_max - 1))
         monster = self._place_monster(start)
         matrix = self.a_star_generator.generate_path_matrix(start, end)
-        graph = self.get_graph(self.board)
-        dist, prev = graph.dijkstra(self.pos_to_index(start))
+        graph = DijkstraGraph(self.board, monster)
+        dist, prev = graph.dijkstra(start)
         # only compare end
         matrix_val = matrix.get_distance_value_at(end)
-        dijkstra_val = dist[self.pos_to_index(end)]
+        dijkstra_val = dist[end]
         if matrix_val >= 99:
-            assert dijkstra_val == INFINITY, f'{self._get_error(matrix, end)}'
+            assert dijkstra_val == DijkstraGraph.INFINITY, (
+                f'{self._get_error(matrix, end, dist)}')
         else:
-            assert matrix_val == dijkstra_val, f'{self._get_error(matrix, end)}'
+            assert matrix_val == dijkstra_val, \
+                f'{self._get_error(matrix, end, dist)}'
         self.board.remove_monster(monster)
 
-    def _get_error(self, matrix, pos):
+    def _get_error(self, matrix, pos, dist):
+        dijkstra_printer = DijkstraPrinter(dist)
         return (f'wrong val at pos {pos}\n'
                 'Distance:\n'
                 f'{matrix.get_printable_dist_values()}\n'
                 'Terrain cost:\n'
                 f'{matrix.get_printable_terrain_cost_values()}\n'
                 'Heuristic:\n'
-                f'{matrix.get_printable_heuristic_values()}\n')
+                f'{matrix.get_printable_heuristic_values()}\n'
+                'Dijkstra:\n'
+                f'{dijkstra_printer.get_printable_values()}')
 
-    def _place_monster(self, start):
-        monster_type = random.randint(0, Monster.Type.TAITAN)
-        monster = self.board.place_new_monster(monster_type, start, 0)
-        self.terrain_type = monster.terrain_type
-        return monster
 
-    def pos_to_index(self, pos):
-        return pos[0] * self.board.x_max + pos[1]
+class TestDijkstraAlgorithm(TestCase):
+    def test_if_algorithm_is_correct(self):
+        for _ in range(10):
+            self.run_algorithm()
 
-    def index_to_pos(self, index):
-        return index % self.board.x_max, floor(index / self.board.x_max)
+    def run_algorithm(self):
+        self.board = Board()
+        mapload = MapLoader(self.board)
+        mapoptions = MapOptions()
+        mapload.load_random_map(4, 4, mapoptions)
+        self.terrain_type = None
+        self.generator = None
+        start = (0, 0)
+        end = (3, 3)
+        monster = self._place_monster(start)
+        graph = DijkstraGraph(self.board, monster)
+        dist, prev = graph.dijkstra(start)
+        score = self.naive(graph, start, end)
+        assert dist[end] == score, f'{self._get_error(end, dist)}'
+        self.board.remove_monster(monster)
 
-    def get_graph(self, board):
-        count = board.x_max * board.y_max
-        graph = Graph(count)
-        for x in range(self.board.x_max):
-            for y in range(self.board.y_max):
-                self._add_edges_starting_at((x, y), graph)
-        return graph
+    def naive(self, graph, start, end):
+        # recursively loop till end is found, save lowest score
+        lowest_score = DijkstraGraph.INFINITY
+        score = 0
+        depth = 0
+        edges_visited = {}
+        lowest_score = self.get_score(
+            graph, start, end, score, lowest_score, depth, edges_visited)
+        return lowest_score
 
-    def _add_edges_starting_at(self, pos, graph):
-        adj_posses = self.board.get_posses_adjacent_to(pos)
-        for adj_pos in adj_posses:
-            terrain = self.board.terrain_at(adj_pos)
-            move_cost = DataTables.get_terrain_cost(terrain, self.terrain_type)
-            if move_cost < 99:
-                graph.add_edge(
-                    self.pos_to_index(pos), self.pos_to_index(adj_pos),
-                    move_cost)
+    def get_score(self, graph, node, end, score, lowest_score, depth,
+                  edges_visited):
+        if node in edges_visited or depth >= len(graph.edges):
+            return lowest_score
+        if node == end:
+            if score < lowest_score:
+                lowest_score = score
+        elif node in graph.edges:
+            edges = graph.edges[node]
+            for key in edges:
+                edge = edges[key]
+                next_ = edge.to_node
+                new_score = score + edge.length
+                edges_visited = edges_visited.copy()
+                edges_visited[node] = True
+                lowest_score = self.get_score(
+                    graph, next_, end, new_score, lowest_score, depth + 1,
+                    edges_visited)
+        return lowest_score
+
+    def _get_error(self, pos, dist):
+        dijkstra_printer = DijkstraPrinter(dist)
+        return (f'wrong val at pos {pos}\n'
+                'Dijkstra:\n'
+                f'{dijkstra_printer.get_printable_values()}')
