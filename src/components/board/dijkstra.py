@@ -39,13 +39,14 @@ class DijkstraGraph:
 
     def _add_edges_starting_at(self, pos):
         adj_posses = self.board.get_posses_adjacent_to(pos)
-        if self._cannot_move_from_pos(adj_posses):
-            return
+        if pos != self.monster.pos:
+            if self._cannot_move_from_pos(adj_posses):
+                return
         for adj_pos in adj_posses:
             terrain = self.board.terrain_at(adj_pos)
             move_cost = DataTables.get_terrain_cost(
                 terrain, self.terrain_type)
-            if self._can_move_to(pos, move_cost):
+            if self._can_move_to(adj_pos, move_cost):
                 self._add_edge(pos, adj_pos, move_cost)
 
     def _cannot_move_from_pos(self, adj_posses):

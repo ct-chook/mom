@@ -394,7 +394,7 @@ class TestNormalScenario(TestCase):
         self.create_tower_at((15, 15))
 
     def test_ai_doesnt_lock_up_the_game(self, before):
-        for _ in range(100):
+        for _ in range(50):
             self.do_enemy_turn()
 
     def surround_pos_with_towers_for(self, pos, owner):

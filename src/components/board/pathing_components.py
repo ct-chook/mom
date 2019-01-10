@@ -78,10 +78,14 @@ class PathMatrix:
                 dijk_val = dist[pos]
                 assert dist_val == dijk_val, (
                     f'Mismatch at {pos}: expected {dijk_val} but was {dist_val}'
-                    '\nDistance values:\n'
+                    f'{self.board.debug_print()}\n'
+                    f'monster: {self.monster}\n'
+                    'Distance values:\n'
                     f'{self.get_printable_dist_values()}\n'
                     'Dijkstra values:\n'
-                    f'{graph.get_printable_values(dist)}')
+                    f'{graph.get_printable_values(dist)}\n'
+                    'Node count:\n'
+                    f'{len(graph.edges)}')
 
 
 class MatrixPrinter(DictionaryPrinter):

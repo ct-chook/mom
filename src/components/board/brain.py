@@ -185,7 +185,7 @@ class MonsterBrain:
         self.matrix = self.matrix_generator.generate_path_matrix(
             self.monster.pos)
         # for now check for bugs
-        self.matrix.check_validitiy()
+        #self.matrix.check_validitiy()
         if self.target_pos and self.target_pos in self.matrix:
             self._move_to_pos_inside_matrix(self.target_pos)
             return
