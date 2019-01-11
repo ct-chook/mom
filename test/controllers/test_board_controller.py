@@ -311,4 +311,4 @@ class TestTowerCapture(TestCase):
         assert self.board.tower_owner_at(tower_pos) == monster.owner, \
             'Wrong owner'
         player = self.model.players.get_player_by_id(monster.owner)
-        assert player.tower_count == 1
+        assert player.tower_count == 8

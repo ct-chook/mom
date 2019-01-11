@@ -321,6 +321,19 @@ class MapLoader:
             self._add_lords()
             if test:
                 self.set_test_monsters()
+                self._generate_towers()
+
+    def _generate_towers(self):
+        for player_id in self.board.lords:
+            posses = []
+            lord = self.board.lords[player_id]
+            posses.append(lord.pos)
+            posses += self.board.get_posses_adjacent_to(lord.pos)
+            for pos in posses:
+                terrain = self.board.terrain_at(pos)
+                if terrain == Terrain.GRASS:
+                    self.board.on_tile(pos).set_terrain_to(Terrain.TOWER)
+                    self.board.capture_terrain_at(pos, player_id)
 
     def load_random_map(self, x_max, y_max, mapoptions):
         self.x_max = x_max

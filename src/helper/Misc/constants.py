@@ -29,7 +29,7 @@ class DayTime:
 
 class Terrain:
     (MAIN_FORTRESS, FORTRESS, TOWER, DUNE, FOREST, GRASS, MOUNTAIN, OCEAN,
-     RIVER, ROCKY, SWAMP, TUNDRA, VOLCANO, TOWER_CLAIMED, FOG) = range(15)
+     RIVER, ROCKY, SWAMP, TUNDRA, VOLCANO) = range(13)
 
 
 class Movetype:

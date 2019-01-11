@@ -6,6 +6,9 @@ from src.helper.Misc.constants import Terrain
 from src.helper.Misc.posconverter import PosConverter
 from src.helper.Misc.spritesheet import SpriteSheetFactory
 
+CAPTURED_TOWER_SPRITE = 13
+FOG_SPRITE = 14
+
 
 class TileBlitter:
     def __init__(self, view, board, camera, mode=0):
@@ -44,14 +47,6 @@ class TileBlitter:
         self.blit_monsters()
         self.blit_all_fog()
 
-
-    # def animation_init(self, path, monster):
-    #     self.path = path
-    #     self.animated_monster = monster
-    #     logging.info(f'Moving monster {monster.name} along path {path}')
-    #     self.path_index = 1  # skip beginning of path, is monster starting pos
-
-
     def blit_all_terrain(self):
         x_max = self.__adjust_x_max_for_camera()
         y_max = self.__adjust_y_max_for_camera()
@@ -63,13 +58,10 @@ class TileBlitter:
         terrain_id = self.board.terrain_at(pos)
         if terrain_id is None:
             return  # terrain outside bounds
-        if terrain_id == Terrain.TOWER:
-            if (self.board.has_tower_at(pos)
-                    and self.board.tower_owner_at(pos) is not None):
-                terrain_sprite = self.terrain_sprites.get_sprite(
-                    Terrain.TOWER_CLAIMED + self.board.tower_owner_at(pos))
-            else:
-                terrain_sprite = self.terrain_sprites.get_sprite(terrain_id)
+        if (terrain_id == Terrain.TOWER
+                and self.board.tower_owner_at(pos) is not None):
+            terrain_sprite = self.terrain_sprites.get_sprite(
+                CAPTURED_TOWER_SPRITE + self.board.tower_owner_at(pos) + 2)
         else:
             terrain_sprite = self.terrain_sprites.get_sprite(terrain_id)
         self.blit_surface_at_board_pos(terrain_sprite, pos)
@@ -79,7 +71,7 @@ class TileBlitter:
             return
         x_max = self.__adjust_x_max_for_camera()
         y_max = self.__adjust_y_max_for_camera()
-        fog_sprite = self.terrain_sprites.get_sprite(Terrain.FOG)
+        fog_sprite = self.terrain_sprites.get_sprite(FOG_SPRITE)
         for y in range(self.camera.y, y_max):
             for x in range(self.camera.x, x_max):
                 self._blit_transparent_tile(fog_sprite, x, y)
@@ -102,9 +94,10 @@ class TileBlitter:
         return x_max
 
     def blit_monsters(self):
-        return # monsters should be sprites
+        return  # monsters should be sprites
 
     def transparent_blit_at_board_pos(self, sprite, pos):
+        # todo make sprite in spritesheet transparent instead
         sprite.convert_alpha()
         sprite.set_alpha(127)
         self.blit_surface_at_board_pos(sprite, pos)
