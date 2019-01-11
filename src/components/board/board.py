@@ -299,16 +299,6 @@ class MapLoader:
         self.start_posses = []
         self.mapoptions = None
 
-    def load_random_map(self, x_max, y_max, mapoptions):
-        self.x_max = x_max
-        self.y_max = y_max
-        self.board.x_max = self.x_max
-        self.board.y_max = self.y_max
-        self._fill_with_grass_tiles()
-        self._randomize_terrain()
-        self._create_players(mapoptions)
-        self.board.set_players(self.players)
-
     def load_map(self, mapoptions=None):
         self.mapoptions = mapoptions
         if not mapoptions:
@@ -331,6 +321,16 @@ class MapLoader:
             self._add_lords()
             if test:
                 self.set_test_monsters()
+
+    def load_random_map(self, x_max, y_max, mapoptions):
+        self.x_max = x_max
+        self.y_max = y_max
+        self.board.x_max = self.x_max
+        self.board.y_max = self.y_max
+        self._fill_with_grass_tiles()
+        self._randomize_terrain()
+        self._create_players(mapoptions)
+        self.board.set_players(self.players)
 
     def _create_players(self, mapoptions):
         if mapoptions and mapoptions.players:

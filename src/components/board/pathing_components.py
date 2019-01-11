@@ -1,7 +1,7 @@
 import heapq
 from math import floor
 
-from src.components.board.dijkstra import DijkstraGraph
+from src.components.board.dijkstra import DijkstraGraph, SimpleDijkstraGraph
 from src.helper.dictionaryprinter import DictionaryPrinter
 from src.helper import functions
 from src.helper.Misc.constants import IMPASSIBLE, UNEXPLORED
@@ -24,6 +24,7 @@ class PathMatrix:
         self.heuristic = {}
         self.accessible_positions = set()
         self.enemies = set()
+        self.explored_tiles = set()
 
     def set_heuristic_value_at(self, pos, value):
         self.heuristic[pos] = value
@@ -69,17 +70,24 @@ class PathMatrix:
     def __iter__(self):
         return iter(self.dist_values)
 
-    def check_validitiy(self):
+    def check_validity(self):
         graph = DijkstraGraph(self.board, self.monster)
         dist, prev = graph.dijkstra(self.start)
+        self._compare_with_dijkstra(dist, graph)
+
+    def check_validity_simple(self):
+        graph = SimpleDijkstraGraph(self.board, self.monster)
+        dist, prev = graph.dijkstra(self.start)
+        self._compare_with_dijkstra(dist, graph)
+
+    def _compare_with_dijkstra(self, dist, graph):
         for pos in self.dist_values:
             dist_val = self.get_distance_value_at(pos)
-            if dist_val < UNEXPLORED:
+            if dist_val < UNEXPLORED and pos in self.explored_tiles:
                 dijk_val = dist[pos]
                 assert dist_val == dijk_val, (
                     f'Mismatch at {pos}: expected {dijk_val} but was {dist_val}'
-                    f'{self.board.debug_print()}\n'
-                    f'monster: {self.monster}\n'
+                    f'\nmonster: {self.monster}\n'
                     'Distance values:\n'
                     f'{self.get_printable_dist_values()}\n'
                     'Dijkstra values:\n'
@@ -109,6 +117,9 @@ class MatrixPrinter(DictionaryPrinter):
         return self._get_values()
 
     def _get_value_representation_at(self, pos):
+        # only display correct distance values
+        # if pos not in self.matrix.explored_tiles:
+        #     return '  '
         if self.mode == self.PRINT_DIST:
             val = self.matrix.get_distance_value_at(pos)
         elif self.mode == self.PRINT_HEURISTIC:
@@ -179,6 +190,7 @@ class MatrixProcessor:
         self.pos = heapq.heappop(self.tiles_to_explore)[1]
         assert self.pos[0] >= 0
         assert self.pos[1] >= 0
+        self.matrix.explored_tiles.add(self.pos)
         self.cannot_move_from_pos = False
         self._handle_adjacent_enemies()
         if self.cannot_move_from_pos:
@@ -359,6 +371,7 @@ class AStarMatrixProcessor(MatrixProcessor):
 
     def _explore_next_tile(self):
         self.pos = heapq.heappop(self.tiles_to_explore)[1]
+        self.matrix.explored_tiles.add(self.pos)
         if self.pos == self.destination:
             self.destination_reached = True
             self.matrix.end = self.pos
@@ -376,12 +389,12 @@ class AStarMatrixProcessor(MatrixProcessor):
 
     def _get_heuristic(self, pos):
         dist_from_destination = \
-            self._get_manhattan_distance_to_destination(pos) * 1.001
+            self._get_manhattan_distance_to(pos) * 1.001
         heuristic = self.move_points_next_tile + dist_from_destination
         self.matrix.set_heuristic_value_at(pos, heuristic)
         return heuristic
 
-    def _get_manhattan_distance_to_destination(self, pos):
+    def _get_manhattan_distance_to(self, pos):
         return functions.get_hexagonal_manhattan_distance(pos, self.destination)
 
 
@@ -395,13 +408,13 @@ class PathGenerator:
 
     def __init__(self, board):
         self.board: board.Board = board
-        self.path_matrix = None
+        self.path_matrix: PathMatrix = None
         self.x0 = None
         self.y0 = None
         self.x1 = None
         self.y1 = None
         self.path = None
-        self.monster = None
+        self.terrain_type = None
         self.adj_found = None
         self.start = None
         self.end = None
@@ -460,8 +473,8 @@ class PathGenerator:
         assert self.start, 'Start position not configured'
         assert self.end, 'End position not configured'
         self.x0, self.y0 = self.end
-        self.monster = self.path_matrix.monster
-        assert self.monster
+        assert self.path_matrix.monster
+        self.terrain_type = self.path_matrix.monster.terrain_type
         # append the ending point (starting pos for the algorithm)
         self.path = [self.end]
 
@@ -470,7 +483,8 @@ class PathGenerator:
         adjacent_tiles = self.board.get_posses_adjacent_to(
             (self.x0, self.y0))
         for self.x1, self.y1 in adjacent_tiles:
-            self._inspect_tile()
+            if self._tile_can_be_moved_to():
+                self._add_tile_to_path()
             if self.adj_found:
                 break
         assert self.adj_found, \
@@ -478,29 +492,14 @@ class PathGenerator:
              f'Path so far: {self.path}\n'
              f'{self.path_matrix.get_printable_dist_values()}')
 
-    def _has_proper_move_cost_difference(self):
-        path_cost_difference = (
-                self._get_distance_value((self.x0, self.y0)) -
-                self._get_distance_value((self.x1, self.y1)))
-        terrain = self.board.terrain_at((self.x0, self.y0))
-        move_cost = DataTables.get_terrain_cost(
-            terrain, self.monster.terrain_type)
-        return path_cost_difference > move_cost
-
-    def _inspect_tile(self):
-        if self._tile_can_be_moved_to():
-            self._add_tile_to_path()
+    def _get_distance_value(self, pos):
+        if pos not in self.path_matrix.explored_tiles:
+            return UNEXPLORED
+        return self.path_matrix.get_distance_value_at(pos)
 
     def _tile_can_be_moved_to(self):
         return (self._move_cost_difference_is_correct()
                 and self._next_tile_is_not_blocked())
-
-    def _add_tile_to_path(self):
-        # if tile isn't the last tile, it can't be adjacent to enemy
-        self.path.insert(0, (self.x1, self.y1))
-        self.x0 = self.x1
-        self.y0 = self.y1
-        self.adj_found = True
 
     def _move_cost_difference_is_correct(self):
         path_cost_difference = (
@@ -508,11 +507,8 @@ class PathGenerator:
                 self._get_distance_value((self.x1, self.y1)))
         terrain = self.board.terrain_at((self.x0, self.y0))
         move_cost = DataTables.get_terrain_cost(
-            terrain, self.monster.terrain_type)
+            terrain, self.terrain_type)
         return path_cost_difference == move_cost
-
-    def _get_distance_value(self, pos):
-        return self.path_matrix.get_distance_value_at(pos)
 
     def _next_tile_is_not_blocked(self):
         """Check if monster can move to this tile.
@@ -534,6 +530,13 @@ class PathGenerator:
                     self.board.get_current_player_id()):
                 return False
         return True
+
+    def _add_tile_to_path(self):
+        # if tile isn't the last tile, it can't be adjacent to enemy
+        self.path.insert(0, (self.x1, self.y1))
+        self.x0 = self.x1
+        self.y0 = self.y1
+        self.adj_found = True
 
 
 class SimplePathGenerator(PathGenerator):

@@ -110,6 +110,7 @@ class PlayerDefaultBrain(PlayerBrain):
             if pos:
                 monster = self.controller.handle_summon_monster(
                     self.monster_to_summon, pos)
+                assert monster
                 self._create_brain_for_monster(monster)
                 self.did_action = True
                 self.monster_to_summon = None
@@ -185,7 +186,7 @@ class MonsterBrain:
         self.matrix = self.matrix_generator.generate_path_matrix(
             self.monster.pos)
         # for now check for bugs
-        #self.matrix.check_validitiy()
+        # self.matrix.check_validitiy()
         if self.target_pos and self.target_pos in self.matrix:
             self._move_to_pos_inside_matrix(self.target_pos)
             return
@@ -204,26 +205,26 @@ class MonsterBrain:
         new_destination = None
         if self.board.monster_at(destination):
             new_destination = self._get_new_destination(destination)
-            if not new_destination:
+            if new_destination is None:
                 new_destination = self.monster.pos
+            assert new_destination in self.matrix
 
         if new_destination:
             destination = new_destination
             assert destination in self.matrix
         assert destination is not None
         assert destination in self.matrix
-        # sometimes destination isn't inside matrix?
-        # matrix seems to be faulty, dist values aren't always correct
         self._move_to_pos_inside_matrix(destination)
 
     def _get_new_destination(self, destination):
         new_destination = None
         adjacents = self.board.get_posses_adjacent_to(destination)
         for pos in adjacents:
-            monster = self.board.monster_at(pos)
-            if not monster:
-                new_destination = pos
-                break
+            if pos in self.matrix:
+                monster = self.board.monster_at(pos)
+                if not monster:
+                    new_destination = pos
+                    break
         return new_destination
 
     def _get_tile_leading_to_destination(self):
@@ -261,8 +262,10 @@ class MonsterBrain:
         if not self.target_pos:
             if towers:
                 self._set_destination_to_closest_tower()
+                assert self.target_pos
             else:
                 self._set_destination_to_enemy_lord(player_id)
+                assert self.target_pos
 
     def _set_destination_to_closest_tower(self):
         tower_matrix = self.towersearch_matrix_factory \

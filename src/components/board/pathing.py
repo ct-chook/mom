@@ -1,7 +1,7 @@
 from src.components.board.monster import Monster
 from src.components.board.pathing_components import FullMatrixProcessor, \
     PathGenerator, PathMatrix, MatrixFactory, AStarMatrixFactory, \
-    TowerSearchMatrixFactory
+    TowerSearchMatrixFactory, SimplePathGenerator
 
 
 class PathMatrixFactory(MatrixFactory):
@@ -70,6 +70,10 @@ class PathFinder:
         matrix_factory = AStarMatrixFactory(self.board)
         path_matrix = matrix_factory.generate_path_matrix(
             beginning, end)
+        # we use simple path (ignores monster collision and zone of control
+        # so we need to use a different path generator
+        # todo: maybe put this in different class altogether?
+        self.path_generator = SimplePathGenerator(self.board)
         return self.path_generator.get_path_on(path_matrix)
 
     def get_path_to_tower(self, beginning):

@@ -9,7 +9,9 @@ class DijkstraPrinter(DictionaryPrinter):
 
     def _get_value_representation_at(self, pos):
         val = self.dict[pos]
-        if val < 10:
+        if val == DijkstraGraph.INFINITY:
+            return ' .'
+        elif val < 10:
             return ' ' + str(val)
         else:
             return '' + str(val)
@@ -111,3 +113,11 @@ class DijkstraGraph:
     def get_printable_values(self, dist):
         printer = DijkstraPrinter(dist)
         return printer.get_printable_values()
+
+
+class SimpleDijkstraGraph(DijkstraGraph):
+    def _cannot_move_from_pos(self, adj_posses):
+        return False
+
+    def _can_move_to(self, pos, move_cost):
+        return move_cost < 99

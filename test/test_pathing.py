@@ -42,18 +42,18 @@ class Layouts:
     @staticmethod
     def get_zigzag():
         if not Layouts.zigzag:
-            legend = {'o': Terrain.GRASS, 'X': Terrain.VOLCANO}
+            legend = {'.': Terrain.GRASS, 'X': Terrain.VOLCANO}
             layout = """18 10
-                      o  o  o  o  o  o  o  o  o  o  X  o  o  o  o  o  o  o 
-                        o  o  o  o  o  o  o  o  o  o  X  o  o  o  X  o  o  o 
-                      o  o  o  o  o  o  o  o  o  o  X  o  o  o  X  X  o  o 
-                        o  o  o  o  o  o  o  o  o  o  X  o  o  o  X  o  o  o 
-                      o  o  o  o  o  o  o  o  o  o  X  o  o  o  X  o  o  o 
-                        o  o  o  o  o  o  o  o  o  o  X  o  o  o  X  o  o  o 
-                      o  o  o  o  o  o  o  o  o  o  X  o  o  o  X  o  o  o 
-                        o  o  o  o  o  o  o  o  o  o  X  o  o  o  X  o  o  o 
-                      o  o  o  o  o  o  o  o  o  o  X  o  o  o  X  o  o  o 
-                        o  o  o  o  o  o  o  o  o  o  o  o  o  o  X  o  o  o"""
+                      .  .  .  .  .  .  .  .  .  .  X  .  .  .  .  .  .  . 
+                        .  .  .  .  .  .  .  .  .  .  X  .  .  .  X  .  .  . 
+                      .  .  .  .  .  .  .  .  .  .  X  .  .  .  X  X  .  . 
+                        .  .  .  .  .  .  .  .  .  .  X  .  .  .  X  .  .  . 
+                      .  .  .  .  .  .  .  .  .  .  X  .  .  .  X  .  .  . 
+                        .  .  .  .  .  .  .  .  .  .  X  .  .  .  X  .  .  . 
+                      .  .  .  .  .  .  .  .  .  .  X  .  .  .  X  .  .  . 
+                        .  .  .  .  .  .  .  .  .  .  X  .  .  .  X  .  .  . 
+                      .  .  .  .  .  .  .  .  .  .  X  .  .  .  X  .  .  . 
+                        .  .  .  .  .  .  .  .  .  .  .  .  .  .  X  .  .  ."""
             Layouts.zigzag = Layouts._parse_layout(layout, legend)
         return Layouts.zigzag
 
@@ -155,7 +155,7 @@ class TestCase:
 
     def check(self, value, pos):
         assert self.matrix.get_distance_value_at(pos) == value, (
-            f'\n{self.matrix.print_dist_values()}')
+            f'\n{self.matrix.get_printable_dist_values()}')
 
 
 class TestAStarZigZag(TestCase):

@@ -41,20 +41,7 @@ class TestDijkstraWithPathingComparison(TestCase):
         matrix = self.generator.generate_path_matrix(start)
         graph = DijkstraGraph(self.board, monster)
         dist, prev = graph.dijkstra(start)
-        for index in dist:
-            pos = index
-            # convert pos to node index
-            matrix_val = matrix.get_distance_value_at(pos)
-            dijkstra_val = dist[pos]
-            if matrix_val == UNEXPLORED:
-                assert dijkstra_val > monster.stats.move_points, (
-                    f'{self._get_error(matrix, pos, dist)}')
-            elif matrix_val == IMPASSIBLE:
-                assert dijkstra_val == DijkstraGraph.INFINITY, (
-                    f'{self._get_error(matrix, pos, dist)}')
-            else:
-                assert matrix_val == dijkstra_val, (
-                    f'{self._get_error(matrix, pos, dist)}')
+        self.compare_dist_values(dist, matrix, monster)
         self.board.remove_monster(monster)
 
     def test_a_star(self, before):
@@ -70,16 +57,33 @@ class TestDijkstraWithPathingComparison(TestCase):
         matrix = self.a_star_generator.generate_path_matrix(start, end)
         graph = DijkstraGraph(self.board, monster)
         dist, prev = graph.dijkstra(start)
+        self.compare_dist_values(dist, matrix, monster, True)
         # only compare end
-        matrix_val = matrix.get_distance_value_at(end)
-        dijkstra_val = dist[end]
-        if matrix_val >= 99:
-            assert dijkstra_val == DijkstraGraph.INFINITY, (
-                f'{self._get_error(matrix, end, dist)}')
-        else:
-            assert matrix_val == dijkstra_val, \
-                f'{self._get_error(matrix, end, dist)}'
+        # matrix_val = matrix.get_distance_value_at(end)
+        # dijkstra_val = dist[end]
+        # if matrix_val >= 99:
+        #     assert dijkstra_val == DijkstraGraph.INFINITY, (
+        #         f'{self._get_error(matrix, end, dist)}')
+        # else:
+        #     assert matrix_val == dijkstra_val, \
+        #         f'{self._get_error(matrix, end, dist)}'
         self.board.remove_monster(monster)
+
+    def compare_dist_values(self, dist, matrix, monster, is_a_star=False):
+        for pos in dist:
+            if is_a_star and pos not in matrix.explored_tiles:
+                continue
+            matrix_val = matrix.get_distance_value_at(pos)
+            dijkstra_val = dist[pos]
+            if matrix_val == UNEXPLORED:
+                assert dijkstra_val > monster.stats.move_points, (
+                    f'{self._get_error(matrix, pos, dist)}')
+            elif matrix_val == IMPASSIBLE:
+                assert dijkstra_val == DijkstraGraph.INFINITY, (
+                    f'{self._get_error(matrix, pos, dist)}')
+            else:
+                assert matrix_val == dijkstra_val, (
+                    f'{self._get_error(matrix, pos, dist)}')
 
     def _get_error(self, matrix, pos, dist):
         dijkstra_printer = DijkstraPrinter(dist)
