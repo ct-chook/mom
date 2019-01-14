@@ -1,5 +1,5 @@
 from src.components.board import players
-from src.components.board.board import Board, MapLoader
+from src.components.board.board import Board, BoardFactory
 from src.components.board.pathing import PathMatrixFactory, PathFinder
 from src.components.board.pathing_components import PathMatrix
 from src.components.combat.attack import AttackFactory, AttackCollection
@@ -18,9 +18,9 @@ class BoardModel:
         self.turn = 0
         self.sun_stance = 0
         self.board = Board()
-        maploader = MapLoader(self.board)
-        maploader.load_map(mapoptions)
-        self.players = maploader.players
+        factory = BoardFactory()
+        self.board = factory.load_map(mapoptions)
+        self.players = self.board.players
 
         self.game_over = False  # jumps to true when no human players left
         self.path_matrix: PathMatrix = None
@@ -175,4 +175,4 @@ class BoardModel:
     def _is_valid_terrain_for_summon(self, pos):
         terrain = self.board.terrain_at(pos)
         return (terrain == Terrain.TOWER or terrain == Terrain.FORTRESS
-            or terrain == Terrain.MAIN_FORTRESS)
+                or terrain == Terrain.MAIN_FORTRESS)

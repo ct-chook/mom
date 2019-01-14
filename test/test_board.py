@@ -1,14 +1,13 @@
 import pytest
 
-from src.components.board.board import Board, MapLoader
+from src.components.board.board import Board, BoardFactory
 
 
 class TestBoard:
     @pytest.fixture
     def before(self):
-        self.board = Board()
-        loader = MapLoader(self.board)
-        loader.load_map()
+        factory = BoardFactory()
+        self.board = factory.load_map()
 
     def test_is_valid_board_pos(self, before):
         assert not self.board.is_valid_board_pos((-1, 0))

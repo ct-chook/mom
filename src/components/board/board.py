@@ -1,5 +1,6 @@
 import logging
 import random
+import re
 
 from src.components.board import players
 from src.components.board.monster import Monster
@@ -24,10 +25,10 @@ class Board:
         self.towers = {}
         self.lords = {}
         # list of players is used to check for enemies
-        self._players: players.PlayerList = None
+        self.players: players.PlayerList = None
 
     def set_players(self, players_):
-        self._players = players_
+        self.players = players_
         for n in range(len(players_)):
             self.monsters[n] = []
 
@@ -37,7 +38,7 @@ class Board:
             for monster in self.monsters[self.get_current_player_id()]:
                 monster.moved = False
         logging.info(
-            f'Ending turn of {self._players.get_current_player().id_}')
+            f'Ending turn of {self.players.get_current_player().id_}')
 
     def tile_at(self, pos) -> Tile:
         return self.tiles[pos[0]][pos[1]]
@@ -61,7 +62,7 @@ class Board:
 
     def summon_monster(self, monster_type, pos, owner):
         """Adds a monster and checks/reduces mana and flags it"""
-        assert not self.tile_at(pos).monster, f'{self.debug_print()}' \
+        assert not self.tile_at(pos).monster, f'{self.print()}' \
             f'Tried to summon ' \
             f'{DataTables.get_monster_stats(monster_type).name} at ' \
             f'location occupied by {self.monster_at(pos).name} '
@@ -74,7 +75,7 @@ class Board:
             f'Not enough towers, only have '
             f'{self._get_current_player().tower_count}')
         monster = self.place_new_monster(monster_type, pos, owner)
-        self._players.get_current_player().decrease_mana_by(summon_cost)
+        self.players.get_current_player().decrease_mana_by(summon_cost)
         monster.moved = True
         return monster
 
@@ -200,14 +201,14 @@ class Board:
         return self.x_max > pos[0] >= 0 and 0 <= pos[1] < self.y_max
 
     def get_current_player_id(self):
-        return self._players.get_current_player_id()
+        return self.players.get_current_player_id()
 
     def _get_current_player(self):
-        return self._players.get_current_player()
+        return self.players.get_current_player()
 
     def move_monster(self, monster, destination):
         """Changes the monster position on the board and flags it as moved"""
-        assert not monster.moved, f'{self.debug_print()}' \
+        assert not monster.moved, f'{self.print()}' \
             f'Tried to move monster {monster} but it already moved'
         self.set_monster_pos(monster, destination)
         monster.moved = True
@@ -224,19 +225,19 @@ class Board:
         tile = self.tile_at(pos)
         old_owner = self.tower_owner_at(pos)
         if tile.terrain == Terrain.TOWER and old_owner is not None:
-            self._players.get_player_by_id(old_owner).tower_count -= 1
+            self.players.get_player_by_id(old_owner).tower_count -= 1
         self.set_tower_owner_at(pos, player_id)
-        self._players.get_player_by_id(player_id).tower_count += 1
+        self.players.get_player_by_id(player_id).tower_count += 1
 
-    def debug_print(self):
-        BoardPrinter(self).debug_print()
+    def print(self):
+        BoardPrinter(self).print()
 
 
 class BoardPrinter:
     def __init__(self, board):
         self.board = board
 
-    def debug_print(self):
+    def print(self):
         for y in range(self.board.y_max):
             row = []
             for x in range(self.board.x_max):
@@ -260,11 +261,11 @@ class BoardPrinter:
 
     def terrain_to_char(self, terrain):
         if terrain == Terrain.TOWER:
-            return 'l'
+            return 't'
         elif terrain == Terrain.DUNE:
             return ':'
         elif terrain == Terrain.FOREST:
-            return '🌲'
+            return 'f'
         elif terrain == Terrain.FORTRESS:
             return '='
         elif terrain == Terrain.GRASS:
@@ -272,9 +273,9 @@ class BoardPrinter:
         elif terrain == Terrain.MAIN_FORTRESS:
             return '@'
         elif terrain == Terrain.MOUNTAIN:
-            return '⛰'
+            return 'm'
         elif terrain == Terrain.OCEAN:
-            return '🌊'
+            return '~'
         elif terrain == Terrain.RIVER:
             return '-'
         elif terrain == Terrain.ROCKY:
@@ -284,22 +285,51 @@ class BoardPrinter:
         elif terrain == Terrain.TUNDRA:
             return '#'
         elif terrain == Terrain.VOLCANO:
-            return '🌋'
+            return 'v'
         else:
             return '?'
 
 
-class MapLoader:
-    def __init__(self, board):
-        self.board: Board = board
+class BoardFactory:
+    def __init__(self):
+        self.board = Board()
+        self.mapoptions = None
         self.mapname = None
+        self.layout = None
         self.x_max = None
         self.y_max = None
         self.players: players.PlayerList = None
         self.start_posses = []
-        self.mapoptions = None
 
-    def load_map(self, mapoptions=None):
+    def make_board_from_text(self, text, legend) -> Board:
+        self._parse_layout(text, legend)
+        self._make_board_from_layout()
+        return self.board
+
+    def _parse_layout(self, input_layout, legend):
+        chars = re.sub('[\\s]+', ' ', input_layout).split(' ')
+        new_list = []
+        for char in chars:
+            if char.isnumeric():
+                new_list.append(int(char))
+            elif char == '':
+                pass
+            elif char not in legend:
+                raise AttributeError(f'Char "{char}" missing from legend')
+            else:
+                new_list.append(legend[char])
+        # start pos (unused, but needed)
+        for _ in range(8):
+            new_list.append(0)
+        self.layout = new_list
+
+    def _make_board_from_layout(self):
+        self.set_map_using_layout(1)
+        self._create_players()
+        self._set_players()
+        # self._add_lords()
+
+    def load_map(self, mapoptions=None) -> Board:
         self.mapoptions = mapoptions
         if not mapoptions:
             mapname = 'test'
@@ -315,15 +345,27 @@ class MapLoader:
                 self.mapname = 'test.map'
             else:
                 test = False
-            layout = self._get_layout_from_map_file()
-            self.set_map_using_layout(layout)
+            self._get_layout_from_map_file()
+            self.set_map_using_layout()
             self.board.set_players(self.players)
             self._add_lords()
             if test:
                 self.set_test_monsters()
-                self._generate_towers()
+                self._generate_towers_around_lords()
+        return self.board
 
-    def _generate_towers(self):
+    def load_random_map(self, x_max, y_max, mapoptions) -> Board:
+        self.x_max = x_max
+        self.y_max = y_max
+        self.board.x_max = self.x_max
+        self.board.y_max = self.y_max
+        self._fill_with_grass_tiles()
+        self._randomize_terrain()
+        self._create_players(mapoptions)
+        self._set_players()
+        return self.board
+
+    def _generate_towers_around_lords(self):
         for player_id in self.board.lords:
             posses = []
             lord = self.board.lords[player_id]
@@ -335,17 +377,7 @@ class MapLoader:
                     self.board.on_tile(pos).set_terrain_to(Terrain.TOWER)
                     self.board.capture_terrain_at(pos, player_id)
 
-    def load_random_map(self, x_max, y_max, mapoptions):
-        self.x_max = x_max
-        self.y_max = y_max
-        self.board.x_max = self.x_max
-        self.board.y_max = self.y_max
-        self._fill_with_grass_tiles()
-        self._randomize_terrain()
-        self._create_players(mapoptions)
-        self.board.set_players(self.players)
-
-    def _create_players(self, mapoptions):
+    def _create_players(self, mapoptions=None):
         if mapoptions and mapoptions.players:
             self.players = mapoptions.players
             return
@@ -355,18 +387,21 @@ class MapLoader:
         self.players.add_player(3, AiType.idle, 50)
         self.players.add_player(4, AiType.idle, 50)
 
+    def _set_players(self):
+        self.board.set_players(self.players)
+
     def _get_layout_from_map_file(self):
         assert self.mapname, 'No mapname set'
         with open(f'{ROOT}/src/data/maps/{self.mapname}', 'r') as fd:
             content = fd.read()
-        return self._get_layout_from_content(content)
+        self._get_layout_from_content(content)
 
     def _get_layout_from_content(self, content):
         layout_strings = content.split(', ')
         layout = []
         for layout_string in layout_strings:
             layout.append(int(layout_string))
-        return layout
+        self.layout = layout
 
     def set_test_monsters(self):
         # todo: monsters should be part of save data
@@ -388,13 +423,7 @@ class MapLoader:
         self.board.place_new_monster(random.randint(1, 82), (8, 8), blue)
         self.board.place_new_monster(random.randint(1, 82), (8, 9), red)
 
-    def _get_random_y(self):
-        return random.randint(0, self.y_max - 1)
-
-    def _get_random_x(self):
-        return random.randint(0, self.x_max - 1)
-
-    def set_map_using_layout(self, layout, mode=0):
+    def set_map_using_layout(self, mode=0):
         """Parses the layout to set up the terrain
 
         How it works: the first two integers are the width and height,
@@ -402,6 +431,7 @@ class MapLoader:
         each row. Lastly there are eight integers representing the starting
         positions for each player.
         """
+        layout = self.layout
         self.x_max = layout[0]
         self.y_max = layout[1]
         self.board.x_max = self.x_max
@@ -452,3 +482,9 @@ class MapLoader:
                 while self.board.terrain_at(pos) != Terrain.GRASS:
                     pos = (self._get_random_x(), self._get_random_y())
                 self.board.on_tile(pos).set_terrain_to(terrain)
+
+    def _get_random_y(self):
+        return random.randint(0, self.y_max - 1)
+
+    def _get_random_x(self):
+        return random.randint(0, self.x_max - 1)

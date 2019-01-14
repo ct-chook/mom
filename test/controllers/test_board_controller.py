@@ -294,14 +294,13 @@ class TestTowerCapture(TestCase):
 
     def move_crusader_to_tower(self):
         crusader = self.board.monster_at(crusader_start_pos)
-        tower_tile = self.board.tile_at(tower_pos)
-        self.set_tile_to_tower_and_move_monster(crusader, tower_tile)
+        self.set_tile_to_tower_and_move_monster(crusader, tower_pos)
         # now monster has to walk there
         self.tick_events(50)
         # then window should be visible
 
-    def set_tile_to_tower_and_move_monster(self, monster, tile):
-        self.board.set_terrain_to(tower_pos, Terrain.TOWER)
+    def set_tile_to_tower_and_move_monster(self, monster, pos):
+        self.board.set_terrain_to(pos, Terrain.TOWER)
         self.click_on(monster.pos)
         self.click_on(tower_pos)
 

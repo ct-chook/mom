@@ -1,7 +1,7 @@
 import pytest
 import random
 
-from src.components.board.board import Board, MapLoader
+from src.components.board.board import Board, BoardFactory
 from src.components.board.dijkstra import DijkstraGraph, DijkstraPrinter
 from src.components.board.monster import Monster
 from src.components.board.pathing import PathMatrixFactory
@@ -14,11 +14,10 @@ class TestCase:
     # noinspection PyAttributeOutsideInit
     @pytest.fixture
     def before(self):
-        self.board = Board()
-        mapload = MapLoader(self.board)
+        factory = BoardFactory()
         mapoptions = MapOptions()
         mapoptions.mapname = 'random'
-        mapload.load_map(mapoptions)
+        self.board = factory.load_map(mapoptions)
         self.terrain_type = None
         self.generator = None
 
@@ -104,10 +103,9 @@ class TestDijkstraAlgorithm(TestCase):
             self.run_algorithm()
 
     def run_algorithm(self):
-        self.board = Board()
-        mapload = MapLoader(self.board)
+        factory = BoardFactory()
         mapoptions = MapOptions()
-        mapload.load_random_map(4, 4, mapoptions)
+        self.board = factory.load_random_map(4, 4, mapoptions)
         self.terrain_type = None
         self.generator = None
         start = (0, 0)

@@ -1,17 +1,16 @@
-import re
+from copy import deepcopy
+
 import pytest
 
-from src.components.board.board import Board, MapLoader
+from src.components.board.board import Board, BoardFactory
 from src.components.board.monster import Monster
-from src.components.board.pathing import PathGenerator, PathFinder, \
-    MovementFinder
+from src.components.board.pathing import PathGenerator, PathFinder
+from src.components.board.pathing import PathMatrixFactory
 from src.components.board.pathing_components import AStarMatrixFactory, \
     TowerSearchMatrixFactory
-from src.components.board.players import PlayerList
+from src.controller.board_controller import BoardModel
 from src.helper.Misc.constants import MonsterType, Terrain, UNEXPLORED, \
     IMPASSIBLE
-from src.controller.board_controller import BoardModel
-from src.components.board.pathing import PathMatrixFactory
 
 blocked_x = 1
 blocked_y = 6
@@ -34,14 +33,14 @@ octopus_pos = (octopus_x, octopus_y)
 sirene_pos = (sirene_x, sirene_y)
 
 
-class Layouts:
+class Boards:
     zigzag = None
     cross = None
     gauntlet = None
 
     @staticmethod
     def get_zigzag():
-        if not Layouts.zigzag:
+        if not Boards.zigzag:
             legend = {'.': Terrain.GRASS, 'X': Terrain.VOLCANO}
             layout = """18 10
                       .  .  .  .  .  .  .  .  .  .  X  .  .  .  .  .  .  . 
@@ -54,12 +53,13 @@ class Layouts:
                         .  .  .  .  .  .  .  .  .  .  X  .  .  .  X  .  .  . 
                       .  .  .  .  .  .  .  .  .  .  X  .  .  .  X  .  .  . 
                         .  .  .  .  .  .  .  .  .  .  .  .  .  .  X  .  .  ."""
-            Layouts.zigzag = Layouts._parse_layout(layout, legend)
-        return Layouts.zigzag
+            factory = BoardFactory()
+            Boards.zigzag = factory.make_board_from_text(layout, legend)
+        return deepcopy(Boards.zigzag)
 
     @staticmethod
     def get_cross():
-        if not Layouts.cross:
+        if not Boards.cross:
             legend = {'.': Terrain.GRASS, '#': Terrain.VOLCANO,
                       '=': Terrain.RIVER}
             #          1   2   3   4   5   6   7   8   9  10  11  12  13  14
@@ -76,13 +76,13 @@ class Layouts:
                         .   .   .   .   #   .   .   .   .   .   =   =   .   . 
                       .   .   .   .   .   .   .   .   .   .   =   =   .   . 
                         .   .   .   .   .   .   .   .   .   .   .   .   .   ."""
-            Layouts.cross = Layouts._parse_layout(layout, legend)
-        return Layouts.cross
+            factory = BoardFactory()
+            Boards.cross = factory.make_board_from_text(layout, legend)
+        return deepcopy(Boards.cross)
 
     @staticmethod
     def get_gauntlet():
-        this_layout = Layouts.gauntlet
-        if not this_layout:
+        if not Boards.gauntlet:
             legend = {'.': Terrain.GRASS, '#': Terrain.VOLCANO}
             #          1   2   3   4   5   6   7   8   9  10  11  12  13  14
             layout = """14 5
@@ -92,51 +92,15 @@ class Layouts:
                         #   .   .   .   .   .   .   .   .   .   .   .   .   # 
                       #   #   #   #   #   #   #   #   #   #   #   #   #   #     
                       """
-            this_layout = Layouts._parse_layout(layout, legend)
-        return this_layout
-
-    @staticmethod
-    def _parse_layout(input_layout, legend):
-        chars = re.sub('[\\s]+', ' ', input_layout).split(' ')
-        new_list = []
-        for char in chars:
-            if char.isnumeric():
-                new_list.append(int(char))
-            elif char == '':
-                pass
-            elif char not in legend:
-                raise AttributeError(f'Char "{char}" missing from legend')
-            else:
-                new_list.append(legend[char])
-        # start pos (unused, but needed)
-        for _ in range(8):
-            new_list.append(0)
-        return new_list
-
-
-# class TestLayouts:
-#     def test_parse_layout(self):
-#         legend = {'#': 1, '.': 0, 'x': 2, 'o': 3}
-#         input_layout = """
-#                 4 4
-#                 # . o #
-#                 . . # #
-#                 . . . #
-#                 # # . x"""
-#         result = self.parse_layout(input_layout, legend)
-#         assert [4, 4, 1, 0, 3, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 2, 0, 0, 0,
-#                 0, 0, 0, 0, 0] == result
+            factory = BoardFactory()
+            Boards.gauntlet = factory.make_board_from_text(layout, legend)
+        return deepcopy(Boards.gauntlet)
 
 
 class TestCase:
     # noinspection PyAttributeOutsideInit
-    def make_board_from_layout(self, layout, start_pos):
-        self.board = Board()
-        maploader = MapLoader(self.board)
-        maploader.set_map_using_layout(layout, 1)
-        players = PlayerList()
-        players.add_player(0, 0, 0)
-        self.board.set_players(players)
+    def make_board_from_layout(self, function, start_pos):
+        self.board = function()
         self.start_pos = start_pos
         self.board.place_new_monster(MonsterType.ROMAN, self.start_pos)
         self.matrix_generator = AStarMatrixFactory(self.board)
@@ -161,7 +125,7 @@ class TestCase:
 class TestAStarZigZag(TestCase):
     @pytest.fixture
     def before(self):
-        self.make_board_from_layout(Layouts.get_zigzag(), (4, 0))
+        self.make_board_from_layout(Boards.get_zigzag, (4, 0))
 
     def test_very_short(self, before):
         destination = (4, 1)
@@ -208,7 +172,7 @@ class TestAStarZigZag(TestCase):
 class TestAStarCross(TestCase):
     @pytest.fixture
     def before(self):
-        self.make_board_from_layout(Layouts.get_cross(), (6, 3))
+        self.make_board_from_layout(Boards.get_cross, (6, 3))
 
     def test_cross_goto_opposite(self, before):
         destination = (6, 7)
@@ -379,7 +343,6 @@ class TestAStar:
         assert path_matrix, 'Could not generate path matrix'
         self.path_generator.set_path_matrix(path_matrix)
         self.path = self.path_generator.get_path_to(end)
-        path_matrix.print_dist_values()
 
     def test_short_path(self, before):
         start_pos = (0, 0)
@@ -399,17 +362,14 @@ class TestAStar:
         north_of_mountain = (1, 13)
         path_matrix = self.generator.generate_path_matrix(
             bot_left_corner, north_of_mountain)
-        path_matrix.print_dist_values()
         assert path_matrix.get_distance_value_at(north_of_mountain) == 6
 
     def test_move_from_corner_long(self, before):
-        self.board.debug_print()
         bot_left_corner = (0, 19)
         self.board.place_new_monster(MonsterType.SOLDIER, bot_left_corner, 0)
         far_away = (5, 5)
         path_matrix = self.generator.generate_path_matrix(
             bot_left_corner, far_away)
-        path_matrix.print_dist_values()
         assert path_matrix.get_distance_value_at(far_away) == 14
 
     def assert_line_path(self, end_pos, start_pos):
@@ -466,7 +426,7 @@ class TestTerrainSearch:
 class TestValidPathZigzag(TestCase):
     @pytest.fixture
     def before(self):
-        self.make_board_from_layout(Layouts.get_zigzag(), (0, 0))
+        self.make_board_from_layout(Boards.get_zigzag, (0, 0))
 
     def test_tower_found_on_first_turn(self, before):
         self.start_pos = (0, 0)
@@ -498,7 +458,7 @@ class TestValidPathZigzag(TestCase):
 class TestValidPathGauntlet(TestCase):
     @pytest.fixture
     def before(self):
-        self.make_board_from_layout(Layouts.get_gauntlet(), (1, 1))
+        self.make_board_from_layout(Boards.get_gauntlet, (1, 1))
 
     def test_tower_found_on_first_turn(self, before):
         self.start_pos = (1, 1)
