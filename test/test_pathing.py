@@ -129,6 +129,11 @@ class TestCase:
         assert self.matrix.get_distance_value_at(pos) == value, (
             f'\n{self.matrix.get_printable_dist_values()}')
 
+    def compare(self, result, expected):
+        assert len(result) == len(expected)
+        for i in range(len(expected)):
+            assert result[i] == expected[i], f'Mismatch at {i}'
+
 
 class TestAStarZigZag(TestCase):
     @pytest.fixture
@@ -287,9 +292,9 @@ class TestMatrix(TestCase):
 
         self.get_path_between(chim_pos, north_of_chim)
         assert len(self.path) == 3
-        assert self.path == [(chim_x, chim_y),
-                             (chim_x, chim_y - 1),
-                             (chim_x, chim_y - 2)]
+        expected = ((chim_x, chim_y), (chim_x, chim_y - 1),
+                    (chim_x, chim_y - 2))
+        self.compare(self.path, expected)
 
         self.get_path_between(chim_pos, north)
         assert len(self.path) == 6
@@ -365,8 +370,9 @@ class TestTowerSearch(TestCase):
         self.make_board_from_layout2(map_, legend, chim_pos)
         self.board.print()
         self.get_path_to_tower(chim_pos)
-        assert self.path == [chim_pos, (0, 5), (0, 4), (0, 3), (1, 3), (2, 2),
-                             tower_pos]
+        expected = (chim_pos, (0, 5), (0, 4), (0, 3), (1, 3), (2, 2), tower_pos)
+        self.compare(self.path, expected)
+        assert self.path.furthest_reachable == (2, 2)
 
     def test_find_closest_tower(self, before):
         map_ = """6 10
@@ -389,6 +395,7 @@ class TestTowerSearch(TestCase):
         self.board.print()
         self.get_path_to_tower(chim_pos)
         assert self.path[-1] == closest_tower_pos
+        assert self.path.furthest_reachable[1] == 4
 
     def get_path_to_tower(self, start):
         self.pathfactory = PathFactory(self.board)

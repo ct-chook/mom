@@ -2,7 +2,7 @@ import logging
 import random
 from math import ceil
 
-from src.components.board.pathing import MovementFinder, PathFactory, \
+from src.components.board.pathing import PathFactory, \
     PathMatrixFactory
 from src.components.board.pathing_components import PathMatrix, \
     TowerSearchMatrixFactory
@@ -146,7 +146,6 @@ class MonsterBrain:
         self.model = controller.model
         self.board = self.model.board
         self.path_finder = PathFactory(self.board)
-        self.movement_finder = MovementFinder(self.board)
         self.matrix_generator = PathMatrixFactory(self.board)
         self.towersearch_matrix_factory = TowerSearchMatrixFactory(
             self.board)
@@ -229,10 +228,10 @@ class MonsterBrain:
 
     def _get_tile_leading_to_destination(self):
         assert len(self.target_pos) == 2
-        path = self.movement_finder.get_simple_movement_to_tile(
-            self.monster, self.target_pos)
-        destination = path.get_destination()
-        return destination
+        path = self.path_finder.get_simple_path_between(
+            self.monster.pos, self.target_pos)
+        assert path.furthest_reachable
+        return path.furthest_reachable
 
     def _move_to_pos_inside_matrix(self, pos):
         assert pos in self.matrix, f'{self.matrix.get_printable_dist_values()}'

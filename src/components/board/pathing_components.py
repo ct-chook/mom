@@ -1,6 +1,8 @@
 import heapq
+from collections import deque
 from math import floor
 
+from components.board.monster import Monster
 from src.components.board.dijkstra import DijkstraGraph, SimpleDijkstraGraph
 from src.helper.dictionaryprinter import DictionaryPrinter
 from src.helper import functions
@@ -51,9 +53,6 @@ class PathMatrix:
     def set_monster(self, monster):
         self.monster = monster
         self.start = monster.pos
-
-    def print_dist_values(self):
-        print(self.get_printable_dist_values())
 
     def get_printable_dist_values(self):
         printer = MatrixPrinter(self)
@@ -398,6 +397,30 @@ class AStarMatrixProcessor(MatrixProcessor):
         return functions.get_hexagonal_manhattan_distance(pos, self.destination)
 
 
+class Path:
+    def __init__(self):
+        self.posses = deque()
+        self.furthest_reachable = None
+
+    def add_pos(self, pos):
+        self.posses.appendleft(pos)
+
+    def get_last_pos(self):
+        return self.posses[-1]
+
+    def get_posses(self):
+        return
+
+    def get_furthest_reachable_pos(self):
+        return self.furthest_reachable
+
+    def __len__(self):
+        return len(self.posses)
+
+    def __getitem__(self, index):
+        return self.posses[index]
+
+
 class PathFinder:
     """ Generates shortest paths for monsters.
 
@@ -413,7 +436,7 @@ class PathFinder:
         self.y0 = None
         self.x1 = None
         self.y1 = None
-        self.path = None
+        self.path: Path = None
         self.terrain_type = None
         self.adj_found = None
         self.start = None
@@ -473,10 +496,13 @@ class PathFinder:
         assert self.start, 'Start position not configured'
         assert self.end, 'End position not configured'
         self.x0, self.y0 = self.end
-        assert self.path_matrix.monster
-        self.terrain_type = self.path_matrix.monster.terrain_type
+        monster: Monster = self.path_matrix.monster
+        assert monster
+        self.move_points = monster.stats.move_points
+        self.terrain_type = monster.stats.terrain_type
         # append the ending point (starting pos for the algorithm)
-        self.path = [self.end]
+        self.path = Path()
+        self.path.add_pos(self.end)
 
     def _search_for_adjacent_tiles(self):
         self.adj_found = False
@@ -533,10 +559,18 @@ class PathFinder:
 
     def _add_tile_to_path(self):
         # if tile isn't the last tile, it can't be adjacent to enemy
-        self.path.insert(0, (self.x1, self.y1))
-        self.x0 = self.x1
-        self.y0 = self.y1
+        # todo needs check for this
+        pos = (self.x1, self.y1)
+        self.path.add_pos(pos)
+        self.x0, self.y0 = pos
         self.adj_found = True
+        self._update_reachable_pos(pos)
+
+    def _update_reachable_pos(self, pos):
+        if (not self.path.furthest_reachable
+                and self.path_matrix.get_distance_value_at(pos)
+                <= self.move_points):
+            self.path.furthest_reachable = pos
 
 
 class SimplePathFinder(PathFinder):

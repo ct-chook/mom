@@ -1,7 +1,7 @@
 from src.components.board.monster import Monster
 from src.components.board.pathing_components import FullMatrixProcessor, \
     PathFinder, PathMatrix, MatrixFactory, AStarMatrixFactory, \
-    TowerSearchMatrixFactory, SimplePathFinder
+    TowerSearchMatrixFactory, SimplePathFinder, Path
 
 
 class PathMatrixFactory(MatrixFactory):
@@ -82,70 +82,3 @@ class PathFactory:
 
     def get_matrix(self):
         return self.path_generator.path_matrix
-
-
-class Movement:
-    def __init__(self):
-        self.path = None
-
-    def get_destination(self):
-        if self.path:
-            return self.path[-1]
-
-
-class MovementFinder:
-    """ Returns a position a monster should move to reach something
-
-    Useful for multi-turn movements, or simply when you need to decide where
-    to move a monster to
-    """
-
-    def __init__(self, board):
-        self.board = board
-        self.pathfinder = PathFactory(board)
-
-    def get_movement_to_tile(self, monster, destination) -> Movement:
-        assert monster.pos
-        path = self.pathfinder.get_path_between(monster.pos, destination)
-        return self._get_movement(monster, path)
-
-    def get_simple_movement_to_tile(self, monster, destination) -> Movement:
-        assert monster.pos
-        path = self.pathfinder.get_simple_path_between(monster.pos, destination)
-        return self._get_simple_movement(monster, path)
-
-    def get_movement_to_tower(self, monster: Monster) -> Movement:
-        assert monster.pos
-        path = self.pathfinder.get_path_to_tower(
-            monster.pos)
-        return self._get_movement(monster, path)
-
-    def _get_movement(self, monster, path):
-        movement = Movement()
-        if path:
-            movement.path = self._get_partial_path(monster, path)
-        return movement
-
-    def _get_simple_movement(self, monster, path):
-        movement = Movement()
-        if path:
-            movement.path = self._get_partial_path(monster, path)
-        return movement
-
-    def _get_partial_path(self, monster: Monster, path):
-        max_movement = monster.stats.move_points
-        matrix: PathMatrix = self.pathfinder.get_matrix()
-        new_path = []
-        for pos in path:
-            if matrix.dist_values[pos] <= max_movement:
-                new_path.append(pos)
-            else:
-                break
-        # the path itself may cross over own units, but it
-        # cannot end on them. so if the final pos ends at a monster, this will
-        # cause an error
-        # for now this error should be handled by whatever calls this function
-        # assert self.board.monster_at(new_path[-1]) is None, (
-        #     f'Partial path is not valid, '
-        #     f'{self.board.monster_at(new_path[-1])} is at the last pos')
-        return new_path
