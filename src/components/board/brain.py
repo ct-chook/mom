@@ -2,7 +2,7 @@ import logging
 import random
 from math import ceil
 
-from src.components.board.pathing import MovementFinder, PathFinder, \
+from src.components.board.pathing import MovementFinder, PathFactory, \
     PathMatrixFactory
 from src.components.board.pathing_components import PathMatrix, \
     TowerSearchMatrixFactory
@@ -145,7 +145,7 @@ class MonsterBrain:
         self.controller = controller
         self.model = controller.model
         self.board = self.model.board
-        self.path_finder = PathFinder(self.board)
+        self.path_finder = PathFactory(self.board)
         self.movement_finder = MovementFinder(self.board)
         self.matrix_generator = PathMatrixFactory(self.board)
         self.towersearch_matrix_factory = TowerSearchMatrixFactory(

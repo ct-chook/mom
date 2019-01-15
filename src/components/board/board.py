@@ -1,6 +1,7 @@
 import logging
 import random
 import re
+from math import floor
 
 from src.components.board import players
 from src.components.board.monster import Monster
@@ -303,25 +304,43 @@ class BoardFactory:
 
     def make_board_from_text(self, text, legend) -> Board:
         self._parse_layout(text, legend)
-        self._make_board_from_layout()
         return self.board
 
     def _parse_layout(self, input_layout, legend):
         chars = re.sub('[\\s]+', ' ', input_layout).split(' ')
-        new_list = []
+        self.layout = []
+        monsters_to_add = []
         for char in chars:
             if char.isnumeric():
-                new_list.append(int(char))
+                self.layout.append(int(char))
             elif char == '':
                 pass
             elif char not in legend:
                 raise AttributeError(f'Char "{char}" missing from legend')
             else:
-                new_list.append(legend[char])
+                data = legend[char]
+                if self._is_monster_data(data):
+                    data += (len(self.layout) - 2,)
+                    monsters_to_add.append(data)
+                    self.layout.append(Terrain.GRASS)
+                else:
+                    self.layout.append(legend[char])
         # start pos (unused, but needed)
+        # might want to use this later or in a different method
         for _ in range(8):
-            new_list.append(0)
-        self.layout = new_list
+            self.layout.append(0)
+        self._make_board_from_layout()
+        self._add_monsters(monsters_to_add)
+
+    def _add_monsters(self, monsters):
+        for monster_data in monsters:
+            monster_type, owner, index = monster_data
+            x = index % self.x_max
+            y = floor(index / self.x_max)
+            self.board.place_new_monster(monster_type, (x, y), owner)
+
+    def _is_monster_data(self, data):
+        return isinstance(data, tuple)
 
     def _make_board_from_layout(self):
         self.set_map_using_layout(1)

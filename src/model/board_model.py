@@ -1,6 +1,6 @@
 from src.components.board import players
 from src.components.board.board import Board, BoardFactory
-from src.components.board.pathing import PathMatrixFactory, PathFinder
+from src.components.board.pathing import PathMatrixFactory, PathFactory
 from src.components.board.pathing_components import PathMatrix
 from src.components.combat.attack import AttackFactory, AttackCollection
 from src.components.combat.combat import Combat
@@ -153,7 +153,7 @@ class BoardModel:
 
     def get_path_to(self, pos):
         assert self.path_matrix
-        pathfinder = PathFinder(self.board)
+        pathfinder = PathFactory(self.board)
         return pathfinder.get_path_on_matrix_to(self.path_matrix, pos)
 
     def get_lord_of_player(self, player_id=None):

@@ -398,7 +398,7 @@ class AStarMatrixProcessor(MatrixProcessor):
         return functions.get_hexagonal_manhattan_distance(pos, self.destination)
 
 
-class PathGenerator:
+class PathFinder:
     """ Generates shortest paths for monsters.
 
     Use the board's path matrix to generate the shortest path between monster
@@ -539,7 +539,7 @@ class PathGenerator:
         self.adj_found = True
 
 
-class SimplePathGenerator(PathGenerator):
+class SimplePathFinder(PathFinder):
     """Gives the shorest possible path, ignores monsters blocking the path"""
 
     def _next_tile_is_not_blocked(self):

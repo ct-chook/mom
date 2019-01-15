@@ -2,41 +2,22 @@ from copy import deepcopy
 
 import pytest
 
-from src.components.board.board import Board, BoardFactory
+from src.components.board.board import BoardFactory
 from src.components.board.monster import Monster
-from src.components.board.pathing import PathGenerator, PathFinder
+from src.components.board.pathing import PathFinder, PathFactory
 from src.components.board.pathing import PathMatrixFactory
-from src.components.board.pathing_components import AStarMatrixFactory, \
-    TowerSearchMatrixFactory
-from src.controller.board_controller import BoardModel
+from src.components.board.pathing_components import AStarMatrixFactory
 from src.helper.Misc.constants import MonsterType, Terrain, UNEXPLORED, \
     IMPASSIBLE
 
-blocked_x = 1
-blocked_y = 6
-
-roman_x = 1
-roman_y = 19
-
-octopus_x = 12
-octopus_y = 7
-
-sirene_x = 12
-sirene_y = 8
-
-phoenix_x = 1
-phoenix_y = 18
-
-roman_pos = (roman_x, roman_y)
-phoenix_pos = (phoenix_x, phoenix_y)
-octopus_pos = (octopus_x, octopus_y)
-sirene_pos = (sirene_x, sirene_y)
+Type = Monster.Type
 
 
 class Boards:
     zigzag = None
     cross = None
     gauntlet = None
+    square = None
 
     @staticmethod
     def get_zigzag():
@@ -96,15 +77,42 @@ class Boards:
             Boards.gauntlet = factory.make_board_from_text(layout, legend)
         return deepcopy(Boards.gauntlet)
 
+    @staticmethod
+    def get_square():
+        if not Boards.gauntlet:
+            legend = {'.': Terrain.GRASS}
+            #          1   2   3   4   5   6   7   8   9  10  11  12  13  14
+            layout = """9 9
+                          .   .   .   .   .   .   .   .   .
+                            .   .   .   .   .   .   .   .   .
+                          .   .   .   .   .   .   .   .   .
+                            .   .   .   .   .   .   .   .   .
+                          .   .   .   .   .   .   .   .   .
+                            .   .   .   .   .   .   .   .   .
+                          .   .   .   .   .   .   .   .   .
+                            .   .   .   .   .   .   .   .   .
+                          .   .   .   .   .   .   .   .   ."""
+            factory = BoardFactory()
+            Boards.square = factory.make_board_from_text(layout, legend)
+        return deepcopy(Boards.square)
+
 
 class TestCase:
     # noinspection PyAttributeOutsideInit
-    def make_board_from_layout(self, function, start_pos):
+    def make_board_from_layout(self, function, start_pos,
+                               monster_type=MonsterType.ROMAN):
         self.board = function()
         self.start_pos = start_pos
-        self.board.place_new_monster(MonsterType.ROMAN, self.start_pos)
+        self.board.place_new_monster(monster_type, self.start_pos)
         self.matrix_generator = AStarMatrixFactory(self.board)
-        self.path_generator = PathGenerator(self.board)
+        self.path_generator = PathFinder(self.board)
+
+    # noinspection PyAttributeOutsideInit
+    def make_board_from_layout2(self, layout, legend, start_pos):
+        factory = BoardFactory()
+        self.board = factory.make_board_from_text(layout, legend)
+        self.start_pos = start_pos
+        assert self.board.monster_at(start_pos), 'No monster at start pos'
 
     # noinspection PyAttributeOutsideInit
     def get_a_star_matrix(self, destination):
@@ -193,286 +201,196 @@ class TestAStarCross(TestCase):
         assert len(path) == 20
 
 
-class TestMatrix:
-    model = None
-    board = None
-    generator = None
-    matrix = None
+class TestMatrix(TestCase):
+    def test_matrix_with_enemy(self):
+        map_ = """3 6
+        .   .   #
+          .   .   #
+        .   .   #
+          .   C   #
+        .   .   #
+          .   R   #"""
+        legend = {'.': Terrain.GRASS, '#': Terrain.VOLCANO,
+                  'C': (Type.CHIMERA, 1), 'R': (Type.ROMAN, 0)}
 
-    @pytest.fixture
-    def before(self):
-        self.model = BoardModel()
-        self.board = self.model.board
-        self.generator = PathMatrixFactory(self.board)
-
-    def generate_matrix_at(self, pos):
-        self.matrix = self.generator.generate_path_matrix(pos)
-
-    def check(self, value, pos):
-        assert value == self.matrix.get_distance_value_at(pos)
-
-    def test_roman(self, before):
-        self.generate_matrix_at(roman_pos)
-        assert self.generator
-        self.check(0, roman_pos)
+        roman_pos = (1, 5)
+        roman_x, roman_y = roman_pos
         left_grass = (roman_x - 1, roman_y)
-        mountain = (roman_x + 1, roman_y)
+        volcano = (roman_x + 1, roman_y)
         chim = (roman_x, roman_y - 2)
         left_of_chim = (roman_x - 1, roman_y - 2)
         past_chim = (roman_x - 1, roman_y - 3)
+        self.make_board_from_layout2(map_, legend, roman_pos)
+        self.generate_matrix_at(roman_pos)
+
+        self.check(0, roman_pos)
         self.check(1, left_grass)
-        self.check(IMPASSIBLE, mountain)
+        self.check(IMPASSIBLE, volcano)
         self.check(UNEXPLORED, chim)
         self.check(3, left_of_chim)
         self.check(UNEXPLORED, past_chim)
 
-    def test_phoenix(self, before):
-        # move darklord out of the way
-        self.board.set_monster_pos(self.board.lords[3], (0, 0))
-        self.generate_matrix_at(phoenix_pos)
-        self.check(0, phoenix_pos)
-        self.check(1, (phoenix_x + 1, phoenix_y))
-        self.check(8, (phoenix_x, phoenix_y - 2))
-
-    def test_octopus(self, before):
-        octopus_northeast = (octopus_x + 1, octopus_y - 1)
-        ocean_tip = (octopus_x - 1, octopus_y - 5)
-        west_of_ocean_tip = (octopus_x - 2, octopus_y - 4)
-        coast = (octopus_x, octopus_y + 1)
-        north_of_ocean = (octopus_x - 1, octopus_y - 6)
-        self.generate_matrix_at(octopus_pos)
-        self.check(0, octopus_pos)
-        self.check(1, octopus_northeast)
-        self.check(6, ocean_tip)
-        self.check(4, coast)
-        self.check(UNEXPLORED, west_of_ocean_tip)
-        self.check(UNEXPLORED, north_of_ocean)
-
-    def test_sirene(self, before):
-        self.generate_matrix_at(sirene_pos)
-        # start
-        assert 0 == self.matrix.get_distance_value_at(sirene_pos)
-        # northeast
-        assert 5 == self.matrix.get_distance_value_at(
-            (sirene_x + 1, sirene_y - 1))
-        # ocean tip
-        assert 6 == self.matrix.get_distance_value_at(
-            (sirene_x - 1, sirene_y - 6))
-        # land
-        assert 4 == self.matrix.get_distance_value_at(
-            (sirene_x, sirene_y + 1))
-
-
-class TestPaths:
-    model = None
-    board = None
-    generator = None
-    path = None
-    path_generator = None
-
-    @pytest.fixture
-    def before(self):
-        self.model = BoardModel()
-        self.board: Board = self.model.board
-        self.generator = PathMatrixFactory(self.board)
-        self.path_generator = PathGenerator(self.board)
-
-    def get_path_between(self, start, end):
-        path_matrix = self.generator.generate_path_matrix(start)
-        self.path_generator.set_path_matrix(path_matrix)
-        self.path = self.path_generator.get_path_to(end)
-
-    def test_roman_path(self, before):
-        self.get_path_between(roman_pos, (roman_x - 1, roman_y - 2))
-        assert self.path
-        assert 4 == len(self.path), f'path wrong: {self.path}'
-        assert roman_pos == self.path[0]
-        assert (roman_x - 1, roman_y) == self.path[1]
-        assert (roman_x - 1, roman_y - 2) == self.path[-1]
-
-    def test_octopus_ocean_path(self, before):
-        end_pos = (octopus_x - 1, octopus_y - 5)
-        self.get_path_between(octopus_pos, end_pos)
-        assert self.path
-        assert 7 == len(self.path)
-        # start
-        start_pos = (octopus_x - 1, octopus_y - 2)
-        assert start_pos == self.path[3]
-        # end
-        assert end_pos == self.path[6]
-
-    def test_octopus_land_path(self, before):
-        self.get_path_between(octopus_pos, (octopus_x, octopus_y - 3))
-        assert self.path
-        assert 4 == len(self.path)
-        # FirstPathTile
-        assert (octopus_x + 1, octopus_y - 1) == self.path[1]
-        # LastPathTile
-        assert (octopus_x, octopus_y - 3) == self.path[3]
-
-    def test_sirene(self, before):
-        self.get_path_between(sirene_pos, (sirene_x - 1, sirene_y - 6))
-        assert self.path
-        assert self.path and len(self.path) == 7
-        # first
-        assert self.path and self.path[1] == (sirene_x - 1, sirene_y - 1)
-        # last
-        assert self.path and self.path[6] == (sirene_x - 1, sirene_y - 6)
-
-    def test_no_path_was_made(self, before):
+        self.get_path_between(roman_pos, left_of_chim)
+        assert len(self.path) == 4
+        assert self.path[1] == (0, 5)
         with pytest.raises(AssertionError):
-            self.get_path_between(roman_pos, (roman_x, roman_y - 6))
+            self.get_path_between(roman_pos, past_chim)
 
+    def test_start_next_to_enemy(self):
+        map_ = """3 4
+                .   .   #
+                  .   .   #
+                .   .   #
+                  R   C   #"""
+        legend = {'.': Terrain.GRASS, '#': Terrain.VOLCANO,
+                  'C': (Type.CHIMERA, 1), 'R': (Type.ROMAN, 0)}
 
-class TestAStar:
-    model = None
-    board = None
-    generator = None
-    path = None
-    path_generator = None
+        roman_pos = (0, 3)
+        roman_x, roman_y = roman_pos
+        north_of_chim = (roman_x + 1, roman_y - 1)
+        two_north_of_chim = (roman_x + 1, roman_y - 2)
+        self.make_board_from_layout2(map_, legend, roman_pos)
+        self.generate_matrix_at(roman_pos)
 
-    @pytest.fixture
-    def before(self):
-        self.model = BoardModel()
-        self.board = self.model.board
-        self.generator = AStarMatrixFactory(self.board)
-        self.path_generator = PathGenerator(self.board)
+        self.check(0, roman_pos)
+        self.check(1, north_of_chim)
+        self.check(3, two_north_of_chim)
+
+        self.get_path_between(roman_pos, north_of_chim)
+        assert len(self.path) == 2
+
+        self.get_path_between(roman_pos, two_north_of_chim)
+        assert len(self.path) == 4
+        assert self.path[1] == (roman_x, roman_y - 1)
+
+    def test_matrix_with_friendly(self):
+        map_ = """3 6
+                .   .   #
+                  .   .   #
+                .   .   #
+                  .   .   #
+                .   C   #
+                  .   C   # """
+        legend = {'.': Terrain.GRASS, '#': Terrain.VOLCANO,
+                  'C': (Type.CHIMERA, 0), 'R': (Type.ROMAN, 0)}
+
+        chim_pos = (1, 5)
+        chim_x, chim_y = chim_pos
+        north_of_chim = (chim_x, chim_y - 2)
+        north = (chim_x, chim_y - 5)
+        self.make_board_from_layout2(map_, legend, chim_pos)
+        self.generate_matrix_at(chim_pos)
+
+        self.check(0, chim_pos)
+        self.check(2, north_of_chim)
+        self.check(5, north)
+
+        self.get_path_between(chim_pos, north_of_chim)
+        assert len(self.path) == 3
+        assert self.path == [(chim_x, chim_y),
+                             (chim_x, chim_y - 1),
+                             (chim_x, chim_y - 2)]
+
+        self.get_path_between(chim_pos, north)
+        assert len(self.path) == 6
+        assert self.path[1] == (chim_x, chim_y - 1)
+
+    def test_terrain_for_octopus(self):
+        map_ = """3 8
+                ~   ~   ~
+                  O   .   ~
+                ~   ~   ~
+                  ~   ~   ~
+                ~   ~   .
+                  ~   .   .
+                ~   .   .
+                  .   .   ."""
+        legend = {'.': Terrain.GRASS, '~': Terrain.OCEAN,
+                  'O': (Type.OCTOPUS, 0)}
+
+        octopus_pos = (0, 1)
+        octopus_x, octopus_y = octopus_pos
+        island = (octopus_x + 1, octopus_y)
+        east_of_island = (octopus_x + 2, octopus_y)
+        land = (octopus_x + 1, octopus_y + 4)
+        south_of_octopus = (octopus_x, octopus_y + 4)
+        self.make_board_from_layout2(map_, legend, octopus_pos)
+        self.generate_matrix_at(octopus_pos)
+
+        self.check(0, octopus_pos)
+        self.check(4, island)
+        self.check(3, east_of_island)
+        self.check(4, south_of_octopus)
+        self.check(UNEXPLORED, land)
+
+        self.get_path_between(octopus_pos, east_of_island)
+        assert len(self.path) == 4
+
+        self.get_path_between(octopus_pos, south_of_octopus)
+        assert len(self.path) == 5
+
+    def check(self, value, pos):
+        assert self.matrix.get_distance_value_at(pos) == value
+
+    def generate_matrix_at(self, pos):
+        self.generator = PathMatrixFactory(self.board)
+        self.matrix = self.generator.generate_path_matrix(pos)
 
     def get_path_between(self, start, end):
-        path_matrix = self.generator.generate_path_matrix(start, end)
-        assert path_matrix, 'Could not generate path matrix'
-        self.path_generator.set_path_matrix(path_matrix)
-        self.path = self.path_generator.get_path_to(end)
-
-    def test_short_path(self, before):
-        start_pos = (0, 0)
-        end_pos = (2, 0)
-        self.board.place_new_monster(MonsterType.ROMAN, start_pos, 0)
-        self.assert_line_path(end_pos, start_pos)
-
-    def test_long_path(self, before):
-        start_pos = (0, 0)
-        end_pos = (10, 0)
-        self.board.place_new_monster(MonsterType.ROMAN, start_pos, 0)
-        self.assert_line_path(end_pos, start_pos)
-
-    def test_move_from_corner(self, before):
-        bot_left_corner = (0, 19)
-        self.board.place_new_monster(MonsterType.SOLDIER, bot_left_corner, 0)
-        north_of_mountain = (1, 13)
-        path_matrix = self.generator.generate_path_matrix(
-            bot_left_corner, north_of_mountain)
-        assert path_matrix.get_distance_value_at(north_of_mountain) == 6
-
-    def test_move_from_corner_long(self, before):
-        bot_left_corner = (0, 19)
-        self.board.place_new_monster(MonsterType.SOLDIER, bot_left_corner, 0)
-        far_away = (5, 5)
-        path_matrix = self.generator.generate_path_matrix(
-            bot_left_corner, far_away)
-        assert path_matrix.get_distance_value_at(far_away) == 14
-
-    def assert_line_path(self, end_pos, start_pos):
-        self.get_path_between(start_pos, end_pos)
-        expected = []
-        for n in range(end_pos[0] + 1):
-            expected.append((n, 0))
-        assert expected == self.path
+        matrix_factory = PathMatrixFactory(self.board)
+        path_matrix = matrix_factory.generate_path_matrix(start)
+        path_factory = PathFinder(self.board)
+        path_factory.set_path_matrix(path_matrix)
+        self.path = path_factory.get_path_to(end)
 
 
-class TestTerrainSearch:
-    model = None
-    board = None
-    generator = None
-    path = None
-    path_generator = None
-
+class TestTowerSearch(TestCase):
     @pytest.fixture
     def before(self):
-        self.model = BoardModel()
-        self.board = self.model.board
-        self.pathfinder = PathFinder(self.board)
-        self.path_generator = PathGenerator(self.board)
+        pass
 
-    def test_short_path(self, before):
-        start_pos = (0, 0)
-        end_pos = (2, 0)
-        self.board.place_new_monster(MonsterType.ROMAN, start_pos, 0)
-        self.board.set_terrain_to(end_pos, Terrain.TOWER)
-        self.assert_path(end_pos, start_pos)
+    def test_find_tower(self, before):
+        map_ = """3 6
+                .   .   .
+                  .   #   t
+                .   #   .
+                  .   .   #
+                .   #   #
+                  .   C   #"""
+        legend = {'.': Terrain.GRASS, '#': Terrain.VOLCANO,
+                  't': Terrain.TOWER, 'C': (Type.CHIMERA, 0)}
 
-    def test_long_path(self, before):
-        start_pos = (0, 0)
-        end_pos = (10, 0)
-        self.board.place_new_monster(MonsterType.ROMAN, start_pos, 0)
-        # this tile contains a tower by default
-        self.board.set_terrain_to((7, 4), Terrain.GRASS)
-        self.board.set_terrain_to(end_pos, Terrain.TOWER)
-        self.assert_path(end_pos, start_pos)
+        chim_pos = (1, 5)
+        tower_pos = (2, 1)
+        self.make_board_from_layout2(map_, legend, chim_pos)
+        self.board.print()
+        self.get_path_to_tower(chim_pos)
+        assert self.path == [chim_pos, (0, 5), (0, 4), (0, 3), (1, 3), (2, 2),
+                             tower_pos]
 
-    def assert_path(self, end_pos, start_pos):
-        self.get_path_to_tower(start_pos)
-        expected = []
-        for n in range(end_pos[0] + 1):
-            expected.append((n, 0))
-        assert expected == self.path
+    def test_find_closest_tower(self, before):
+        map_ = """6 10
+                .   .   .   .   .   t
+                  .   #   .   .   .   .
+                .   #   .   .   .   .
+                  .   #   .   .   .   .
+                .   #   .   .   .   .
+                  .   #   .   .   .   .
+                .   #   .   .   .   .
+                  t   #   .   .   .   .
+                #   #   .   .   .   .
+                  .   C   .   .   .   ."""
+        legend = {'.': Terrain.GRASS, '#': Terrain.VOLCANO,
+                  't': Terrain.TOWER, 'C': (Type.CHIMERA, 0)}
+
+        chim_pos = (1, 9)
+        closest_tower_pos = (5, 0)
+        self.make_board_from_layout2(map_, legend, chim_pos)
+        self.board.print()
+        self.get_path_to_tower(chim_pos)
+        assert self.path[-1] == closest_tower_pos
 
     def get_path_to_tower(self, start):
-        self.path = self.pathfinder.get_path_to_tower(
-            start)
-        assert self.path
-
-
-class TestValidPathZigzag(TestCase):
-    @pytest.fixture
-    def before(self):
-        self.make_board_from_layout(Boards.get_zigzag, (0, 0))
-
-    def test_tower_found_on_first_turn(self, before):
-        self.start_pos = (0, 0)
-        destination = (5, 0)
-        self.board.set_terrain_to(destination, Terrain.TOWER)
-        # troll can move only 4 tiles per turn. it must move 2 tiles on the
-        # second turn to move to 5,0, so total move cost will be 6
-        matrix = self.search_tower()
-        assert matrix.get_distance_value_at(destination) == 5
-
-    def test_tower_behind_own_monster(self, before):
-        self.start_pos = (0, 0)
-        self.board.monster_at(self.start_pos).set_monster_type(
-            Monster.Type.TROLL)
-        self.board.place_new_monster(Monster.Type.ROMAN, (4, 0))
-        self.board.place_new_monster(Monster.Type.ROMAN, (3, 1))
-        destination = (5, 0)
-        self.board.set_terrain_to(destination, Terrain.TOWER)
-        matrix = self.search_tower()
-        assert matrix.get_distance_value_at(destination) == 5
-
-    def search_tower(self):
-        matrix_generator = TowerSearchMatrixFactory(self.board)
-        matrix = matrix_generator.generate_path_matrix(
-            self.start_pos)
-        return matrix
-
-
-class TestValidPathGauntlet(TestCase):
-    @pytest.fixture
-    def before(self):
-        self.make_board_from_layout(Boards.get_gauntlet, (1, 1))
-
-    def test_tower_found_on_first_turn(self, before):
-        self.start_pos = (1, 1)
-        destination = (1, 3)
-        self.board.place_new_monster(Monster.Type.ROMAN, (6, 1))
-        self.board.place_new_monster(Monster.Type.ROMAN, (5, 1))
-        self.board.place_new_monster(Monster.Type.ROMAN, (4, 1))
-        self.board.place_new_monster(Monster.Type.ROMAN, (8, 1))
-        self.board.set_terrain_to(destination, Terrain.TOWER)
-        matrix = self.search_tower()
-        assert matrix.get_distance_value_at(destination) == 24
-
-    def search_tower(self):
-        matrix_generator = TowerSearchMatrixFactory(self.board)
-        matrix = matrix_generator.generate_path_matrix(
-            self.start_pos)
-        return matrix
+        self.pathfactory = PathFactory(self.board)
+        self.path = self.pathfactory.get_path_to_tower(start)
+        assert self.path, 'Could not generate path'

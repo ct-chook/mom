@@ -1,7 +1,7 @@
 from src.components.board.monster import Monster
 from src.components.board.pathing_components import FullMatrixProcessor, \
-    PathGenerator, PathMatrix, MatrixFactory, AStarMatrixFactory, \
-    TowerSearchMatrixFactory, SimplePathGenerator
+    PathFinder, PathMatrix, MatrixFactory, AStarMatrixFactory, \
+    TowerSearchMatrixFactory, SimplePathFinder
 
 
 class PathMatrixFactory(MatrixFactory):
@@ -32,7 +32,7 @@ class PathMatrixFactory(MatrixFactory):
         return self.matrix
 
 
-class PathFinder:
+class PathFactory:
     """ Returns the shortest path between two points.
 
     Create a path matrix except it has to be heuristic, and should stop when
@@ -46,7 +46,7 @@ class PathFinder:
 
     def __init__(self, board):
         self.board = board
-        self.path_generator = PathGenerator(board)
+        self.path_generator = PathFinder(board)
 
     def get_path_on_matrix_to(self, matrix, end):
         """Returns path to end on given matrix"""
@@ -61,26 +61,23 @@ class PathFinder:
     def get_path_between(self, beginning, end):
         """Returns path between given positions"""
         matrix_factory = AStarMatrixFactory(self.board)
-        path_matrix = matrix_factory.generate_path_matrix(
-            beginning, end)
+        path_matrix = matrix_factory.generate_path_matrix(beginning, end)
         return self.path_generator.get_path_on(path_matrix)
 
     def get_simple_path_between(self, beginning, end):
         """Returns path between given positions"""
         matrix_factory = AStarMatrixFactory(self.board)
-        path_matrix = matrix_factory.generate_path_matrix(
-            beginning, end)
+        path_matrix = matrix_factory.generate_path_matrix(beginning, end)
         # we use simple path (ignores monster collision and zone of control
         # so we need to use a different path generator
         # todo: maybe put this in different class altogether?
-        self.path_generator = SimplePathGenerator(self.board)
+        self.path_generator = SimplePathFinder(self.board)
         return self.path_generator.get_path_on(path_matrix)
 
     def get_path_to_tower(self, beginning):
         """Returns path to nearest terrain type"""
         matrix_factory = TowerSearchMatrixFactory(self.board)
-        path_matrix = matrix_factory.generate_path_matrix(
-            beginning)
+        path_matrix = matrix_factory.generate_path_matrix(beginning)
         return self.path_generator.get_path_on(path_matrix)
 
     def get_matrix(self):
@@ -105,7 +102,7 @@ class MovementFinder:
 
     def __init__(self, board):
         self.board = board
-        self.pathfinder = PathFinder(board)
+        self.pathfinder = PathFactory(board)
 
     def get_movement_to_tile(self, monster, destination) -> Movement:
         assert monster.pos
