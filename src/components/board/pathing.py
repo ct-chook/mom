@@ -1,7 +1,6 @@
-from src.components.board.monster import Monster
 from src.components.board.pathing_components import FullMatrixProcessor, \
     PathFinder, PathMatrix, MatrixFactory, AStarMatrixFactory, \
-    TowerSearchMatrixFactory, SimplePathFinder, Path
+    TowerSearchMatrixFactory, SimplePathFinder
 
 
 class PathMatrixFactory(MatrixFactory):
@@ -75,10 +74,7 @@ class PathFactory:
         return self.path_generator.get_path_on(path_matrix)
 
     def get_path_to_tower(self, beginning):
-        """Returns path to nearest terrain type"""
+        """Returns path to nearest tower type"""
         matrix_factory = TowerSearchMatrixFactory(self.board)
         path_matrix = matrix_factory.generate_path_matrix(beginning)
         return self.path_generator.get_path_on(path_matrix)
-
-    def get_matrix(self):
-        return self.path_generator.path_matrix

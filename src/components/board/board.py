@@ -71,14 +71,16 @@ class Board:
         if self._get_current_player().mana < summon_cost:
             logging.info('Not enough mana to summon monster')
             return None
-        assert (self._get_current_player().tower_count + 1
-                >= len(self.monsters[self.get_current_player_id()])), (
-            f'Not enough towers, only have '
-            f'{self._get_current_player().tower_count}')
+        if self._max_monsters_reached():
+            return None
         monster = self.place_new_monster(monster_type, pos, owner)
         self.players.get_current_player().decrease_mana_by(summon_cost)
         monster.moved = True
         return monster
+
+    def _max_monsters_reached(self):
+        return (self._get_current_player().tower_count + 1
+                < len(self.monsters[self.get_current_player_id()]))
 
     def place_new_monster(self, monster_type, pos=(0, 0), owner=0) -> Monster:
         """Places a new monster without checking/reducing mana or flagging it"""

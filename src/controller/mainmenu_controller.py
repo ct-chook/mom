@@ -120,7 +120,7 @@ class CappedCounter:
 class SummonerButton(TextButton):
     summoners = (Monster.Type.DAIMYOU, Monster.Type.WIZARD,
                  Monster.Type.SORCERER, Monster.Type.DARKLORD,
-                 Monster.Type.SUMMONER, Monster.Type.SIXTHLORD)
+                 Monster.Type.SUMMONER) #, Monster.Type.SIXTHLORD)
 
     def __init__(self, x, y, width, height, summoner_type):
         super().__init__(x, y, width, height, 'summoner', self._next_summoner)

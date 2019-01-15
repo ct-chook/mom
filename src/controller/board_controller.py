@@ -118,6 +118,8 @@ class BoardController(Window):
 
     def handle_tile_selection(self, tile_pos):
         if self._tile_edit_mode_is_active():
+            if not self.model.board.is_valid_board_pos(tile_pos):
+                return
             terrain = self.tile_editor_window.selected_terrain
             self.model.board.set_terrain_to(tile_pos, terrain)
             self.view.queue_for_background_update()
@@ -358,10 +360,15 @@ class BoardView(View):
     def add_movement_event(self, monster, path):
         self.path_animation = (path, monster)
         self.path_index = 0
+        focus_camera_event = EventCallback(
+            self.center_camera_on, path[0], name='focus camera')
+
         movement_event = EventCallback(self.on_path_animation, name='path anim')
         clear_highlight_event = EventCallback(
             self.clear_highlighted_tiles, name='clear highlight')
-        return EventList((movement_event, clear_highlight_event))
+
+        return EventList((focus_camera_event, movement_event,
+                          clear_highlight_event))
 
     def on_path_animation(self):
         path, monster = self.path_animation

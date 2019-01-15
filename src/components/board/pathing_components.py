@@ -420,6 +420,12 @@ class Path:
     def __getitem__(self, index):
         return self.posses[index]
 
+    def __repr__(self):
+        name = []
+        for pos in self.posses:
+            name.append(str(pos))
+        return ','.join(name)
+
 
 class PathFinder:
     """ Generates shortest paths for monsters.

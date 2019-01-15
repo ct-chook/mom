@@ -8,7 +8,7 @@ from src.abstract.view import View
 
 class TileEditorWindow(Window):
     def __init__(self):
-        super().__init__(1000, 50, 100, 300)
+        super().__init__(1000, 50, 100, 450)
         self.view = self.add_view(TileEditorView)
         self.selected_terrain = None
         self.buttons = self.attach_controller(

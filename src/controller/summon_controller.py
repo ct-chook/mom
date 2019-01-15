@@ -43,7 +43,7 @@ class SummonWindow(Window):
         monster = self.parent.handle_summon_monster(
             monster_type, self.summon_pos)
         if not monster:
-            print('not enough mana')
+            print('could not summon monster, not enough towers/mp')
         else:
             self.hide()
 

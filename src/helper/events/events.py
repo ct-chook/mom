@@ -112,6 +112,12 @@ class EventList:
     def set_publisher(publisher):
         EventList.publisher = publisher
 
+    def __repr__(self):
+        name = []
+        for event in self.events:
+            name.append(str(event))
+        return ','.join(name)
+
 
 class EventQueue:
     """Part of the subscription-publisher pattern.

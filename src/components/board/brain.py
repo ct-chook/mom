@@ -49,12 +49,15 @@ class PlayerDefaultBrain(PlayerBrain):
         Then it ends turn.
         """
         self.did_action = False
+        logging.info('AI Handling monsters')
         self._handle_monsters()
         if self.did_action:
             return
+        logging.info('AI Handling summon')
         self._handle_summon()
         if self.did_action:
             return
+        logging.info('AI Ending turn')
         self._finish_turn()
 
     def _handle_monsters(self):
@@ -105,15 +108,19 @@ class PlayerDefaultBrain(PlayerBrain):
             summon_options = DataTables.get_summon_options(
                 self.player.lord_type)
             self.monster_to_summon = random.choice(summon_options)
+            logging.info(f'AI Setting monster to summon to '
+                         f'{self.monster_to_summon}')
         if self._possible_to_summon():
             pos = self._get_pos_to_summon()
+            logging.info(f'AI Pos to summon: pos')
             if pos:
                 monster = self.controller.handle_summon_monster(
                     self.monster_to_summon, pos)
-                assert monster
-                self._create_brain_for_monster(monster)
-                self.did_action = True
-                self.monster_to_summon = None
+                if monster:
+                    logging.info(f'AI Summoned monster')
+                    self._create_brain_for_monster(monster)
+                    self.monster_to_summon = None
+            self.did_action = True
 
     def _possible_to_summon(self):
         return self._have_enough_mana_to_summon_() \
@@ -207,12 +214,14 @@ class MonsterBrain:
             if new_destination is None:
                 new_destination = self.monster.pos
             assert new_destination in self.matrix
-
         if new_destination:
             destination = new_destination
             assert destination in self.matrix
         assert destination is not None
-        assert destination in self.matrix
+        if destination not in self.matrix:
+            self._skip_turn()
+            return
+
         self._move_to_pos_inside_matrix(destination)
 
     def _get_new_destination(self, destination):
@@ -288,13 +297,13 @@ class MonsterBrain:
         range_ = self.range_to_attack_with
         self.controller.handle_attack_order(monsters, range_)
 
-    def _move_monster(self, movement):
-        """UNUSED"""
-        destination = movement.get_destination()
-        if destination:
-            self.controller.handle_move_monster(self.monster, movement.path)
-        else:
-            make_player_brain_act_again(self.controller)
+    def _skip_turn(self):
+        self._move_to_pos_inside_matrix(self.matrix.start)
+
+
+class DestinationFinder:
+    def __init__(self):
+        pass
 
 
 class OptimalAttackFinder:
