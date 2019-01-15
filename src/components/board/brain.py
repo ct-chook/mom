@@ -120,7 +120,7 @@ class PlayerDefaultBrain(PlayerBrain):
                     logging.info(f'AI Summoned monster')
                     self._create_brain_for_monster(monster)
                     self.monster_to_summon = None
-            self.did_action = True
+                self.did_action = True
 
     def _possible_to_summon(self):
         return self._have_enough_mana_to_summon_() \

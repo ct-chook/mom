@@ -241,6 +241,35 @@ class TestMatrix(TestCase):
         with pytest.raises(AssertionError):
             self.get_path_between(roman_pos, past_chim)
 
+    def test_matrix_with_enemy_2(self):
+        map_ = """3 6
+        .   .   .
+          .   .   .
+        .   .   R
+          C   .   .
+        .   .   .
+          .   .   ."""
+        legend = {'.': Terrain.GRASS, '#': Terrain.VOLCANO,
+                  'C': (Type.CHIMERA, 1), 'R': (Type.ROMAN, 0)}
+
+        roman_pos = (2, 2)
+        north_of_chim = (0, 1)
+        south_of_roman = (2, 4)
+        self.make_board_from_layout2(map_, legend, roman_pos)
+        self.generate_matrix_at(roman_pos)
+
+        self.check(0, roman_pos)
+        self.check(2, north_of_chim)
+        self.check(2, south_of_roman)
+
+        self.get_path_between(roman_pos, north_of_chim)
+        assert len(self.path) == 3
+        assert self.path[1] == (1, 1)
+
+        self.get_path_between(roman_pos, south_of_roman)
+        assert len(self.path) == 3
+        assert self.path[1] == (2, 3)
+
     def test_start_next_to_enemy(self):
         map_ = """3 4
                 .   .   #

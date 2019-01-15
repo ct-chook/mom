@@ -438,10 +438,8 @@ class PathFinder:
     def __init__(self, board):
         self.board: board.Board = board
         self.path_matrix: PathMatrix = None
-        self.x0 = None
-        self.y0 = None
-        self.x1 = None
-        self.y1 = None
+        self.pos_from = None
+        self.pos_to = None
         self.path: Path = None
         self.terrain_type = None
         self.adj_found = None
@@ -463,7 +461,7 @@ class PathFinder:
             self._search_for_adjacent_tiles()
             assert self.adj_found, \
                 (f'Could not retrace path to {self.start}. '
-                 f'Stuck at {self.x0},{self.y0}. \n'
+                 f'Stuck at {self.pos_from}. \n'
                  f'{self.path_matrix.get_printable_dist_values()}')
         return self.path
 
@@ -496,12 +494,12 @@ class PathFinder:
         return self._get_distance_value(self.end) is None
 
     def _path_not_fully_traced_yet(self):
-        return (self.x0, self.y0) != self.path_matrix.start
+        return self.pos_from != self.path_matrix.start
 
     def _setup_tracing(self):
         assert self.start, 'Start position not configured'
         assert self.end, 'End position not configured'
-        self.x0, self.y0 = self.end
+        self.pos_from = self.end
         monster: Monster = self.path_matrix.monster
         assert monster
         self.move_points = monster.stats.move_points
@@ -512,15 +510,14 @@ class PathFinder:
 
     def _search_for_adjacent_tiles(self):
         self.adj_found = False
-        adjacent_tiles = self.board.get_posses_adjacent_to(
-            (self.x0, self.y0))
-        for self.x1, self.y1 in adjacent_tiles:
+        adjacent_tiles = self.board.get_posses_adjacent_to(self.pos_from)
+        for self.pos_to in adjacent_tiles:
             if self._tile_can_be_moved_to():
                 self._add_tile_to_path()
             if self.adj_found:
                 break
         assert self.adj_found, \
-            (f'Could not retrace path. Stuck at {self.x0}:{self.y0}\n'
+            (f'Could not retrace path. Stuck at {self.pos_from}\n'
              f'Path so far: {self.path}\n'
              f'{self.path_matrix.get_printable_dist_values()}')
 
@@ -535,11 +532,10 @@ class PathFinder:
 
     def _move_cost_difference_is_correct(self):
         path_cost_difference = (
-                self._get_distance_value((self.x0, self.y0)) -
-                self._get_distance_value((self.x1, self.y1)))
-        terrain = self.board.terrain_at((self.x0, self.y0))
-        move_cost = DataTables.get_terrain_cost(
-            terrain, self.terrain_type)
+                self._get_distance_value(self.pos_from) -
+                self._get_distance_value(self.pos_to))
+        terrain = self.board.terrain_at(self.pos_from)
+        move_cost = DataTables.get_terrain_cost(terrain, self.terrain_type)
         return path_cost_difference == move_cost
 
     def _next_tile_is_not_blocked(self):
@@ -547,16 +543,13 @@ class PathFinder:
 
         If there are monsters adjacent to this tile, the tile is blocked
         (counts as a final move), unless this is the tile the monster starts on
-        or the path is retraced from the monster's end position.
         """
-        if (self.x1, self.y1) == self.start or (self.x0, self.y0) == self.end:
-            return True
-        else:
-            return self._next_tile_has_no_adjacent_enemies()
+        return (self.pos_to == self.start
+                or self._next_tile_has_no_adjacent_enemies())
 
     def _next_tile_has_no_adjacent_enemies(self):
-        nearby_tiles = self.board.get_posses_adjacent_to((self.x1, self.y1))
-        for pos in nearby_tiles:
+        posses = self.board.get_posses_adjacent_to(self.pos_to)
+        for pos in posses:
             nearby_monster = self.board.monster_at(pos)
             if (nearby_monster and nearby_monster.owner !=
                     self.board.get_current_player_id()):
@@ -564,11 +557,9 @@ class PathFinder:
         return True
 
     def _add_tile_to_path(self):
-        # if tile isn't the last tile, it can't be adjacent to enemy
-        # todo needs check for this
-        pos = (self.x1, self.y1)
+        pos = self.pos_to
         self.path.add_pos(pos)
-        self.x0, self.y0 = pos
+        self.pos_from = pos
         self.adj_found = True
         self._update_reachable_pos(pos)
 
