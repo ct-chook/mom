@@ -499,14 +499,14 @@ class PathFinder:
     def _setup_tracing(self):
         assert self.start, 'Start position not configured'
         assert self.end, 'End position not configured'
-        self.pos_from = self.end
         monster: Monster = self.path_matrix.monster
         assert monster
         self.move_points = monster.stats.move_points
         self.terrain_type = monster.stats.terrain_type
         # append the ending point (starting pos for the algorithm)
         self.path = Path()
-        self.path.add_pos(self.end)
+        self.pos_to = self.end
+        self._add_tile_to_path()
 
     def _search_for_adjacent_tiles(self):
         self.adj_found = False
@@ -561,13 +561,13 @@ class PathFinder:
         self.path.add_pos(pos)
         self.pos_from = pos
         self.adj_found = True
-        self._update_reachable_pos(pos)
-
-    def _update_reachable_pos(self, pos):
-        if (not self.path.furthest_reachable
-                and self.path_matrix.get_distance_value_at(pos)
-                <= self.move_points):
+        if self._furthest_reachable_can_be_set(pos):
             self.path.furthest_reachable = pos
+
+    def _furthest_reachable_can_be_set(self, pos):
+        return (not self.path.furthest_reachable
+                and self.path_matrix.get_distance_value_at(pos)
+                <= self.move_points)
 
 
 class SimplePathFinder(PathFinder):

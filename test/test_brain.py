@@ -107,7 +107,7 @@ class TestCase:
     def check_chim_pos(self, pos):
         assert self.chim.pos == pos, \
             f'Monster was at {self.chim.pos} instead of {pos} \
-                      {self.board.debug_print()}'
+                      {self.board.print()}'
 
     def summon_monster(self, type_, pos):
         monster = self.board.place_new_monster(type_, pos, 0)
