@@ -7,7 +7,7 @@ from src.components.board.monster import Monster
 from src.components.combat.combat import Combat
 from src.controller.board_controller import BoardController
 from src.controller.mainmenu_controller import MapOptions
-from src.helper.Misc.constants import Terrain
+from src.helper.Misc.constants import Terrain, AiType
 from src.helper.Misc.options_game import Options
 from src.helper.events.events import EventList, EventQueue
 
@@ -17,10 +17,6 @@ Combat.perfect_accuracy = True
 
 Type = Monster.Type
 chim_start_pos = (3, 3)
-
-
-class AiType:
-    (human, idle, default) = range(3)
 
 
 class TestCase:
@@ -33,6 +29,7 @@ class TestCase:
         mapoptions.set_players()
         self.controller = BoardController(0, 0, 500, 500, mapoptions)
         self.model = self.controller.model
+        assert self.model.get_player_of_number(1).ai_type != AiType.human
         assert len(self.model.players) == 2
         self.board = self.model.board
         self.publisher = EventQueue()

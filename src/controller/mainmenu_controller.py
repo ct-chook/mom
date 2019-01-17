@@ -67,10 +67,18 @@ class MapOptionsWindow(Window):
                 50, 50 * n, 150, 50, f'{2 + n} Players',
                 self.set_number_of_players, n + 2)))
         # for players 1 - 4
-        self.summoner_type_buttons = []
+        self.summoner_type_buttons: [FlipButton] = []
         for n in range(4):
-            self.summoner_type_buttons.append(self.add_button(SummonerButton(
-                200, 50 * n, 150, 50, n)))
+            button = self.add_button(SummonerButton(200, 50 * n, 150, 50, n))
+            self.summoner_type_buttons.append(button)
+
+        self.player_type_buttons: [FlipButton] = []
+        default_player_type = (0, 1, 1, 1)
+        for n in range(4):
+            button = self.add_button(HumanOrComputerButton(
+                350, 50 * n, 150, 50, default_player_type[n]))
+            self.player_type_buttons.append(button)
+
         self.finish_button = self.add_button(TextButton(
             50, 250, 150, 50, 'Ok', self.finish))
         self.set_number_of_players(4)
@@ -84,7 +92,11 @@ class MapOptionsWindow(Window):
     def finish(self):
         n = 0
         for button in self.summoner_type_buttons:
-            self.mapoptions.lord_types[n] = button.get_summoner_type()
+            self.mapoptions.lord_types[n] = button.get_value()
+            n += 1
+        n = 0
+        for button in self.player_type_buttons:
+            self.mapoptions.ai_types[n] = button.get_value()
             n += 1
         self.mapoptions.set_players()
         self.hide()
@@ -107,37 +119,62 @@ class CappedCounter:
         self.value = value
         self.cap = cap
 
-    def __repr__(self):
-        return self.value
-
     def flip(self):
         """Increase counter, reverts back to zero if value hits cap"""
         self.value += 1
         if self.value >= self.cap:
             self.value = 0
 
+    def __repr__(self):
+        return str(self.value)
 
-class SummonerButton(TextButton):
-    summoners = (Monster.Type.DAIMYOU, Monster.Type.WIZARD,
-                 Monster.Type.SORCERER, Monster.Type.DARKLORD,
-                 Monster.Type.SUMMONER, Monster.Type.SIXTHLORD)
+    def __str__(self):
+        return str(self.value)
 
-    def __init__(self, x, y, width, height, summoner_type):
-        super().__init__(x, y, width, height, 'summoner', self._next_summoner)
-        self.summoner_type = CappedCounter(summoner_type, len(self.summoners))
-        self._display_summoner_name()
 
-    def _next_summoner(self):
-        self.summoner_type.flip()
-        self._display_summoner_name()
+class FlipButton(TextButton):
+    def __init__(self, x, y, width, height, base_val, val_list, str_list):
+        """Used to hold and return a value from a list of values
 
-    def _display_summoner_name(self):
-        self.view.set_text(DataTables.get_monster_stats(
-            self.summoners[self.summoner_type.value]).name)
+        Provide a list of values that the button should return, and also a list
+        of strings representing these values to show on the button"""
+        super().__init__(x, y, width, height, '', self._next)
+        self.val_list = val_list
+        self.str_list = str_list
+        assert len(self.val_list) == len(self.str_list), (
+            'Both lists should have same length')
+        assert base_val < len(self.val_list)
+        self.counter = CappedCounter(base_val, len(self.val_list))
+        self._update_view()
+
+    def _next(self):
+        self.counter.flip()
+        self._update_view()
+
+    def _update_view(self):
+        self.view.set_text(self.str_list[self.counter.value])
         self.view.queue_for_sprite_update()
 
-    def get_summoner_type(self):
-        return self.summoners[self.summoner_type.value]
+    def get_value(self):
+        return self.val_list[self.counter.value]
+
+
+class SummonerButton(FlipButton):
+    def __init__(self, x, y, width, height, summoner_type):
+        vals = (Monster.Type.DAIMYOU, Monster.Type.WIZARD,
+                Monster.Type.SORCERER, Monster.Type.DARKLORD,
+                Monster.Type.SUMMONER)
+        str_list = []
+        for val in vals:
+            str_list.append(DataTables.get_monster_stats(val).name)
+        super().__init__(x, y, width, height, summoner_type, vals, str_list)
+
+
+class HumanOrComputerButton(FlipButton):
+    def __init__(self, x, y, width, height, player_type):
+        vals = (AiType.human, AiType.default)
+        str_list = ('Human', 'Computer')
+        super().__init__(x, y, width, height, player_type, vals, str_list)
 
 
 class MapSelectionWindow(Window):
@@ -169,6 +206,7 @@ class MapOptions:
         self.players: PlayerList = PlayerList()
         self.number_of_players = None
         self.lord_types = {}
+        self.ai_types = {}
         self.mapname = None
 
     def set_number_of_players(self, number):
@@ -181,10 +219,14 @@ class MapOptions:
         if not self.lord_types:
             for n in range(4):
                 self.lord_types[n] = n + Monster.Type.DAIMYOU
-        self.players.add_player(self.lord_types[0], AiType.human, 50)
-        for n in range(self.number_of_players - 1):
-            self.players.add_player(
-                self.lord_types[n + 1], AiType.default, 50)
+        if not self.ai_types:
+            for n in range(4):
+                if n == 0:
+                    self.ai_types[n] = AiType.human
+                else:
+                    self.ai_types[n] = AiType.default
+        for n in range(self.number_of_players):
+            self.players.add_player(self.lord_types[n], self.ai_types[n], 50)
 
 
 class MapSelectionView(View):

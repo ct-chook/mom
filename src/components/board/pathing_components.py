@@ -2,7 +2,7 @@ import heapq
 from collections import deque
 from math import floor
 
-from components.board.monster import Monster
+from src.components.board.monster import Monster
 from src.components.board.dijkstra import DijkstraGraph, SimpleDijkstraGraph
 from src.helper.dictionaryprinter import DictionaryPrinter
 from src.helper import functions

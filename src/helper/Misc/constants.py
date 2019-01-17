@@ -50,6 +50,9 @@ class AiType:
     (human, idle, default, scout, attacker, defender) = range(6)
 
 
+AiTypeName = ('Human', 'Idle', 'Default', 'Scout', 'Attacker', 'Defender')
+
+
 class MonsterBehavior:
     (SCOUT, ATTACKER, DEFENDER) = range(3)
 

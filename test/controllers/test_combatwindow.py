@@ -1,6 +1,6 @@
 import pytest
 
-from controller.combat_controller import CombatView
+from src.controller.combat_controller import CombatView
 from src.helper.Misc.options_game import Options
 from src.controller.board_controller import BoardController
 

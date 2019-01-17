@@ -1,4 +1,4 @@
-from components.combat.attack import AttackCollection
+from src.components.combat.attack import AttackCollection
 from src.abstract.view import View
 from src.abstract.window import Window, Button
 from src.controller import board_controller
