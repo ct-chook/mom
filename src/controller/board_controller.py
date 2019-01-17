@@ -167,10 +167,11 @@ class BoardController(Window):
         """
         logging.info('Moving monster')
         pos = path[-1]
-        assert self.model.board.monster_at(pos) is None, (
-            f'Destination {pos} is occupied by '
-            f'{self.model.board.monster_at(pos)}')
-        self.model.move_monster_to(monster, pos)
+        if monster.pos != pos:
+            assert self.model.board.monster_at(pos) is None, (
+                f'Destination {pos} is occupied by '
+                f'{self.model.board.monster_at(pos)}')
+            self.model.move_monster_to(monster, pos)
         eventlist = self.add_movement_event_to_view(monster, path)
         if self.model.has_capturable_tower_at(pos):
             self._handle_tower_capture(pos, eventlist)
@@ -231,21 +232,20 @@ class BoardController(Window):
         self.precombat_window.set_attackers((attacker, defender))
 
     def handle_attack_order(self, monsters, attack_range):
-        self.combat_window.show()
         attacks = self.model.get_short_and_long_attacks(monsters)
-        self.combat_window.on_combat(attacks, attack_range)
+        events = self.combat_window.on_combat(attacks, attack_range)
         attacker = attacks.get_attack(0, attack_range).monster
         defender = attacks.get_attack(1, attack_range).monster
         logging.info(f'{attacker} is attacking monster {defender}')
-        combat_log = self.model.get_combat_result(
-            attacker, defender, attack_range)
+        combat_log = self.model.get_combat_result(attacker, defender,
+                                                  attack_range)
         if combat_log.loser:
             logging.info(f'{combat_log.loser} was defeated!')
+        if self.is_ai_controlled:
+            events.append(self.get_ai_action_event())
 
     def handle_combat_end(self, combat_log):
         self.model.process_combat_log(combat_log)
-        if self.is_ai_controlled:
-            EventList(self.get_ai_action_event())
 
     def handle_summon_order_at(self, pos):
         x, y = pos

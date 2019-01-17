@@ -270,9 +270,9 @@ class MonsterBrain:
     def _set_pos_to_move_to(self):
         self._find_best_enemy_to_attack()
         if self._enemy_is_nearby():
-            self._handle_attack_enemy()
+            self._set_pos_to_nearby_enemy()
         else:
-            self._handle_find_pos()
+            self._set_pos_towards_destination()
 
     def _find_best_enemy_to_attack(self):
         attack_finder = OptimalAttackFinder(self.model)
@@ -282,7 +282,7 @@ class MonsterBrain:
     def _enemy_is_nearby(self):
         return self.optimal_attack.monster_to_attack
 
-    def _handle_attack_enemy(self):
+    def _set_pos_to_nearby_enemy(self):
         enemy = self.optimal_attack.monster_to_attack
         attack_range = self.optimal_attack.range_to_use
         tile_to_attack_from = self._get_tile_to_attack_from(enemy)
@@ -303,13 +303,13 @@ class MonsterBrain:
                 and self.matrix.get_distance_value_at(tile) < 99
                 and self.board.monster_at(tile) is None)
 
-    def _handle_find_pos(self):
+    def _set_pos_towards_destination(self):
         destination = self._get_tile_leading_to_destination()
         if not destination:
             self.destination_pos = self.monster.pos
             return
         new_destination = None
-        if self.board.monster_at(destination):
+        if self._is_occupied(destination):
             new_destination = self._get_new_destination(destination)
             if new_destination is None:
                 new_destination = self.monster.pos
@@ -321,6 +321,10 @@ class MonsterBrain:
         if destination not in self.matrix:
             self._skip_turn()
         self.destination_pos = destination
+
+    def _is_occupied(self, pos):
+        monster = self.board.monster_at(pos)
+        return monster and monster is not self.monster
 
     def _get_tile_leading_to_destination(self):
         assert len(self.destination_pos) == 2
@@ -353,13 +357,10 @@ class MonsterBrain:
 
     def _move_to_pos_inside_matrix(self, pos):
         assert pos in self.matrix, f'{self.matrix.get_printable_dist_values()}'
-        if self.monster.pos == pos:
-            # don't move monster, just do the next action
-            self._skip_turn()
-            self.monster.moved = True
-        else:
-            path = self.path_finder.get_path_on_matrix_to(self.matrix, pos)
-            self.controller.handle_move_monster(self.monster, path)
+        assert not self._is_occupied(pos)
+        path = self.path_finder.get_path_on_matrix_to(self.matrix, pos)
+        self.controller.handle_move_monster(self.monster, path)
+        self.monster.moved = True
 
 
 class DestinationFinder:

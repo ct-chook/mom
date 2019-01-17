@@ -22,24 +22,29 @@ class CombatWindow(Window):
         self.active = False
 
     def on_combat(self, attacks, attack_range):
+        self.show()
         logging.info('Showing combat')
+        assert not self.active, 'Combat window is already being used!'
+        self.active = True
         combat = Combat()
         self.combat_log = combat.monster_combat2(attacks, attack_range)
+
         draw_screen_event = EventCallback(self.view.draw_screen, attacks)
-        show_attacks_event = EventCallback(
-            self.view.show_attack, self.combat_log)
+        show_attacks_event = EventCallback(self.view.show_attack,
+                                           self.combat_log)
         close_window_event = EventCallback(self.handle_combat_end)
-        clear_selection_event = EventCallback(
-            self.parent.view.clear_highlighted_tiles)
-        combat_events = (
-            draw_screen_event, show_attacks_event, close_window_event,
-            clear_selection_event)
+        clear_selection_event = EventCallback(self.parent.view.
+                                              clear_highlighted_tiles)
+        combat_events = (draw_screen_event, show_attacks_event,
+                         close_window_event, clear_selection_event)
         self.event_list = EventList(combat_events)
+        return self.event_list
 
     def handle_mouseclick(self):
         self.event_list.skip()
 
     def handle_combat_end(self):
+        self.active = False
         self.parent.handle_combat_end(self.combat_log)
         self.hide()
 

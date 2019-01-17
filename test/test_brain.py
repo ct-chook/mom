@@ -54,8 +54,8 @@ class TestCase:
         for _ in range(x):
             self.model.on_end_turn()
 
-    def set_ai_type(self, ai_type):
-        player = self.model.get_player_of_number(1)
+    def set_ai_type(self, ai_type, id_=1):
+        player = self.model.get_player_of_number(id_)
         player.ai_type = ai_type
         if ai_type == AiType.idle:
             brain_class = PlayerIdleBrain
@@ -405,16 +405,22 @@ class TestHandleEnemy(TestCase):
 class TestNormalScenario(TestCase):
     def before_more(self):
         self.set_ai_type(AiType.default)
-        self.surround_pos_with_towers_for(self.board.lords[0].pos, 0)
-        self.surround_pos_with_towers_for(self.board.lords[1].pos, 1)
+        self.set_ai_type(AiType.default, 0)
+
+        lord_1 = self.board.lords[0]
+        lord_2 = self.board.lords[1]
+        self.board.set_monster_pos(lord_1, (1, 1))
+        self.surround_pos_with_towers_for(lord_1.pos, 0)
+        self.surround_pos_with_towers_for(lord_2.pos, 1)
         self.create_tower_at((9, 9))
         self.create_tower_at((11, 11))
         self.create_tower_at((13, 13))
         self.create_tower_at((15, 15))
 
     def skip_test_ai_doesnt_lock_up_the_game(self, before):
-        for _ in range(100):
+        for _ in range(25):
             self.do_enemy_turn()
+            self.board.print()
 
     def surround_pos_with_towers_for(self, pos, owner):
         posses = self.board.get_posses_adjacent_to(pos)
