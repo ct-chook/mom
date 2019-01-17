@@ -74,9 +74,10 @@ class TestRomanCombat(CombatTest):
         self.model = BoardModel()
         self.board = self.model.board
         self.combat = Combat()
-        blue_monsters = self.board.monsters[0]
-        self.roman_a = blue_monsters[1]
-        self.roman_b = blue_monsters[2]
+        self.roman_a = self.board.place_new_monster(Monster.Type.ROMAN,
+                                                    (4, 4), 0)
+        self.roman_b = self.board.place_new_monster(Monster.Type.ROMAN,
+                                                    (4, 5), 1)
         Combat.perfect_accuracy = True
         self.more()
 
@@ -112,8 +113,6 @@ class TestInvalidAttacksBetweenRomans(TestRomanCombat):
         assert self.attack1.damage == 0
         assert self.attack0.hits == 0
         assert self.attack1.hits == 0
-        assert self.attack0.accuracy == 60
-        assert self.attack1.accuracy == 60
 
 
 class TestAligmentMultiplier(TestRomanCombat):

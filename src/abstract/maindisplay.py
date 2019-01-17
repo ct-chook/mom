@@ -35,14 +35,14 @@ class MainDisplay:
         self.top_view = view
 
     def add_view_to_update_queue(self, view):
-        logging.info(f'added {view} to background update queue')
+        # logging.info(f'added {view} to background update queue')
         self.backgrounds_to_update.add(view)
         # logging.info(
         #     f'right now the background update queue is: '
         #     f'{self.backgrounds_to_update}')
 
     def add_sprites_to_update_queue(self, view):
-        logging.info(f'added {view} to sprite update queue')
+        # logging.info(f'added {view} to sprite update queue')
         self.sprites_to_update.add(view)
         # logging.info(
         #     f'right now the sprite update queue is: {self.sprites_to_update}')
@@ -50,13 +50,13 @@ class MainDisplay:
     def blit_frame(self):
         updated = False
         if self.backgrounds_to_update:
-            logging.info(f'views to update: {self.backgrounds_to_update}')
+            # logging.info(f'views to update: {self.backgrounds_to_update}')
             self._update_views_in_queue()
             # debug(self, 'clearing views to update')
             self.backgrounds_to_update.clear()
             updated = True
         if self.sprites_to_update:
-            logging.info(f'sprites to update: {self.sprites_to_update}')
+            # logging.info(f'sprites to update: {self.sprites_to_update}')
             self._update_sprites_in_queue()
             self.sprites_to_update.clear()
             updated = True
@@ -65,30 +65,30 @@ class MainDisplay:
 
     def _update_views_in_queue(self):
         for view in self.backgrounds_to_update:
-            logging.info(f'{self}: updating background of {view}')
+            # logging.info(f'{self}: updating background of {view}')
             view.update_background()
             self.changed_rects.append(view.get_absolute_rectangle())
 
     def _update_sprites_in_queue(self):
         for view in self.sprites_to_update:
-            logging.info(f'{self}: updating sprites of view {view}')
+            # logging.info(f'{self}: updating sprites of view {view}')
             rects = view.update_sprites()
             self.changed_rects.extend(rects)
 
     def _redraw_screen(self):
         if not self.changed_rects:
-            logging.info('Tried to redraw screen but no rects provided')
+            # logging.info('Tried to redraw screen but no rects provided')
             return
-        logging.info(f'Redrawing screen using {len(self.changed_rects)} rects')
+        # logging.info(f'Redrawing screen using {len(self.changed_rects)} rects')
         self.top_view.blit_to_display(0, 0)
         #log_time(pygame.display.flip)  # doesn't work for software displays
-        for rect in self.changed_rects:
-            logging.info(
-                f'Updating with rect: '
-                f'{rect.x}:{rect.y} {rect.width}x{rect.height}')
+        # for rect in self.changed_rects:
+            # logging.info(
+            #     f'Updating with rect: '
+            #     f'{rect.x}:{rect.y} {rect.width}x{rect.height}')
         # pygame.display.update()
-        log_time(pygame.display.update, self.changed_rects)
-        #pygame.display.update(self.changed_rects)
+        # log_time(pygame.display.update, self.changed_rects)
+        pygame.display.update(self.changed_rects)
         self.changed_rects = []
 
     def blit(self, surface, pos):

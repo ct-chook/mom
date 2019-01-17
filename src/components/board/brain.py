@@ -112,7 +112,7 @@ class PlayerDefaultBrain(PlayerBrain):
                          f'{self.monster_to_summon}')
         if self._possible_to_summon():
             pos = self._get_pos_to_summon()
-            logging.info(f'AI Pos to summon: pos')
+            logging.info(f'AI Pos to summon: {pos}')
             if pos:
                 monster = self.controller.handle_summon_monster(
                     self.monster_to_summon, pos)
@@ -120,7 +120,7 @@ class PlayerDefaultBrain(PlayerBrain):
                     logging.info(f'AI Summoned monster')
                     self._create_brain_for_monster(monster)
                     self.monster_to_summon = None
-                self.did_action = True
+                    self.did_action = True
 
     def _possible_to_summon(self):
         return self._have_enough_mana_to_summon_() \
@@ -165,7 +165,6 @@ class OptimalAttackFinder:
         # if it's low, the monster will attack just anything
         # if it's high, the monster will only attack when it has a massive
         # advantage
-        # if it's 0, the monster will be picky. keep it slightly below 0
         self.optimal_attack = OptimalAttack()
         for enemy in enemies:
             for attack_range in range(2):
@@ -205,7 +204,7 @@ class MonsterBrain:
         self.destination_pos = None
         self.monster_to_attack = None
         self.range_to_attack_with = None
-        self.optimal_attack = None
+        self.optimal_attack: OptimalAttack = None
 
     def do_action(self):
         """Uses the board controller to execute a monster-related action
@@ -240,69 +239,96 @@ class MonsterBrain:
 
     def _handle_move(self):
         self._set_destination()
-        assert self.destination_pos
-        self._make_nearby_matrix()
+        self._make_path_matrix()
         self._set_pos_to_move_to()
-        self._move_to_pos()
+        self._move_to_destination()
 
     def _set_destination(self):
         id_ = self.monster.owner
-        capturable_towers = self.board.get_capturable_towers_for_player(id_)
-        if capturable_towers:
-            self._set_destination_to_closest_tower()
-        else:
+        # capturable_towers = self.board.get_capturable_towers_for_player(id_)
+        # if capturable_towers:
+        self._set_destination_to_closest_tower()
+        if not self.destination_pos:
             self._set_destination_to_enemy_lord(id_)
+        assert self.destination_pos
 
-    def _make_nearby_matrix(self):
+    def _set_destination_to_closest_tower(self):
+        tower_matrix = self.towersearch_matrix_factory \
+            .generate_path_matrix(self.monster.pos)
+        if tower_matrix.end:
+            self.destination_pos = tower_matrix.end
+
+    def _set_destination_to_enemy_lord(self, player_id):
+        # go to enemy lord
+        enemy_lord = self.board.get_enemy_lord_for_player(player_id)
+        assert enemy_lord
+        self.destination_pos = enemy_lord.pos
+
+    def _make_path_matrix(self):
         self.matrix = self.matrix_factory.generate_path_matrix(self.monster.pos)
 
     def _set_pos_to_move_to(self):
-        if self._get_best_enemy_to_attack():
-            enemy = self.optimal_attack.monster_to_attack
-            attack_range = self.optimal_attack.range_to_use
-            tile_to_attack_from = self._get_tile_to_attack_from(enemy)
-            if tile_to_attack_from:
-                self._move_to_pos_inside_matrix(tile_to_attack_from)
-                self.monster_to_attack = enemy
-                self.range_to_attack_with = attack_range
-                self.monster.moved = False  # so it can move again next time
+        self._find_best_enemy_to_attack()
+        if self._enemy_is_nearby():
+            self._handle_attack_enemy()
         else:
-            destination = self._get_tile_leading_to_destination()
-            new_destination = None
-            if self.board.monster_at(destination):
-                new_destination = self._get_new_destination(destination)
-                if new_destination is None:
-                    new_destination = self.monster.pos
-                assert new_destination in self.matrix
-            if new_destination:
-                destination = new_destination
-                assert destination in self.matrix
-            assert destination is not None
-            if destination not in self.matrix:
-                self._skip_turn()
-            self.destination_pos = destination
+            self._handle_find_pos()
 
-    def _move_to_pos(self):
-        if self.destination_pos and self.destination_pos in self.matrix:
-            self._move_to_pos_inside_matrix(self.destination_pos)
+    def _find_best_enemy_to_attack(self):
+        attack_finder = OptimalAttackFinder(self.model)
+        self.optimal_attack = attack_finder.get_optimal_attack(
+            self.monster, self.matrix.enemies)
 
-    def _move_to_pos_inside_matrix(self, pos):
-        assert pos in self.matrix, f'{self.matrix.get_printable_dist_values()}'
-        if self.monster.pos == pos:
-            # don't move monster, just do the next action
-            make_player_brain_act_again(self.controller)
-        else:
-            path = self.path_finder.get_path_on_matrix_to(self.matrix, pos)
-            self.controller.handle_move_monster(self.monster, path)
+    def _enemy_is_nearby(self):
+        return self.optimal_attack.monster_to_attack
+
+    def _handle_attack_enemy(self):
+        enemy = self.optimal_attack.monster_to_attack
+        attack_range = self.optimal_attack.range_to_use
+        tile_to_attack_from = self._get_tile_to_attack_from(enemy)
+        if tile_to_attack_from:
+            self._move_to_pos_inside_matrix(tile_to_attack_from)
+            self.monster_to_attack = enemy
+            self.range_to_attack_with = attack_range
+            self.monster.moved = False  # so it can move again next time
+
+    def _get_tile_to_attack_from(self, enemy):
+        adjacent_tiles = self.board.get_posses_adjacent_to(enemy.pos)
+        for tile in adjacent_tiles:
+            if self._is_valid_destination(tile):
+                return tile
+
+    def _is_valid_destination(self, tile):
+        return (tile in self.matrix
+                and self.matrix.get_distance_value_at(tile) < 99
+                and self.board.monster_at(tile) is None)
+
+    def _handle_find_pos(self):
+        destination = self._get_tile_leading_to_destination()
+        if not destination:
+            self.destination_pos = self.monster.pos
+            return
+        new_destination = None
+        if self.board.monster_at(destination):
+            new_destination = self._get_new_destination(destination)
+            if new_destination is None:
+                new_destination = self.monster.pos
+            assert new_destination in self.matrix
+        if new_destination:
+            destination = new_destination
+            assert destination in self.matrix
+        assert destination is not None
+        if destination not in self.matrix:
+            self._skip_turn()
+        self.destination_pos = destination
 
     def _get_tile_leading_to_destination(self):
         assert len(self.destination_pos) == 2
         path = self.path_finder.get_simple_path_between(self.monster.pos,
                                                         self.destination_pos)
-        assert path.posses
-        print(path.posses)
+        if not path:
+            return None
         assert path.furthest_reachable
-        print(path.furthest_reachable)
         return path.furthest_reachable
 
     def _get_new_destination(self, destination):
@@ -316,37 +342,24 @@ class MonsterBrain:
                     break
         return new_destination
 
-    def _get_tile_to_attack_from(self, enemy):
-        adjacent_tiles = self.board.get_posses_adjacent_to(enemy.pos)
-        for tile in adjacent_tiles:
-            if self._is_valid_destination(tile):
-                return tile
-
-    def _is_valid_destination(self, tile):
-        return (tile in self.matrix
-                and self.matrix.get_distance_value_at(tile) < 99
-                and self.board.monster_at(tile) is None)
-
-    def _set_destination_to_closest_tower(self):
-        tower_matrix = self.towersearch_matrix_factory \
-            .generate_path_matrix(self.monster.pos)
-        assert tower_matrix.end
-        self.destination_pos = tower_matrix.end
-
-    def _set_destination_to_enemy_lord(self, player_id):
-        # go to enemy lord
-        enemy_lord = self.board.get_enemy_lord_for_player(player_id)
-        assert enemy_lord
-        self.destination_pos = enemy_lord.pos
-
-    def _get_best_enemy_to_attack(self):
-        attack_finder = OptimalAttackFinder(self.model)
-        self.optimal_attack = attack_finder.get_optimal_attack(
-            self.monster, self.matrix.enemies)
-        return self.optimal_attack.monster_to_attack
-
     def _skip_turn(self):
-        self._move_to_pos_inside_matrix(self.matrix.start)
+        make_player_brain_act_again(self.controller)
+
+    def _move_to_destination(self):
+        if self.destination_pos and self.destination_pos in self.matrix:
+            self._move_to_pos_inside_matrix(self.destination_pos)
+        else:
+            self._skip_turn()
+
+    def _move_to_pos_inside_matrix(self, pos):
+        assert pos in self.matrix, f'{self.matrix.get_printable_dist_values()}'
+        if self.monster.pos == pos:
+            # don't move monster, just do the next action
+            self._skip_turn()
+            self.monster.moved = True
+        else:
+            path = self.path_finder.get_path_on_matrix_to(self.matrix, pos)
+            self.controller.handle_move_monster(self.monster, path)
 
 
 class DestinationFinder:

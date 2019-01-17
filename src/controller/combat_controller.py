@@ -45,7 +45,7 @@ class CombatWindow(Window):
 
 
 class CombatView(View):
-    COMBAT_DELAY = 120
+    COMBAT_DELAY = 20
 
     def __init__(self, rectangle):
         super().__init__(rectangle)
@@ -75,6 +75,9 @@ class CombatView(View):
 
     def show_attack(self, combat_log: CombatLog):
         self.round_number += 1
+        assert len(combat_log.rounds) > self.round_number, (
+            'reached a round number beyond what is in the log. '
+            f'{combat_log}')
         round_ = combat_log.rounds[self.round_number]
         attacker = self.monsters[round_.side]
         if round_.damage >= 0:

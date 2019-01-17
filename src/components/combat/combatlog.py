@@ -67,6 +67,12 @@ class CombatLog:
         else:
             self.promotions.append(None)
 
+    def __repr__(self):
+        text = []
+        for round_ in self.rounds:
+            text.append(str(round_.side) + ' ' + str(round_.damage))
+        return ', '.join(text)
+
 
 class CombatRound:
     def __init__(self, side, damage):

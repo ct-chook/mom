@@ -473,7 +473,8 @@ class PathFinder:
         """Returns the shortest path to a pos in the path matrix"""
         assert self.path_matrix, 'No path matrix set'
         assert self.path_matrix.start
-        assert self.path_matrix.end
+        if not self.path_matrix.end:
+            return self.path
         self.start = self.path_matrix.start
         self.end = self.path_matrix.end
         if self.end is None:
@@ -517,7 +518,8 @@ class PathFinder:
             if self.adj_found:
                 break
         assert self.adj_found, \
-            (f'Could not retrace path. Stuck at {self.pos_from}\n'
+            (f'Could not retrace path for {self.board.monster_at(self.start)} '
+             f'from {self.start} to {self.end}. Stuck at {self.pos_from}\n'
              f'Path so far: {self.path}\n'
              f'{self.path_matrix.get_printable_dist_values()}')
 

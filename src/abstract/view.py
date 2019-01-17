@@ -196,7 +196,7 @@ class View:
         if not self.surface:
             raise AttributeError(
                 f'{self} tried to update background but had no surface')
-        logging.info(f'Redrawing background of {self}')
+        # logging.info(f'Redrawing background of {self}')
         self.surface.blit(self.background, self.background.get_rect())
 
     def add_sprite(self, surface: pygame.Surface, offset: tuple) -> Sprite:
@@ -225,9 +225,9 @@ class View:
         """Gives order to redraw sprites and text on screen"""
         if not self.sprites and not self.texts:
             return []
-        logging.info(
-            f'redrawing {len(self.sprites)} sprites and {len(self.texts)} '
-            f'text sprites for {self}')
+        # logging.info(
+        #     f'redrawing {len(self.sprites)} sprites and {len(self.texts)} '
+        #     f'text sprites for {self}')
         updated_rects = self.redraw_sprites(self.sprites)
         updated_rects.extend(self.redraw_sprites(self.texts))
         return updated_rects
@@ -283,7 +283,7 @@ class View:
     def _blit_surface_to_display(self, pos):
         """Blit this view on the display"""
         assert self.visible
-        logging.info(f'Blitting {self} to display')
+        # logging.info(f'Blitting {self} to display')
         self.main_display.blit(self.surface, pos)
 
     def _blit_children(self, parent_x, parent_y):

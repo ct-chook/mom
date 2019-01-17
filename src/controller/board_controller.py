@@ -170,14 +170,9 @@ class BoardController(Window):
         assert self.model.board.monster_at(pos) is None, (
             f'Destination {pos} is occupied by '
             f'{self.model.board.monster_at(pos)}')
-        if self.model.has_capturable_tower_at(pos):
-            tower_capture = True
-        else:
-            tower_capture = False
         self.model.move_monster_to(monster, pos)
-        # todo get actual path
         eventlist = self.add_movement_event_to_view(monster, path)
-        if tower_capture:
+        if self.model.has_capturable_tower_at(pos):
             self._handle_tower_capture(pos, eventlist)
         if self.is_ai_controlled:
             eventlist.append(self.get_ai_action_event())
@@ -217,12 +212,15 @@ class BoardController(Window):
         turn is not over yet.
         """
         brain = self._get_current_player_brain()
-        brain.do_action()
+        if brain:
+            brain.do_action()
+        else:
+            logging.error('Tried to handle ai action for human')
 
     def _get_current_player_brain(self):
         player = self.model.get_current_player()
         if player not in self.brains:
-            raise AttributeError(f'Brain not found for player {player.id_}')
+            return None
         return self.brains[player]
 
     def show_precombat_window_for(self, attacker, defender):
@@ -423,7 +421,7 @@ class BoardView(View):
         offset = self.pos_converter.board_to_surface_pos(monster.pos)
         self.monster_to_sprite[monster] = self.add_sprite(
             sprite_surface, offset)
-        logging.info(f'sprite added for {monster.name} ({monster.owner})')
+        # logging.info(f'sprite added for {monster.name} ({monster.owner})')
 
     def highlight_monsters(self, enemies):
         tiles = []

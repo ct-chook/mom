@@ -243,6 +243,28 @@ class TestMoveToFarTower(TestCase):
         assert self.chim.pos != new_pos
 
 
+class TestCannotMove(TestCase):
+    def test_surrounded_by_volcanos(self, before):
+        inside_volcano = (1, 6)
+        adj = self.board.get_posses_adjacent_to(inside_volcano)
+        for pos in adj:
+            self.board.set_terrain_to(pos, Terrain.VOLCANO)
+        self.board.set_monster_pos(self.chim, inside_volcano)
+        self.do_enemy_turn()
+
+    def test_surrounded_by_friendly_monsters(self, before):
+        self.board.set_monster_pos(self.chim, (0, 0))
+        blocked_posses = ((1, 0), (2, 0), (3, 0), (4, 0), (5, 0),
+                          (0, 1), (1, 1), (2, 1), (3, 1), (4, 1), (5, 1),
+                          (0, 2), (1, 2), (2, 2), (3, 2), (4, 2), (5, 2),
+                          (0, 3), (1, 3), (2, 3), (3, 3), (4, 3), (5, 3),
+                          (0, 4), (1, 4), (2, 4), (3, 4), (4, 4), (5, 4),
+                          (0, 5), (1, 5), (2, 5), (3, 5), (4, 5), (5, 5))
+        for pos in blocked_posses:
+            self.board.summon_monster(Type.COCOON, pos, 0)
+        self.check_chim_pos((0, 0))
+
+
 class TestWithTwoTowers(TestCase):
     def before_more(self):
         # set the player to attacker and create brain for it

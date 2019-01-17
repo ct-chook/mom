@@ -62,9 +62,9 @@ class SidebarView(View):
         # turn info
         turn_y_offset = 200
         self.sun_stance = self.add_text(
-            '', size=24, offset=(50, terrain_y_offset))
+            '', size=24, offset=(50, turn_y_offset))
         self.active_player = self.add_text(
-            '', size=24, offset=(100, terrain_y_offset))
+            '', size=24, offset=(100, turn_y_offset))
 
     sun_stance_to_text = {0: 'Dawn', 1: 'Day', 2: 'Dusk', 3: 'Night'}
 

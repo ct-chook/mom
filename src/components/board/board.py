@@ -426,10 +426,7 @@ class BoardFactory:
 
     def set_test_monsters(self):
         # todo: monsters should be part of save data
-        # inside volcano: 1,6
-        # left of mountain: 2, 19
         blue, red = range(2)
-        self.board.place_new_monster(MonsterType.ROMAN, (1, 6), blue)
         self.board.place_new_monster(MonsterType.ROMAN, (1, 19), blue)
         self.board.place_new_monster(MonsterType.PHOENIX, (1, 18), blue)
         self.board.place_new_monster(MonsterType.CHIMERA, (1, 17), red)
