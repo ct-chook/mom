@@ -40,6 +40,10 @@ class TestCase:
         self.model.kill_monster(blue_lord)
         assert self.model.game_over is True
 
+    def skip_test_one_out_of_three_players_loses(self, before):
+        pass
+        # todo!
+
     def test_capturing_tower_increases_counter(self, before):
         towers = self.model.get_current_player().tower_count
         pos = (4, 4)

@@ -17,10 +17,12 @@ class PreCombatWindow(Window):
         self.view: PreCombatView = self.add_view(PreCombatView)
         self.short_range_button: AttackButton = self.attach_controller(
             AttackButton(
-                0, 75, 200, 50, self.handle_attack_choice, Range.CLOSE))
+                0, 75, 200, 50,
+                self.handle_attack_choice, Range.CLOSE))
         self.long_range_button: AttackButton = self.attach_controller(
             AttackButton(
-                0, 175, 200, 50, self.handle_attack_choice, Range.LONG))
+                0, 175, 200, 50,
+                self.handle_attack_choice, Range.LONG))
         self.short_range_button.show()
         self.long_range_button.show()
         self.hide()

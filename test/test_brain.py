@@ -1,7 +1,7 @@
-import logging
-
 import pytest
 
+from abstract.controller import PublisherInjector
+from helper.events.events import Publisher
 from src.components.board.brain import PlayerDefaultBrain, PlayerIdleBrain
 from src.components.board.monster import Monster
 from src.components.combat.combat import Combat
@@ -9,8 +9,6 @@ from src.controller.board_controller import BoardController
 from src.controller.mainmenu_controller import MapOptions
 from src.helper.Misc.constants import Terrain, AiType
 from src.helper.Misc.options_game import Options
-from src.helper.events.events import EventList, EventQueue
-
 
 Options.headless = True
 Combat.perfect_accuracy = True
@@ -28,12 +26,13 @@ class TestCase:
         mapoptions.set_number_of_players(2)
         mapoptions.set_players()
         self.controller = BoardController(0, 0, 500, 500, mapoptions)
+        self.publisher = Publisher()
+        PublisherInjector(self.controller).inject(self.publisher)
         self.model = self.controller.model
         assert self.model.get_player_of_number(1).ai_type != AiType.human
         assert len(self.model.players) == 2
         self.board = self.model.board
-        self.publisher = EventQueue()
-        EventList.set_publisher(self.publisher)
+
         # put lords in corners
         daimyou = self.board.lords[0]
         self.board.set_monster_pos(daimyou, (19, 0))
@@ -81,7 +80,20 @@ class TestCase:
 
     def ensure_player_x_turn(self, number):
         assert self.is_player_x_turn(number), (
-            f'It is still player {self.board.get_current_player_id()}\'s turn')
+            f'It is still player {self.board.get_current_player_id()}\'s '
+            f'turn.\n'
+            f'Visible controllers: {self.get_visible_controllers()}')
+
+    def get_visible_controllers(self):
+        controllers = [self.controller]
+        visible = []
+        while controllers:
+            controller = controllers.pop(-1)
+            if controller.visible:
+                visible.append(str(controller))
+                for child in controller.children:
+                    controllers.append(child)
+        return ', '.join(visible)
 
     def is_player_x_turn(self, number):
         return self.board.get_current_player_id() == number
@@ -116,8 +128,8 @@ class TestCase:
         for _ in range(120):
             if self.is_player_x_turn(0):
                 break
+            assert self.publisher.events
             self.tick_event(60)
-            logging.info('60 frames passed')
         self.ensure_player_x_turn(0)
 
 
@@ -152,6 +164,10 @@ class TestMoveToNearbyTarget(TestCase):
 
 
 class TestHandleNearbyEnemies(TestCase):
+    def test_attack_lone_monster(self, before):
+        lizard_pos = (3, 5)
+        self.ensure_monster_is_attacked(Type.LIZARD)
+
     def test_attack_weakened_monster(self, before):
         """Finish off monster with 1 hp"""
         wraith_pos = (3, 5)
@@ -182,23 +198,26 @@ class TestHandleNearbyEnemies(TestCase):
         self.chim.set_monster_type(Type.VALKYRIE)
         self.ensure_first_monster_is_attacked(Type.FIRBOLG, Type.IRON_G)
 
+    def ensure_monster_is_attacked(self, type_):
+        pos = (3, 5)
+        self.summon_monster(type_, pos)
+        self.ensure_attack_monster_at(pos)
+
     def ensure_first_monster_is_attacked(self, type1, type2):
         pos1 = (3, 5)
         pos2 = (5, 3)
         self.summon_monster(type1, pos1)
         self.summon_monster(type2, pos2)
-        self.ensure_monster_gets_attacked(pos1)
+        self.ensure_attack_monster_at(pos1)
 
     def ensure_monster_gets_killed(self, pos):
-        self.ensure_monster_gets_attacked(pos)
+        self.ensure_attack_monster_at(pos)
         self.ensure_monster_is_dead(pos)
 
-    def ensure_monster_gets_attacked(self, pos):
+    def ensure_attack_monster_at(self, pos):
         enemy = self.board.monster_at(pos)
         old_hp = enemy.hp
-        self.end_turn()
-        self.tick_event(700)
-        self.ensure_player_x_turn(0)
+        self.do_enemy_turn()
         adjacent_tiles = self.board.get_posses_adjacent_to(pos)
         assert self.chim.pos in adjacent_tiles, f'Chim was not next to {pos}'
         assert enemy.hp < old_hp, 'Enemy hp did not change'
@@ -260,6 +279,18 @@ class TestCannotMove(TestCase):
         for pos in blocked_posses:
             self.board.summon_monster(Type.COCOON, pos, 0)
         self.check_chim_pos((0, 0))
+
+    def test_ignore_monster_surrounded_by_friendlies(self, before):
+        """Monster is considered reachable on matrix, but cannot move to it"""
+        enemy_pos = (3, 5)
+        self.board.place_new_monster(Monster.Type.LIZARD, enemy_pos, 1)
+        posses = self.board.get_posses_adjacent_to(enemy_pos)
+        for pos in posses:
+            if not self.board.monster_at(pos):
+                monster = self.board.place_new_monster(Type.COCOON, pos, 0)
+                monster.moved = True
+        self.do_enemy_turn()
+        assert self.chim.pos != chim_start_pos
 
 
 class TestWithTwoTowers(TestCase):
@@ -405,7 +436,6 @@ class TestHandleEnemy(TestCase):
 class TestNormalScenario(TestCase):
     def before_more(self):
         self.set_ai_type(AiType.default)
-        self.set_ai_type(AiType.default, 0)
 
         lord_1 = self.board.lords[0]
         lord_2 = self.board.lords[1]
@@ -417,7 +447,7 @@ class TestNormalScenario(TestCase):
         self.create_tower_at((13, 13))
         self.create_tower_at((15, 15))
 
-    def skip_test_ai_doesnt_lock_up_the_game(self, before):
+    def test_ai_doesnt_lock_up_the_game(self, before):
         for _ in range(25):
             self.do_enemy_turn()
             self.board.print()

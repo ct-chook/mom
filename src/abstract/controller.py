@@ -2,6 +2,8 @@ import logging
 
 from pygame.rect import Rect
 
+from helper.events.events import EventCallback, EventList
+
 
 class Controller:
     """The object that represents the input processing, logic and visuals
@@ -21,6 +23,12 @@ class Controller:
         self.rectangle = Rect(x, y, width, height)
         self.visible = True
         self.mouse_pos = None
+        self.events: EventList = None
+
+    def create_event_list_from(self, publisher):
+        self.events = publisher.create_event_list()
+        for child in self.children:
+            child.create_event_list_from(publisher)
 
     def topmost_controller_at(self, pos):
         local_pos = self.get_local_pos(pos)
@@ -30,7 +38,7 @@ class Controller:
                 return controller.topmost_controller_at(local_pos)
         # overlap is by rectangle which has its own x and y
         # therefore, compare overlap with parent pos instead of local post
-        assert local_pos[0] >=0 and local_pos[1] >= 0
+        assert local_pos[0] >= 0 and local_pos[1] >= 0
         self.mouse_pos = local_pos
         return self
 
@@ -50,7 +58,6 @@ class Controller:
             controller.handle_right_mouseclick()
 
     def receive_mouseover(self, mouse_pos):
-        #return
         controller = self.topmost_controller_at(mouse_pos)
         if controller:
             controller.handle_mouseover()
@@ -65,7 +72,7 @@ class Controller:
         self.handle_keypress(key)
 
     def overlaps_with(self, mouse_pos):
-        return self.rectangle.collidepoint(mouse_pos)
+        return self.rectangle.collidepoint(mouse_pos[0], mouse_pos[1])
 
     def attach_controller(self, controller):
         assert self.view != controller.view
@@ -109,17 +116,28 @@ class Controller:
         # for controller in self.get_visible_controllers():
         #     controller.update_view()
 
-    # def set_parent_of_children(self):
-    #     for controller in self.children:
-    #         controller.parent = self
-    #         controller.set_parent_of_children()
-
     def get_visible_controllers(self):
         visible_controllers = []
         for controller in self.children:
             if controller.visible:
                 visible_controllers.append(controller)
         return visible_controllers
+
+    def freeze_events(self):
+        self.events.freeze()
+
+    def unfreeze_events(self):
+        self.events.unfreeze()
+
+    def append_callback(self, callback, *args, name=None):
+        assert callable(callback)
+        self.events.subscribe()
+        self.events.append(EventCallback(callback, *args, name=name))
+
+    def append_event(self, event):
+        assert self.events is not None
+        self.events.subscribe()
+        self.events.append(event)
 
     def __str__(self):
         return self.__class__.__name__
@@ -139,3 +157,11 @@ class Controller:
 
     def handle_mouseover(self):
         pass
+
+
+class PublisherInjector:
+    def __init__(self, controller):
+        self.controller = controller
+
+    def inject(self, publisher):
+        self.controller.create_event_list_from(publisher)

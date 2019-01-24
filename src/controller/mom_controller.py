@@ -1,5 +1,6 @@
 import pygame
 
+from abstract.controller import PublisherInjector
 from src.controller.board_controller import BoardController
 from src.abstract.view import View
 from src.abstract.window import Window
@@ -22,6 +23,7 @@ class MomController(Window):
     def create_board(self, mapoptions: MapOptions):
         self.board_controller: BoardController = self.attach_controller(
             BoardController(10, 10, 1100, 700, mapoptions))
+        PublisherInjector(self.board_controller).inject(self.events.publisher)
 
     def handle_keypress(self, key):
         if key == pygame.K_ESCAPE:

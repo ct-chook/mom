@@ -2,12 +2,10 @@ import logging
 import random
 from math import ceil
 
-from src.components.board.pathing import PathFactory, \
-    PathMatrixFactory
+from src.components.board.pathing import PathFactory, PathMatrixFactory
 from src.components.board.pathing_components import PathMatrix, \
     TowerSearchMatrixFactory
 from src.helper.Misc.datatables import DataTables
-from src.helper.events.events import EventList
 from src.model import board_model
 
 
@@ -88,11 +86,10 @@ class PlayerDefaultBrain(PlayerBrain):
     def _do_monster_action(self):
         monster = self._get_current_monster()
         if not monster.moved:
-            monster_brain = monster.brain
+            monster_brain: MonsterBrain = monster.brain
             assert monster_brain, f'{self._get_current_monster()} has no brain'
             monster_brain.do_action()
-            if not monster.moved:
-                # ugly hack to make monster act again
+            if not monster.moved and monster_brain.monster_to_attack:
                 self.monster_index -= 1
         else:
             # make it queue up another AI action
@@ -369,4 +366,4 @@ class DestinationFinder:
 
 
 def make_player_brain_act_again(controller):
-    EventList(controller.get_ai_action_event())
+    (controller.append_ai_callback())

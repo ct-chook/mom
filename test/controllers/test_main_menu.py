@@ -1,5 +1,7 @@
 import pytest
 
+from abstract.controller import PublisherInjector
+from helper.events.events import Publisher
 from src.helper.Misc.constants import AiType
 from src.components.board.monster import Monster
 from src.controller.mainmenu_controller import MainMenuController, \
@@ -18,6 +20,7 @@ class TestCase:
     # noinspection PyAttributeOutsideInit
     def create_new_controllers(self):
         self.mom_controller = MomController(500, 500)
+        PublisherInjector(self.mom_controller).inject(Publisher())
         self.menu: MainMenuController = self.mom_controller.main_menu
         self.options: MapOptionsWindow = self.menu.mapoptions_window
         self.menu.start_button.handle_mouseclick()

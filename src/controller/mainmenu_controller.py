@@ -26,7 +26,7 @@ class MainMenuController(Window):
         self.map_selection_window: MapSelectionWindow = self.attach_controller(
             MapSelectionWindow(50, 50, 200, 600, self))
         self.mapoptions_window: MapOptionsWindow = self.attach_controller(
-            MapOptionsWindow(50, 50, 350, 350, self))
+            MapOptionsWindow(50, 50, 500, 350, self))
 
         self.map_selection_window.hide()
         self.mapoptions_window.hide()

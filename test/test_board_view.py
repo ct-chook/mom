@@ -1,7 +1,7 @@
 import pytest
 
 from src.helper.Misc.options_game import Options
-from src.helper.events.events import EventQueue, EventList
+from src.helper.events.events import Publisher, EventList
 from src.controller.board_controller import BoardController
 
 
@@ -14,7 +14,6 @@ class TestCase:
     def before(self):
         Options.camera_width = 16
         Options.camera_height = 16
-
         self.board_controller = BoardController(0, 0, 500, 500)
         self.view = self.board_controller.view
 

@@ -12,17 +12,18 @@ class TowerCaptureWindow(Window):
         self.view: TowerCaptureView = self.add_view(TowerCaptureView)
         self.hide()
 
-    def show_capture(self):
-        self.view.show_capture()
-
     def handle_mouseclick(self):
         self.view.halt_animation()
         self.hide()
 
-    def get_capture_events(self):
-        return (EventCallback(self.show),
-                EventCallback(self.view.show_capture),
-                EventCallback(self.hide))
+    def show_capture(self):
+        events = (EventCallback(self.show),
+                  EventCallback(self.view.show_capture),
+                  EventCallback(self.hide),
+                  EventCallback(self.parent.unfreeze_events))
+        for event in events:
+            self.append_event(event)
+        pass
 
 
 class TowerCaptureView(View):
@@ -50,9 +51,10 @@ class TowerCaptureView(View):
         self._frame += 1
         if self._frame > self._number_of_flashes * 2:
             self._frame = 0
-            return 0
+            return
         else:
             return delay
 
     def halt_animation(self):
-        self._frame = 100
+        self._frame = ((self._lightning_length + self._lightning_delay)
+                       * self._number_of_flashes)

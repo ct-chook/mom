@@ -1,3 +1,5 @@
+import logging
+
 from src.components.board import players
 from src.components.board.board import Board, BoardFactory
 from src.components.board.pathing import PathMatrixFactory, PathFactory
@@ -62,6 +64,7 @@ class BoardModel:
                 monster.promote()
 
     def kill_monster(self, monster):
+        logging.info(f'Removing monster {monster}')
         self.board.remove_monster(monster)
         if monster.is_lord():
             self.remove_player_from_game(monster.owner)

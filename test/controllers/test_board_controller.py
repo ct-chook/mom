@@ -1,10 +1,12 @@
 import pytest
 
+from abstract.controller import PublisherInjector
+from helper.events.events import Publisher
 from src.components.board.board import Board
 from src.controller.board_controller import BoardController
 from src.helper.Misc.constants import Terrain, MonsterType, AiType
 from src.helper.Misc.options_game import Options
-from src.helper.events.events import EventQueue, EventList
+
 
 Options.headless = True
 
@@ -36,11 +38,11 @@ class TestCase:
     @pytest.fixture
     def make_board(self):
         self.controller = BoardController(0, 0, 500, 500)
+        self.publisher = Publisher()
+        PublisherInjector(self.controller).inject(self.publisher)
         self.model = self.controller.model
         self.board: Board = self.model.board
         self.precombat_window = self.controller.precombat_window
-        self.publisher = EventQueue()
-        EventList.set_publisher(self.publisher)
         self.before_more()
 
     def before_more(self):
@@ -52,15 +54,15 @@ class TestCase:
     def end_turn(self):
         self.controller.handle_end_of_turn()
         # let AI skip its turn
-        self.tick_events(5)
+        for _ in range(120):
+            self.tick_events(15)
+            if not self.controller.is_ai_controlled:
+                break
+        assert not self.controller.is_ai_controlled
 
     def tick_events(self, times=1):
         for _ in range(times):
             self.publisher.tick_events()
-
-    def test(self):
-        # for pycharm to recognize this as a testing class
-        pass
 
 
 class TestMoving(TestCase):
@@ -117,6 +119,7 @@ class TestMoving(TestCase):
     def move_roman_left(self):
         self.click_on(roman_start_pos)
         self.click_on(left_of_roman_start_pos)
+        self.tick_events(50)
 
 
 class TestAttacking(TestCase):
@@ -254,7 +257,7 @@ class TestTowerCapture(TestCase):
         self.move_crusader_to_tower()
         assert self.controller.tower_capture_window.visible
         # now wait for window animation
-        self.tick_events(300)
+        self.tick_events(400)
         # then after a while the window should be gone
         self.assert_tower_captured_by(self.crusader)
 
@@ -289,8 +292,8 @@ class TestTowerCapture(TestCase):
         self.click_on(enemy_pos)
         self.click_on(tower_pos)
         self.assert_tower_captured_by(roc)
-        assert self.model.players.get_player_by_id(0).tower_count \
-            == old_tower_count
+        assert (self.model.players.get_player_by_id(0).tower_count
+                == old_tower_count)
 
     def move_crusader_to_tower(self):
         crusader = self.board.monster_at(crusader_start_pos)
@@ -307,7 +310,7 @@ class TestTowerCapture(TestCase):
     def assert_tower_captured_by(self, monster):
         assert not self.controller.tower_capture_window.visible
         assert self.board.monster_at(tower_pos) == monster
-        assert self.board.tower_owner_at(tower_pos) == monster.owner, \
-            'Wrong owner'
-        player = self.model.players.get_player_by_id(monster.owner)
+        assert (self.board.tower_owner_at(tower_pos) == monster.owner,
+                'Wrong owner')
+        player = self.model.get_player_of_number(monster.owner)
         assert player.tower_count == 8

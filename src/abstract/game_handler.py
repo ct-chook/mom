@@ -2,11 +2,11 @@ import logging
 
 import pygame
 
-from src.helper.Misc.constants import MouseButton
-from src.helper.events.events import EventList, EventQueue
 from src.abstract.controller import Controller
 from src.abstract.maindisplay import MainDisplay
 from src.abstract.view import View
+from src.helper.Misc.constants import MouseButton
+from src.helper.events.events import Publisher
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -28,8 +28,7 @@ class GameHandler:
     def __init__(self, width, height):
         self.width = width
         self.height = height
-        self.event_queue = EventQueue()
-        self.events_to_unsub = []
+        self.publisher = Publisher()
         self.framerate = 60
         self.display: MainDisplay = None
         self.top_controller = None
@@ -38,7 +37,6 @@ class GameHandler:
         self.create_display()
         self.clock = pygame.time.Clock()
 
-        EventList.set_publisher(self)
         View.main_controller = self
         Controller.main_controller = self
 
@@ -61,7 +59,7 @@ class GameHandler:
         """As long as the game is active this method is executed repeatedly"""
         self._process_input_events()
         self._process_game_events()
-        self.display.blit_frame()
+        self._blit_frame()
         self._wait_until_next_frame()
 
     def _process_input_events(self):
@@ -74,10 +72,6 @@ class GameHandler:
         input_events = pygame.event.get()
         for input_event in input_events:
             self._process_input_event(input_event)
-
-    def _process_game_events(self):
-        self.event_queue.tick_events()
-        self._unsubscribe_events_in_unsub_list()
 
     def _process_input_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -94,26 +88,11 @@ class GameHandler:
         elif event.type == pygame.QUIT:
             self.running = False
 
+    def _process_game_events(self):
+        self.publisher.tick_events()
+
+    def _blit_frame(self):
+        self.display.blit_frame()
+
     def _wait_until_next_frame(self):
         self.clock.tick(self.framerate)
-
-    def subscribe_event(self, event):
-        """Adds event to list to be executed"""
-        self.event_queue.subscribe_event(event)
-
-    def unsubscribe_event(self, event):
-        """Removes an active event from the event list"""
-        self.event_queue.unsubscribe_event(event)
-
-    def _unsubscribe_events_in_unsub_list(self):
-        if self.events_to_unsub:
-            logging.info(f'unsub list: {self.events_to_unsub}')
-            for event in self.events_to_unsub:
-                if event in self.events:
-                    logging.info(f'Removing event {event}')
-                    # self.events.remove(event)
-                    self.events.unsubscribe_event(event)
-                else:
-                    raise AttributeError(
-                        'attempted to unsubscribe event that does not exist')
-            self.events_to_unsub.clear()

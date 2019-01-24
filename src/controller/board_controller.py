@@ -71,6 +71,9 @@ class BoardController(Window):
         self.end_of_turn_window.hide()
         self.create_brains()
 
+    def append_ai_callback(self):
+        self.append_event(self.get_ai_action_event())
+
     def create_brains(self):
         for player in self.model.get_players():
             self._create_brain(player)
@@ -172,16 +175,16 @@ class BoardController(Window):
                 f'Destination {pos} is occupied by '
                 f'{self.model.board.monster_at(pos)}')
             self.model.move_monster_to(monster, pos)
-        eventlist = self.add_movement_event_to_view(monster, path)
+        self.set_movement_events(monster, path)
         if self.model.has_capturable_tower_at(pos):
-            self._handle_tower_capture(pos, eventlist)
+            self._handle_tower_capture(pos)
         if self.is_ai_controlled:
-            eventlist.append(self.get_ai_action_event())
+            self.append_ai_callback()
 
     def get_ai_action_event(self):
         return EventCallback(self._handle_ai_action, name='ai action')
 
-    def add_movement_event_to_view(self, monster, path):
+    def set_movement_events(self, monster, path):
         """Movement can work in two ways, either by player or by computer
 
         In the case of the player, something sends a signal to move x to y,
@@ -195,14 +198,19 @@ class BoardController(Window):
         """
         assert monster
         assert path
-        queue = self.view.add_movement_event(monster, path)
+        events = self.view.get_movement_events(monster, path)
+        for event in events:
+            self.append_event(event)
+        # self.freeze_events()
+        # self.append_callback(self.unfreeze_events)
         self.minimap_window.update_view()
-        return queue
 
-    def _handle_tower_capture(self, pos, eventqueue):
+    def _handle_tower_capture(self, pos):
         self.model.capture_tower_at(pos)
-        tower_capture_events = self.tower_capture_window.get_capture_events()
-        return eventqueue.append(tower_capture_events)
+        capture_event = self.tower_capture_window.show_capture
+        freeze_callback = self.freeze_events
+        self.append_callback(capture_event)
+        self.append_callback(freeze_callback)
 
     def _handle_ai_action(self):
         """The ai must take over the controller until they end their turn
@@ -212,6 +220,9 @@ class BoardController(Window):
         The event should also include another call to this method if the AI's
         turn is not over yet.
         """
+        if len(self.events) > 1:
+            # we only want to do ai action if controller has no other events
+            return
         brain = self._get_current_player_brain()
         if brain:
             brain.do_action()
@@ -233,16 +244,13 @@ class BoardController(Window):
 
     def handle_attack_order(self, monsters, attack_range):
         attacks = self.model.get_short_and_long_attacks(monsters)
-        events = self.combat_window.on_combat(attacks, attack_range)
+        self.combat_window.on_combat(attacks, attack_range)
         attacker = attacks.get_attack(0, attack_range).monster
         defender = attacks.get_attack(1, attack_range).monster
         logging.info(f'{attacker} is attacking monster {defender}')
-        combat_log = self.model.get_combat_result(attacker, defender,
-                                                  attack_range)
-        if combat_log.loser:
-            logging.info(f'{combat_log.loser} was defeated!')
+        self.freeze_events()
         if self.is_ai_controlled:
-            events.append(self.get_ai_action_event())
+            self.append_ai_callback()
 
     def handle_combat_end(self, combat_log):
         self.model.process_combat_log(combat_log)
@@ -257,7 +265,7 @@ class BoardController(Window):
         summoned_monster = self.model.summon_monster_at(
             monster_type, pos)
         if self.is_ai_controlled:
-            EventList(self.get_ai_action_event())
+            self.append_ai_callback()
         return summoned_monster
 
     def handle_end_of_turn(self):
@@ -270,7 +278,7 @@ class BoardController(Window):
             self.is_ai_controlled = False
         else:
             self.is_ai_controlled = True
-            EventList(EventCallback(self._handle_ai_action))
+            self.append_ai_callback()
 
     def highlight_tiles(self, posses):
         self.view.highlight_tiles(posses)
@@ -355,23 +363,20 @@ class BoardView(View):
         super().update_background()
         logging.info('updated surface of board')
 
-    def add_movement_event(self, monster, path):
+    def get_movement_events(self, monster, path):
         self.path_animation = (path, monster)
         self.path_index = 0
         focus_camera_event = EventCallback(
             self.center_camera_on, path[0], name='focus camera')
-
         movement_event = EventCallback(self.on_path_animation, name='path anim')
         clear_highlight_event = EventCallback(
             self.clear_highlighted_tiles, name='clear highlight')
-
-        return EventList((focus_camera_event, movement_event,
-                          clear_highlight_event))
+        return focus_camera_event, movement_event, clear_highlight_event
 
     def on_path_animation(self):
         path, monster = self.path_animation
         if self.path_index >= len(path):
-            return 0
+            return None
         logging.info(f'doing movement animation')
         pos_on_path = path[self.path_index]
         self.path_index += 1
@@ -383,8 +388,7 @@ class BoardView(View):
             return PATH_ANIMATION_DELAY
         sprite = self.monster_to_sprite[monster]
         surface_pos = self.pos_converter.board_to_surface_pos(pos_on_path)
-        sprite.rect.x = surface_pos[0]
-        sprite.rect.y = surface_pos[1]
+        sprite.rect.x, sprite.rect.y = surface_pos
         self.queue_for_background_update()
         return PATH_ANIMATION_DELAY
 
@@ -399,7 +403,6 @@ class BoardView(View):
         for monster in monsterlist:
             if self.monster_is_within_camera_view(monster):
                 self.create_sprite_for_monster(monster)
-        pass
 
     def monster_is_within_camera_view(self, monster):
         adjusted_pos_not_negative = (

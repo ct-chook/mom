@@ -1,13 +1,13 @@
 import pytest
 
-from src.controller.combat_controller import CombatView
-from src.helper.Misc.options_game import Options
-from src.controller.board_controller import BoardController
-
-from src.helper.Misc.constants import Terrain, DayTime, MonsterType
-from src.components.combat.attack import AttackFactory
+from abstract.controller import PublisherInjector
+from helper.events.events import Publisher
 from src.components.board.monster import Monster
-from src.helper.events.events import EventQueue, EventList
+from src.components.combat.attack import AttackFactory
+from src.controller.board_controller import BoardController
+from src.controller.combat_controller import CombatView
+from src.helper.Misc.constants import Terrain, DayTime, MonsterType
+from src.helper.Misc.options_game import Options
 
 Options.headless = True
 PLAYER, OPPONENT = range(2)
@@ -16,9 +16,9 @@ PLAYER, OPPONENT = range(2)
 class TestCase:
     @pytest.fixture
     def before(self):
-        self.publisher = EventQueue()
-        EventList.set_publisher(self.publisher)
+        self.publisher = Publisher()
         self.board_window = BoardController(0, 0, 1000, 1000)
+        PublisherInjector(self.board_window).inject(self.publisher)
         self.window = self.board_window.combat_window
         self.view = self.window.view
         self.delay = CombatView.COMBAT_DELAY
