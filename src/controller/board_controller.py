@@ -19,9 +19,9 @@ from src.helper.Misc.options_game import Options
 from src.helper.Misc.posconverter import PosConverter
 from src.helper.Misc.spritesheet import SpriteSheetFactory
 from src.helper.Misc.tileblitter import TileBlitter
-from src.helper.events.events import EventCallback, EventList
+from src.helper.events.events import EventCallback
 from src.helper.events.factory import PathEventFactory
-from src.helper.selectionhandler import SelectionHandler
+from handlers.selectionhandler import SelectionHandler
 from src.model.board_model import BoardModel
 
 
@@ -128,7 +128,6 @@ class BoardController(Window):
             self.view.queue_for_background_update()
         else:
             self.selection_handler.click_tile(tile_pos)
-            # self.actionlog_handler.process(action_log)
 
     def _tile_edit_mode_is_active(self):
         return self.tile_editor_window.selected_terrain is not None
@@ -262,10 +261,10 @@ class BoardController(Window):
         self.summon_window.set_summon_pos(pos)
 
     def handle_summon_monster(self, monster_type, pos):
-        summoned_monster = self.model.summon_monster_at(
-            monster_type, pos)
+        summoned_monster = self.model.summon_monster_at(monster_type, pos)
         if self.is_ai_controlled:
             self.append_ai_callback()
+        self.view.queue_for_sprite_update()
         return summoned_monster
 
     def handle_end_of_turn(self):
@@ -416,7 +415,7 @@ class BoardView(View):
     def create_sprite_for_monster(self, monster):
         try:
             sprite_surface = self.monster_sprites.get_sprite(
-                monster.stats.id, monster.owner)
+                monster.stats.id, monster.owner.id_)
         except IndexError:
             print(f'trying to fetch a sprite for {monster.stats.id}, but '
                   'sprite was not found')

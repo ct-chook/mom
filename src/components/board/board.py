@@ -30,16 +30,17 @@ class Board:
 
     def set_players(self, players_):
         self.players = players_
-        for n in range(len(players_)):
-            self.monsters[n] = []
+        for player in players_:
+            self.monsters[player.id_] = []
 
     def on_end_of_turn(self):
-        current_player = self.get_current_player_id()
-        if current_player in self.monsters:
-            for monster in self.monsters[self.get_current_player_id()]:
-                monster.moved = False
+        current_player = self.get_current_player()
+        player_id = current_player.id_
+        assert player_id in self.monsters
+        for monster in self.monsters[player_id]:
+            monster.moved = False
         logging.info(
-            f'Ending turn of {self.players.get_current_player().id_}')
+            f'Ending turn of {current_player}')
 
     def tile_at(self, pos) -> Tile:
         return self.tiles[pos[0]][pos[1]]
@@ -68,28 +69,31 @@ class Board:
             f'{DataTables.get_monster_stats(monster_type).name} at ' \
             f'location occupied by {self.monster_at(pos).name} '
         summon_cost = DataTables.get_monster_stats(monster_type).summon_cost
-        if self._get_current_player().mana < summon_cost:
+        if self.get_current_player().mana < summon_cost:
             logging.info('Not enough mana to summon monster')
             return None
         if self._max_monsters_reached():
             return None
         monster = self.place_new_monster(monster_type, pos, owner)
-        self.players.get_current_player().decrease_mana_by(summon_cost)
+        self.get_current_player().decrease_mana_by(summon_cost)
         monster.moved = True
         return monster
 
     def _max_monsters_reached(self):
-        return (self._get_current_player().tower_count + 1
-                < len(self.monsters[self.get_current_player_id()]))
+        return (self.get_current_player().tower_count + 1
+                < len(self.monsters[self.get_current_player().id_]))
 
-    def place_new_monster(self, monster_type, pos=(0, 0), owner=0) -> Monster:
+    def place_new_monster(self,
+                          monster_type, pos=(0, 0), owner=None) -> Monster:
         """Places a new monster without checking/reducing mana or flagging it"""
         assert not self.monster_at(pos), \
             f'Tried to summon a ' \
             f'{DataTables.get_monster_stats(monster_type).name} at {pos} ' \
             f'but it is already occupied by a {self.monster_at(pos)} '
+        if owner is None:
+            owner = self.get_current_player()
         new_monster = Monster(monster_type, pos, owner, self.terrain_at(pos))
-        self.monsters[owner].append(new_monster)
+        self.monsters[owner.id_].append(new_monster)
         self.tile_at(new_monster.pos).monster = new_monster
         return new_monster
 
@@ -108,15 +112,15 @@ class Board:
         return not self.is_friendly_player(
                     self.tower_owner_at(pos), player_id)
 
-    def get_capturable_towers_for_player(self, player_id):
+    def get_capturable_towers_for_player(self, player):
         towers = {}
         for pos in self.towers:
-            if not self.is_friendly_player(self.towers[pos], player_id):
-                towers[pos] = player_id
+            if not self.is_friendly_player(self.towers[pos], player):
+                towers[pos] = player
         return towers
 
-    def is_friendly_player(self, id1, id2):
-        return id1 == id2
+    def is_friendly_player(self, player1, player2):
+        return player1 is player2
 
     def get_enemy_lord_for_player(self, player):
         for player_id in self.lords:
@@ -131,8 +135,8 @@ class Board:
         assert monster
         logging.info(f'removing {monster.name}')
         owner = monster.owner
-        assert monster in self.monsters[owner]
-        self.monsters[owner].remove(monster)
+        assert monster in self.monsters[owner.id_]
+        self.monsters[owner.id_].remove(monster)
         self.tile_at(monster.pos).monster = None
 
     def get_enemies_adjacent_to(self, pos):
@@ -142,7 +146,7 @@ class Board:
             adj_tile = self.tile_at(adj_pos)
             if (adj_tile.monster
                     and not self.is_friendly_player(
-                        adj_tile.monster.owner, self.get_current_player_id())):
+                        adj_tile.monster.owner, self.get_current_player())):
                 enemies.append(adj_tile.monster)
         return enemies
 
@@ -203,10 +207,7 @@ class Board:
     def is_valid_board_pos(self, pos):
         return self.x_max > pos[0] >= 0 and 0 <= pos[1] < self.y_max
 
-    def get_current_player_id(self):
-        return self.players.get_current_player_id()
-
-    def _get_current_player(self):
+    def get_current_player(self):
         return self.players.get_current_player()
 
     def move_monster(self, monster, destination):
@@ -223,14 +224,14 @@ class Board:
         monster.pos = new_pos
         monster.terrain = self.terrain_at(new_pos)
 
-    def capture_terrain_at(self, pos, player_id):
+    def capture_terrain_at(self, pos, player):
         """Change tower count if a tower was captured, and change tile owner"""
         tile = self.tile_at(pos)
         old_owner = self.tower_owner_at(pos)
         if tile.terrain == Terrain.TOWER and old_owner is not None:
-            self.players.get_player_by_id(old_owner).tower_count -= 1
-        self.set_tower_owner_at(pos, player_id)
-        self.players.get_player_by_id(player_id).tower_count += 1
+            old_owner.tower_count -= 1
+        self.set_tower_owner_at(pos, player)
+        player.tower_count += 1
 
     def print(self):
         BoardPrinter(self).print()
@@ -335,10 +336,12 @@ class BoardFactory:
         self._add_monsters(monsters_to_add)
 
     def _add_monsters(self, monsters):
+        assert self.players is not None
         for monster_data in monsters:
-            monster_type, owner, index = monster_data
+            monster_type, owner_id, index = monster_data
             x = index % self.x_max
             y = floor(index / self.x_max)
+            owner = self.players.get_player_by_id(owner_id)
             self.board.place_new_monster(monster_type, (x, y), owner)
 
     def _is_monster_data(self, data):
@@ -396,7 +399,7 @@ class BoardFactory:
                 terrain = self.board.terrain_at(pos)
                 if terrain == Terrain.GRASS:
                     self.board.on_tile(pos).set_terrain_to(Terrain.TOWER)
-                    self.board.capture_terrain_at(pos, player_id)
+                    self.board.capture_terrain_at(pos, self.players[player_id])
 
     def _create_players(self, mapoptions=None):
         if mapoptions and mapoptions.players:
@@ -426,20 +429,21 @@ class BoardFactory:
 
     def set_test_monsters(self):
         # todo: monsters should be part of save data
-        blue, red = range(2)
-        self.board.place_new_monster(MonsterType.ROMAN, (1, 19), blue)
-        self.board.place_new_monster(MonsterType.PHOENIX, (1, 18), blue)
-        self.board.place_new_monster(MonsterType.CHIMERA, (1, 17), red)
-        self.board.place_new_monster(MonsterType.FIGHTER, (5, 5), blue)
-        # water
-        self.board.place_new_monster(MonsterType.MARMAID, (12, 16), blue)
-        self.board.place_new_monster(MonsterType.KRAKEN, (13, 16), red)
-        # pool
-        self.board.place_new_monster(MonsterType.OCTOPUS, (12, 7), blue)
-        self.board.place_new_monster(MonsterType.SIRENE, (12, 8), blue)
-        # random
-        self.board.place_new_monster(random.randint(1, 82), (8, 8), blue)
-        self.board.place_new_monster(random.randint(1, 82), (8, 9), red)
+        return
+        # blue, red = range(2)
+        # self.board.place_new_monster(MonsterType.ROMAN, (1, 19), blue)
+        # self.board.place_new_monster(MonsterType.PHOENIX, (1, 18), blue)
+        # self.board.place_new_monster(MonsterType.CHIMERA, (1, 17), red)
+        # self.board.place_new_monster(MonsterType.FIGHTER, (5, 5), blue)
+        # # water
+        # self.board.place_new_monster(MonsterType.MARMAID, (12, 16), blue)
+        # self.board.place_new_monster(MonsterType.KRAKEN, (13, 16), red)
+        # # pool
+        # self.board.place_new_monster(MonsterType.OCTOPUS, (12, 7), blue)
+        # self.board.place_new_monster(MonsterType.SIRENE, (12, 8), blue)
+        # # random
+        # self.board.place_new_monster(random.randint(1, 82), (8, 8), blue)
+        # self.board.place_new_monster(random.randint(1, 82), (8, 9), red)
 
     def set_map_using_layout(self, mode=0):
         """Parses the layout to set up the terrain
@@ -455,8 +459,7 @@ class BoardFactory:
         self.board.x_max = self.x_max
         self.board.y_max = self.y_max
         self._fill_with_grass_tiles()
-        if len(layout) - 10 != self.x_max * self.y_max:
-            raise IndexError(
+        assert len(layout) - 10 == self.x_max * self.y_max, (
                 f'Error setting terrain layout, {self.x_max}:{self.y_max} but '
                 f'{len(layout) - 10} tiles')
         # mode should be unified to just one, right now it transposes the layout
@@ -478,12 +481,11 @@ class BoardFactory:
             n += 2
 
     def _add_lords(self):
-        n = 0
-        for player in self.players.players:
+        for n in range(len(self.players)):
+            player = self.players.get_player_by_id(n)
             pos = self.start_posses[n]
-            lord = self.board.place_new_monster(player.lord_type, pos, n)
-            self.board.lords[n] = lord
-            n += 1
+            lord = self.board.place_new_monster(player.lord_type, pos, player)
+            self.board.lords[player.id_] = lord
 
     def _fill_with_grass_tiles(self):
         assert self.x_max

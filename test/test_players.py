@@ -13,6 +13,9 @@ class TestPlayers:
     def before(self):
         self.playerlist = PlayerList()
         self.add_three_players()
+        self.player_0 = self.playerlist[0]
+        self.player_1 = self.playerlist[1]
+        self.player_2 = self.playerlist[2]
 
     def add_three_players(self):
         for n in range(3):
@@ -31,34 +34,30 @@ class TestPlayers:
         assert first_player.mana_gain == self.mana_gains[id_]
 
     def test_remove_players(self, before):
-        self.playerlist.remove_player(1)
+        self.playerlist.remove_player(self.player_0)
         assert len(self.playerlist) == 2
         assert self.playerlist.get_player_by_id(0) is not None
         assert self.playerlist.get_player_by_id(1) is not None
 
     def test_next_players_after_removal(self, before):
-        self.playerlist.remove_player(1)
+        self.playerlist.remove_player(self.player_1)
         self.check_if_next_player_is(2)
         self.check_if_next_player_is(0)
 
     def test_next_players_after_removal_of_current(self, before):
-        self.playerlist.remove_player(0)
+        self.playerlist.remove_player(self.player_0)
         player = self.playerlist.get_current_player()
         assert player.mana_gain == self.mana_gains[1]
         self.check_if_next_player_is(2)
-
-    def test_get_player_by_id(self, before):
-        player = self.playerlist.get_player_by_id(2)
-        assert player.mana_gain == self.mana_gains[2]
 
     def test_get_current_player(self, before):
         player = self.playerlist.get_current_player()
         assert player.mana_gain == self.mana_gains[0]
 
     def test_get_current_player_id(self, before):
-        assert self.playerlist.get_current_player_id() == 0
+        assert self.playerlist.get_current_player().id_ == 0
         self.playerlist.goto_next_player()
-        assert self.playerlist.get_current_player_id() == 1
+        assert self.playerlist.get_current_player().id_ == 1
 
     def test_goto_next_player(self, before):
         self.check_if_next_player_is(1)

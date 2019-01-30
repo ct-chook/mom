@@ -220,6 +220,9 @@ class MonsterBrain:
            of it. If those are also blocked, don't move.
         """
         assert self.monster is not None
+        assert DataTables.get_terrain_cost(
+            self.board.terrain_at(self.monster.pos),
+            self.monster.terrain_type) < 99
         if self.monster_to_attack:
             self._handle_attack()
         else:
@@ -235,10 +238,13 @@ class MonsterBrain:
         self.monster.moved = True
 
     def _handle_move(self):
-        self._set_destination()
         self._make_path_matrix()
+        self._set_destination()
         self._set_pos_to_move_to()
         self._move_to_destination()
+
+    def _make_path_matrix(self):
+        self.matrix = self.matrix_factory.generate_path_matrix(self.monster.pos)
 
     def _set_destination(self):
         id_ = self.monster.owner
@@ -261,9 +267,6 @@ class MonsterBrain:
         assert enemy_lord
         self.destination_pos = enemy_lord.pos
 
-    def _make_path_matrix(self):
-        self.matrix = self.matrix_factory.generate_path_matrix(self.monster.pos)
-
     def _set_pos_to_move_to(self):
         self._find_best_enemy_to_attack()
         if self._enemy_is_nearby():
@@ -284,10 +287,15 @@ class MonsterBrain:
         attack_range = self.optimal_attack.range_to_use
         tile_to_attack_from = self._get_tile_to_attack_from(enemy)
         if tile_to_attack_from:
-            self._move_to_pos_inside_matrix(tile_to_attack_from)
+            self.destination_pos = tile_to_attack_from
+            # self._move_to_pos_inside_matrix(tile_to_attack_from)
             self.monster_to_attack = enemy
             self.range_to_attack_with = attack_range
-            self.monster.moved = False  # so it can move again next time
+            # self.monster.moved = False  # so it can move again next time
+            assert self.matrix.get_distance_value_at(tile_to_attack_from) < 99
+        else:
+            self.destination_pos = self.monster.pos
+            assert self.matrix.get_distance_value_at(self.destination_pos) < 99
 
     def _get_tile_to_attack_from(self, enemy):
         adjacent_tiles = self.board.get_posses_adjacent_to(enemy.pos)
@@ -295,10 +303,9 @@ class MonsterBrain:
             if self._is_valid_destination(tile):
                 return tile
 
-    def _is_valid_destination(self, tile):
-        return (tile in self.matrix
-                and self.matrix.get_distance_value_at(tile) < 99
-                and self.board.monster_at(tile) is None)
+    def _is_valid_destination(self, pos):
+        return (self.matrix.get_distance_value_at(pos) < 99
+                and not self._is_occupied(pos))
 
     def _set_pos_towards_destination(self):
         destination = self._get_tile_leading_to_destination()
@@ -315,9 +322,10 @@ class MonsterBrain:
             destination = new_destination
             assert destination in self.matrix
         assert destination is not None
-        if destination not in self.matrix:
+        if self._is_valid_destination(destination):
             self._skip_turn()
         self.destination_pos = destination
+        assert self.matrix.get_distance_value_at(self.destination_pos) < 99
 
     def _is_occupied(self, pos):
         monster = self.board.monster_at(pos)
@@ -349,12 +357,17 @@ class MonsterBrain:
     def _move_to_destination(self):
         if self.destination_pos and self.destination_pos in self.matrix:
             self._move_to_pos_inside_matrix(self.destination_pos)
+            if self.monster_to_attack:
+                self.monster.moved = False
         else:
             self._skip_turn()
 
     def _move_to_pos_inside_matrix(self, pos):
         assert pos in self.matrix, f'{self.matrix.get_printable_dist_values()}'
-        assert not self._is_occupied(pos)
+        assert not self._is_occupied(pos), (
+            f'{self.matrix.monster} tried to move to {pos} was occupied by '
+            f'{self.board.monster_at(pos)} owned by '
+            f'{self.board.monster_at(pos).owner}')
         path = self.path_finder.get_path_on_matrix_to(self.matrix, pos)
         self.controller.handle_move_monster(self.monster, path)
         self.monster.moved = True

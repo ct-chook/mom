@@ -71,7 +71,8 @@ class TextButtonView(View):
 
     def set_text(self, text):
         self.text.set_text(text)
-        self.text.set_new_text_to_surface()
+        # todo is this not needed?
+        # self.text.set_new_text_to_surface()
         self.queue_for_sprite_update()
 
 

@@ -17,33 +17,34 @@ class Player:
 class PlayerList:
     def __init__(self):
         self.players = []
-        self.current_player = 0
+        self.current_index = 0
 
     def add_player(self, lord_type, ai_type, mana_gain):
         player = Player(len(self.players), ai_type, lord_type, 100, mana_gain)
         self.players.append(player)
         return player
 
-    def remove_player(self, player_id):
-        self.players.pop(player_id)
+    def remove_player(self, player):
+        index = self.players.index(player)
+        self.players.pop(index)
         # if this was a current player, then index doesn't need to change
         # unless this was the last player, in that case the max index decreases
         # and the current index should be set to zero
-        if player_id == len(self.players):
-            self.current_player = 0
+        if self.current_index == len(self.players):
+            self.current_index = 0
+        assert len(self.players) > self.current_index, (
+            f'current player index {self.current_index} but only '
+            f'{len(self.players)} players')
 
     def get_player_by_id(self, id_) -> Player:
         return self.players[id_]
 
     def goto_next_player(self) -> Player:
-        self.current_player = (self.current_player + 1) % len(self.players)
+        self.current_index = (self.current_index + 1) % len(self.players)
         return self.get_current_player()
 
     def get_current_player(self) -> Player:
-        return self.players[self.current_player]
-
-    def get_current_player_id(self):
-        return self.current_player
+        return self.players[self.current_index]
 
     def __len__(self):
         return len(self.players)
@@ -51,3 +52,5 @@ class PlayerList:
     def __iter__(self):
         return iter(self.players)
 
+    def __getitem__(self, item):
+        return self.players[item]

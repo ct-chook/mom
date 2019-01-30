@@ -1,6 +1,7 @@
 import pytest
 
 from abstract.controller import PublisherInjector
+from components.board.monster import Monster
 from helper.events.events import Publisher
 from src.components.board.board import Board
 from src.controller.board_controller import BoardController
@@ -35,6 +36,7 @@ tower_pos = (4, 4)
 
 
 class TestCase:
+    # noinspection PyAttributeOutsideInit
     @pytest.fixture
     def make_board(self):
         self.controller = BoardController(0, 0, 500, 500)
@@ -43,6 +45,12 @@ class TestCase:
         self.model = self.controller.model
         self.board: Board = self.model.board
         self.precombat_window = self.controller.precombat_window
+        self.player_1 = self.model.players[0]
+        self.player_2 = self.model.players[1]
+        self.board.place_new_monster(Monster.Type.ROMAN, roman_start_pos)
+        self.board.place_new_monster(Monster.Type.FIGHTER, crusader_start_pos)
+        self.board.place_new_monster(Monster.Type.CHIMERA, chim_start_pos,
+                                     self.player_2)
         self.before_more()
 
     def before_more(self):
@@ -69,7 +77,7 @@ class TestMoving(TestCase):
     def before_more(self):
         self.roman = self.board.monster_at(roman_start_pos)
 
-    def test_roman_pos(self, make_board):
+    def test_move_left(self, make_board):
         self.click_on(roman_start_pos)
         self.click_on(left_of_roman_start_pos)
         assert self.roman.pos == left_of_roman_start_pos
@@ -94,7 +102,7 @@ class TestMoving(TestCase):
     def test_move_for_two_turns(self, make_board):
         self.move_roman_left()
         self.end_turn()
-        assert self.board.get_current_player_id() == 0
+        assert self.board.get_current_player() is self.player_1
         # now move back to starting position
         self.click_on(left_of_roman_start_pos)
         self.click_on(roman_start_pos)
@@ -108,8 +116,15 @@ class TestMoving(TestCase):
 
     def test_no_highlighting_after_attacking_with_no_moving(self, make_board):
         # derived from bug
-        self.click_on((8, 8))
-        self.click_on((8, 9))
+        monster_pos = (8, 8)
+        enemy_pos = (8, 9)
+        self.board.place_new_monster(Monster.Type.TRICORN, monster_pos,
+                                     self.player_1)
+        self.board.place_new_monster(Monster.Type.CAESER, enemy_pos,
+                                     self.player_2)
+        self.click_on(monster_pos)
+        self.click_on(enemy_pos)
+        assert self.controller.precombat_window.attacks is not None
         self.controller.precombat_window.handle_attack_choice(0)
         self.tick_events()
         self.controller.combat_window.handle_mouseclick()
@@ -228,9 +243,9 @@ class TestSummoning(TestCase):
         # create monsters left and right to daimyou
         assert self.board.monster_at(left_of_daimyou_pos) is None
         self.board.place_new_monster(
-            MonsterType.CYCLOPS, left_of_daimyou_pos, 0)
+            MonsterType.CYCLOPS, left_of_daimyou_pos, self.player_1)
         self.board.place_new_monster(
-            MonsterType.PEGASUS, right_of_daimyou_pos, 1)
+            MonsterType.PEGASUS, right_of_daimyou_pos, self.player_2)
         assert self.board.monster_at(left_of_daimyou_pos)
         assert self.board.monster_at(right_of_daimyou_pos)
         # try summon monster left and right of daimyou
@@ -245,7 +260,7 @@ class TestSummoning(TestCase):
         posses = self.board.get_posses_adjacent_to(pos)
         for adj_pos in posses:
             self.board.on_tile(adj_pos).set_terrain_to(Terrain.TOWER)
-            self.board.capture_terrain_at(adj_pos, 0)
+            self.board.capture_terrain_at(adj_pos, self.player_1)
 
 
 class TestTowerCapture(TestCase):
@@ -275,7 +290,8 @@ class TestTowerCapture(TestCase):
         enemy.ai_type = AiType.human
         # create enemy unit
         enemy_pos = (3, 3)
-        roc = self.board.place_new_monster(MonsterType.LOC, enemy_pos, 1)
+        roc = self.board.place_new_monster(MonsterType.LOC, enemy_pos,
+                                           self.player_2)
         old_tower_count = self.model.get_current_player().tower_count
         # player 1 turn
         self.move_crusader_to_tower()
@@ -309,8 +325,9 @@ class TestTowerCapture(TestCase):
 
     def assert_tower_captured_by(self, monster):
         assert not self.controller.tower_capture_window.visible
-        assert self.board.monster_at(tower_pos) == monster
+        assert self.board.monster_at(tower_pos) == monster,\
+            'monster was not at tower'
         assert (self.board.tower_owner_at(tower_pos) == monster.owner,
                 'Wrong owner')
-        player = self.model.get_player_of_number(monster.owner)
+        player = monster.owner
         assert player.tower_count == 8

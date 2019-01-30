@@ -57,7 +57,6 @@ class Text(pygame.sprite.Sprite):
         self.color = color
         self.size = size
         self.background_color = background_color
-        self.cache = {}
 
         if Options.headless:
             return
@@ -76,16 +75,9 @@ class Text(pygame.sprite.Sprite):
     def set_new_text_to_surface(self):
         # logging.info(
         #     f'Old text {self.text}: {self.rect.width}x{self.rect.height}')
-        if self.text not in self.cache:
-            self.cache[self.text] = self.image
         self.text = self.new_text
         self.new_text = None
-        if self.text in self.cache:
-            # set surface directly from cache
-            # logging.info(f'Using cached text')
-            self.image = self.cache[self.text]
-        else:
-            self.update_surface()
+        self.update_surface()
         self._set_rect_to_text_size()
         # logging.info(
         #     f'New text {self.text}: {self.rect.width}x{self.rect.height}')

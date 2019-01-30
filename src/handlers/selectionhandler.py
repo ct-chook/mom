@@ -39,9 +39,9 @@ class SelectionHandler:
         self.adjacent_enemies = None
 
     def click_tile(self, pos):
-        self.pos = pos
-        if not self.pos:
+        if not pos:
             return
+        self.pos = pos
         logging.info(f'Selected tile {self.pos}')
         monster_at_pos = self.board.monster_at(self.pos)
         if monster_at_pos:
@@ -55,11 +55,8 @@ class SelectionHandler:
         else:
             self._click_enemy(monster)
 
-    def _selected_monster_is_owned_by_player(self):
-        return self.selected_monster.owner == self.get_current_player_id()
-
-    def get_current_player_id(self):
-        return self.board.get_current_player_id()
+    def get_current_player(self):
+        return self.board.get_current_player()
 
     def _click_own_monster(self, monster):
         logging.info('Selected own monster')
@@ -124,7 +121,9 @@ class SelectionHandler:
         self.enemy_selection = None
 
     def _monster_is_owned_by_player(self, monster):
-        return monster.owner == self.get_current_player_id()
+        # check if owner is not an int
+        assert monster.owner.id_ >= 0
+        return monster.owner is self.get_current_player()
 
     def _lord_is_adjacent_to(self, tile):
         surrounding_tiles = self.board.get_posses_adjacent_to(tile)

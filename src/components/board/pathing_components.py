@@ -116,9 +116,6 @@ class MatrixPrinter(DictionaryPrinter):
         return self._get_values()
 
     def _get_value_representation_at(self, pos):
-        # only display correct distance values
-        # if pos not in self.matrix.explored_tiles:
-        #     return '  '
         if self.mode == self.PRINT_DIST:
             val = self.matrix.get_distance_value_at(pos)
         elif self.mode == self.PRINT_HEURISTIC:
@@ -240,7 +237,7 @@ class MatrixProcessor:
 
     def _tile_is_not_passable(self, pos):
         tile_monster = self.board.monster_at(pos)
-        if tile_monster and tile_monster.owner != self.monster.owner:
+        if tile_monster and tile_monster.owner is not self.monster.owner:
             return True
 
     def _get_move_cost_for(self, pos):
@@ -296,7 +293,7 @@ class SearchMatrixProcessor(MatrixProcessor):
 
     def _setup_processing(self, start):
         super()._setup_processing(start)
-        self.player_id = self.monster.owner
+        self.player = self.monster.owner
 
     def matrix_is_finished(self):
         if not self.tiles_to_explore:
@@ -333,7 +330,7 @@ class TowerSearchMatrixProcessor(SearchMatrixProcessor):
     def _found_tile_to_search_for(self):
         # todo move players to board, add method to check friend or foe
         return (self.board.has_tower_at(self.pos)
-                and self.board.tower_is_capturable_by(self.pos, self.player_id))
+                and self.board.tower_is_capturable_by(self.pos, self.player))
 
 
 class AStarMatrixProcessor(MatrixProcessor):
@@ -552,11 +549,16 @@ class PathFinder:
     def _next_tile_has_no_adjacent_enemies(self):
         posses = self.board.get_posses_adjacent_to(self.pos_to)
         for pos in posses:
-            nearby_monster = self.board.monster_at(pos)
-            if (nearby_monster and nearby_monster.owner !=
-                    self.board.get_current_player_id()):
+            if self._pos_has_adjacent_enemy(pos):
                 return False
         return True
+
+    def _pos_has_adjacent_enemy(self, pos):
+        nearby_monster = self.board.monster_at(pos)
+        return (nearby_monster
+                and not self.board.is_friendly_player(
+                    nearby_monster.owner, self.board.get_current_player())
+                )
 
     def _add_tile_to_path(self):
         pos = self.pos_to

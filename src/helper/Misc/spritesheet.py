@@ -133,8 +133,8 @@ class MonsterSpriteSheet:
         self.sprites = {}
         self.max_players = max_players
 
-    def get_sprite(self, index, owner):
-        return self.sprites[owner].get_sprite(index)
+    def get_sprite(self, index, player_id):
+        return self.sprites[player_id].get_sprite(index)
 
     def generate_sprites(self):
         for player_id in range(self.max_players):

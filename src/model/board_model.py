@@ -82,16 +82,16 @@ class BoardModel:
         return True
 
     def get_current_player_monsters(self):
-        player_id = self.players.get_current_player_id()
-        return self.get_monsters_of_player(player_id)
+        player = self.players.get_current_player()
+        return self.get_monsters_of_player(player)
 
-    def get_monsters_of_player(self, player_id):
-        return self.board.monsters[player_id]
+    def get_monsters_of_player(self, player):
+        return self.board.monsters[player.id_]
 
     def summon_monster_at(self, monster_type, pos):
         """Returns None if monster could not be summoned"""
         return self.board.summon_monster(
-            monster_type, pos, self.get_current_player().id_)
+            monster_type, pos, self.get_current_player())
 
     def get_current_player(self):
         return self.players.get_current_player()
@@ -118,7 +118,7 @@ class BoardModel:
         self.board.move_monster(monster, pos)
 
     def capture_tower_at(self, pos):
-        self.board.capture_terrain_at(pos, self.get_current_player().id_)
+        self.board.capture_terrain_at(pos, self.get_current_player())
 
     def get_adjacent_enemies_at(self, pos):
         return self.board.get_enemies_adjacent_to(pos)
@@ -137,11 +137,8 @@ class BoardModel:
                     self._current_player_owns(monster)):
                 return True
 
-    def is_enemy(self, monster):
-        return monster.owner != self.get_current_player_id()
-
     def _current_player_owns(self, monster):
-        return monster.owner == self.get_current_player().id_
+        return monster.owner is self.get_current_player()
 
     def get_tiles_to_highlight(self):
         """Returns a list of posses that should be highlighted by the view
@@ -159,17 +156,14 @@ class BoardModel:
         pathfinder = PathFactory(self.board)
         return pathfinder.get_path_on_matrix_to(self.path_matrix, pos)
 
-    def get_lord_of_player(self, player_id=None):
+    def get_lord_of_player(self, player=None):
         # todo include direct link to lord
-        if player_id is None:
-            player_id = self.get_current_player_id()
-        return self.board.get_lord_of_player(player_id)
+        if player is None:
+            player = self.get_current_player()
+        return self.board.get_lord_of_player(player.id_)
 
-    def get_current_player_id(self):
-        return self.players.current_player
-
-    def is_friendly_player(self, player_id):
-        return player_id == self.get_current_player_id()
+    def is_friendly_player(self, player):
+        return player is self.get_current_player()
 
     def is_valid_pos_for_summon(self, pos):
         return self.board.monster_at(pos) is None \

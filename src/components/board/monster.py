@@ -1,5 +1,5 @@
 import src.helper.Misc.datatables
-from src.helper.Misc.constants import Terrain, MonsterType
+from src.helper.Misc.constants import MonsterType
 
 
 class Monster:
@@ -17,6 +17,7 @@ class Monster:
          VALKYRIE, TAITAN) = range(83)
 
     def __init__(self, monster_type, pos, owner, terrain):
+        assert type(owner) is not int
         self.pos = pos
         self.owner = owner
         self.terrain = terrain

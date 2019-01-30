@@ -100,7 +100,7 @@ class SidebarView(View):
             hp = str(monster.hp)
             max_hp = str(monster.stats.max_hp)
             sprite = self.monster_sprites.get_sprite(
-                monster.type, monster.owner)
+                monster.type, monster.owner.id_)
         else:
             name = ''
             owner = ''
@@ -114,4 +114,4 @@ class SidebarView(View):
         self.monster_sprite.surface = sprite
 
     def _get_owner_text(self, owned_object):
-        return 'Player ' + str(owned_object.owner)
+        return 'Player ' + str(owned_object.owner.id_)

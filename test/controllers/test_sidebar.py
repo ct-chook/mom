@@ -1,5 +1,6 @@
 import pytest
 
+from components.board.players import Player
 from helper.events.events import Publisher
 from src.helper.Misc.options_game import Options
 from src.components.board.monster import Monster
@@ -14,6 +15,7 @@ class TestCase:
     def before(self):
         self.sidebar = Sidebar()
         self.view = self.sidebar.view
+        self.player_1 = Player(0, 0, 0, 0, 0)
 
     def test(self):
         # for pycharm to recognize this as a testing class
@@ -76,7 +78,8 @@ class TestMouseoverDisplay(TestCase):
 
     def test_dune_with_lizard(self, before):
         tile = self.create_tile(Terrain.DUNE)
-        monster = Monster(MonsterType.LIZARD, (0, 0), 0, Terrain.DUNE)
+        monster = Monster(MonsterType.LIZARD, (0, 0), self.player_1,
+                          Terrain.DUNE)
         tile.monster = monster
         monster.hp = 15
         self.display_tile_info_for(tile)
@@ -85,7 +88,8 @@ class TestMouseoverDisplay(TestCase):
 
     def test_two_mouseovers_monster(self, before):
         tile = self.create_tile(Terrain.GRASS)
-        tile.monster = Monster(MonsterType.SPHINX, (0, 0), 0, Terrain.GRASS)
+        tile.monster = Monster(MonsterType.SPHINX, (0, 0), self.player_1,
+                               Terrain.GRASS)
         self.display_tile_info_for(tile)
         self.display_tile_with_terrain(Terrain.ROCKY)
         self.assert_terrain_is('Rocky Tracts')

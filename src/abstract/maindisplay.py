@@ -8,6 +8,7 @@ from src.helper.logging_functions import log_time
 
 
 class MainDisplay:
+    """This keeps and updates the game window. It is called by the views."""
     def __init__(self, width, height):
         logging.info('Initializing main display')
         self.rectangle = pygame.rect.Rect((0, 0, width, height))
@@ -30,9 +31,6 @@ class MainDisplay:
             pygame.RESIZABLE)
         View.display_surface = self.screen  # important, cannot blit without
         pass
-
-    def set_top_view(self, view):
-        self.top_view = view
 
     def add_view_to_update_queue(self, view):
         # logging.info(f'added {view} to background update queue')
@@ -76,12 +74,16 @@ class MainDisplay:
             self.changed_rects.extend(rects)
 
     def _redraw_screen(self):
+        """Uses lists of updated rectangles to redraw the screen
+
+        Buggy on MacOS, hopefully fixed in SDL2.0
+        """
         if not self.changed_rects:
             # logging.info('Tried to redraw screen but no rects provided')
             return
         # logging.info(f'Redrawing screen using {len(self.changed_rects)} rects')
         self.top_view.blit_to_display(0, 0)
-        #log_time(pygame.display.flip)  # doesn't work for software displays
+        # log_time(pygame.display.flip)  # doesn't work for software displays
         # for rect in self.changed_rects:
             # logging.info(
             #     f'Updating with rect: '

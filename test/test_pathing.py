@@ -364,7 +364,8 @@ class TestMatrix(TestCase):
         assert len(self.path) == 5
 
     def check(self, value, pos):
-        assert self.matrix.get_distance_value_at(pos) == value
+        assert self.matrix.get_distance_value_at(pos) == value, (
+            f'{self.matrix.get_printable_dist_values()}')
 
     def generate_matrix_at(self, pos):
         self.generator = PathMatrixFactory(self.board)

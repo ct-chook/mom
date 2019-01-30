@@ -20,7 +20,8 @@ class TestBoard:
         assert self.board.towers
         towers = self.board.get_capturable_towers_for_player(0)
         assert towers
+        player_0 = self.board.players[0]
         for pos in towers:
-            self.board.capture_terrain_at(pos, 0)
-        towers = self.board.get_capturable_towers_for_player(0)
+            self.board.capture_terrain_at(pos, player_0)
+        towers = self.board.get_capturable_towers_for_player(player_0)
         assert not towers

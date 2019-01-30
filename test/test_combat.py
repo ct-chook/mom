@@ -1,5 +1,6 @@
 import pytest
 
+from components.board.players import Player
 from src.components.board.monster import Monster
 from src.helper.Misc.constants import MonsterType, Terrain
 from src.components.combat.combat import Combat
@@ -14,17 +15,19 @@ CLOSE_RANGE, LONG_RANGE = range(2)
 class CombatTest:
     combat_result = None
 
+    @pytest.fixture
+    def before(self):
+        self.player_1 = Player(0, 0, 0, 0, 0)
+        self.attack = Attack
+        self.monster = Monster(Monster.Type.TROLL, (0, 0), self.player_1,
+                               Terrain.GRASS)
+
     def assert_no_promotions(self):
         for promotion in self.combat_result.promotions:
             assert not promotion
 
 
 class TestDamageCalculationSimple(CombatTest):
-    @pytest.fixture
-    def before(self):
-        self.attack = Attack
-        self.monster = Monster(Monster.Type.TROLL, (0, 0), 0, Terrain.GRASS)
-
     def test_different_settings(self, before):
         self.assert_damage(10, 0, 0, 0, 10)
         # ali plus
@@ -48,11 +51,6 @@ class TestDamageCalculationSimple(CombatTest):
 
 
 class TestDamageCalculationCombined(CombatTest):
-    @pytest.fixture
-    def before(self):
-        self.attack = Attack
-        self.monster = Monster(Monster.Type.TROLL, (0, 0), 0, Terrain.GRASS)
-
     def test_ali_and_exp(self, before):
         self.assert_damage(10, 0.25, 60, 0, 14)
         # ali and resistance
@@ -74,10 +72,10 @@ class TestRomanCombat(CombatTest):
         self.model = BoardModel()
         self.board = self.model.board
         self.combat = Combat()
-        self.roman_a = self.board.place_new_monster(Monster.Type.ROMAN,
-                                                    (4, 4), 0)
-        self.roman_b = self.board.place_new_monster(Monster.Type.ROMAN,
-                                                    (4, 5), 1)
+        self.roman_a = self.board.place_new_monster(
+            Monster.Type.ROMAN, (4, 4), self.model.players[0])
+        self.roman_b = self.board.place_new_monster(
+            Monster.Type.ROMAN, (4, 5), self.model.players[1])
         Combat.perfect_accuracy = True
         self.more()
 

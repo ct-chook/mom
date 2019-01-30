@@ -8,11 +8,11 @@ from src.abstract.view import View
 from src.helper.Misc.constants import MouseButton
 from src.helper.events.events import Publisher
 
-logging.getLogger().setLevel(logging.INFO)
+# logging.getLogger().setLevel(logging.INFO)
 
 
 class GameHandler:
-    """Is responsible for the whole game; display, input, sound, and logic
+    """Class needed for the whole game; display, input, and logic
 
     This object itself should be instanced once per game running. The game
     handler can be set to run after it is created, and continues to run until
@@ -34,7 +34,7 @@ class GameHandler:
         self.top_controller = None
 
         pygame.init()
-        self.create_display()
+        self.set_display()
         self.clock = pygame.time.Clock()
 
         View.main_controller = self
@@ -45,14 +45,19 @@ class GameHandler:
             self._do_game_frame()
         self._cleanup()
 
-    def create_display(self):
+    def set_display(self):
+        self._create_display()
         logging.info('Creating display')
         self.display.set_pygame_display()
+
+    def _create_display(self):
+        pass
 
     def is_running(self):
         pass
 
     def _cleanup(self):
+        print('Game ended normally, bye!')
         pygame.quit()
 
     def _do_game_frame(self):
