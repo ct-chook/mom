@@ -25,7 +25,7 @@ class TestCase:
         mapoptions = MapOptions()
         mapoptions.mapname = 'testempty.map'
         mapoptions.set_number_of_players(2)
-        mapoptions.set_players()
+        mapoptions.create_players()
         self.controller = BoardController(0, 0, 500, 500, mapoptions)
         self.publisher = Publisher()
         PublisherInjector(self.controller).inject(self.publisher)
@@ -37,9 +37,9 @@ class TestCase:
         self.player_2 = self.model.get_player_of_number(1)
 
         # put lords in corners
-        daimyou = self.board.lords[0]
+        daimyou = self.board.get_lord_of(self.player_1)
         self.board.set_monster_pos(daimyou, (19, 0))
-        wizard = self.board.lords[1]
+        wizard = self.board.get_lord_of(self.player_2)
         self.board.set_monster_pos(wizard, (19, 19))
         self.add_chim()
         self.before_more()
@@ -186,8 +186,6 @@ class TestHandleNearbyEnemies(TestCase):
         self.ensure_monster_is_attacked(Type.LIZARD)
         self.ensure_attack_monster_at(lizard_pos)
 
-
-
     def test_attack_weakened_monster(self, before):
         """Finish off monster with 1 hp"""
         wraith_pos = (3, 5)
@@ -210,12 +208,12 @@ class TestHandleNearbyEnemies(TestCase):
 
     def test_attack_melee_monster(self, before):
         """Use a ranged attack on a monster bad in range combat"""
-        self.chim.set_monster_type(Type.VALKYRIE)
+        self.chim.set_monster_type_to(Type.VALKYRIE)
         self.ensure_first_monster_is_attacked(Type.ATTACKER, Type.VALKYRIE)
 
     def test_ignore_immune_monster(self, before):
         """Ignore monster you can't deal damage to"""
-        self.chim.set_monster_type(Type.VALKYRIE)
+        self.chim.set_monster_type_to(Type.VALKYRIE)
         self.ensure_first_monster_is_attacked(Type.FIRBOLG, Type.IRON_G)
 
     def ensure_monster_is_attacked(self, type_):
@@ -349,7 +347,8 @@ class TestWithTwoTowers(TestCase):
 
 class TestSummoning(TestCase):
     def before_more(self):
-        self.wizard = self.board.lords[1]
+        self.wizard = self.board.lords.get_for(self.player_2)
+        assert self.wizard.type
         self.board.set_monster_pos(self.wizard, (1, 1))
         self.chim.moved = True
 

@@ -125,10 +125,10 @@ class AttackFactory:
     def _get_accuracy(self, defending_monster, attack_element):
         # Magical attacks always have fixed accuracy
         if attack_element == AttackType.MAGICAL:
-            accuracy = self._ACCURACY_MAGIC
-        else:
-            terrain = defending_monster.terrain
-            terrain_defense = DataTables.terrain_defense[terrain]
-            miss_chance = terrain_defense[defending_monster.stats.terrain_type]
-            accuracy = 100 - miss_chance
+            return self._ACCURACY_MAGIC
+        terrain = defending_monster.terrain
+        terrain_type = defending_monster.stats.terrain_type
+        terrain_defense = DataTables.get_terrain_defense(terrain,
+                                                         terrain_type)
+        accuracy = 100 - terrain_defense
         return accuracy

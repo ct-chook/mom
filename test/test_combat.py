@@ -17,7 +17,7 @@ class CombatTest:
 
     @pytest.fixture
     def before(self):
-        self.player_1 = Player(0, 0, 0, 0, 0)
+        self.player_1 = Player(0)
         self.attack = Attack
         self.monster = Monster(Monster.Type.TROLL, (0, 0), self.player_1,
                                Terrain.GRASS)

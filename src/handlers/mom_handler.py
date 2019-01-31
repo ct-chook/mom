@@ -17,8 +17,5 @@ class MomHandler(GameHandler):
         self.display = MomDisplay(self.width, self.height)
 
     def is_running(self):
-        if (self.top_controller.board_controller
-                and self.top_controller.board_controller.model.game_over):
-            return True
         return self.top_controller.running
 

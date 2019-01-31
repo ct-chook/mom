@@ -1,5 +1,6 @@
 import pygame
 
+from helper.Misc.constants import Color
 from src.abstract.view import View
 from src.abstract.window import Window
 import src.components.board.players
@@ -24,6 +25,7 @@ class SidebarView(View):
     def __init__(self, rectangle):
         super().__init__(rectangle)
         self.tile_displayed = None
+        self.set_bg_color(Color.BLACK)
 
         self.monster_sprites = SpriteSheetFactory().get_monster_spritesheets()
         # terrain info
@@ -60,11 +62,11 @@ class SidebarView(View):
             '', size=24, offset=(100, player_y_offset))
 
         # turn info
-        turn_y_offset = 200
+        turn_y_offset = 300
         self.sun_stance = self.add_text(
             '', size=24, offset=(50, turn_y_offset))
         self.active_player = self.add_text(
-            '', size=24, offset=(100, turn_y_offset))
+            '', size=24, offset=(150, turn_y_offset))
 
     sun_stance_to_text = {0: 'Dawn', 1: 'Day', 2: 'Dusk', 3: 'Night'}
 
@@ -101,15 +103,18 @@ class SidebarView(View):
             max_hp = str(monster.stats.max_hp)
             sprite = self.monster_sprites.get_sprite(
                 monster.type, monster.owner.id_)
+            hp_divisor = '/'
         else:
             name = ''
             owner = ''
             hp = ''
+            hp_divisor = ''
             max_hp = ''
             sprite = self.blank_surface
         self.monster_name.set_text(name)
         self.monster_owner.set_text(owner)
         self.monster_hp.set_text(hp)
+        self.hp_divisor.set_text(hp_divisor)
         self.monster_max_hp.set_text(max_hp)
         self.monster_sprite.surface = sprite
 

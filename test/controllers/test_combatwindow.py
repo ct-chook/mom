@@ -31,7 +31,6 @@ class DummyView:
 class TestCase:
     @pytest.fixture
     def before(self):
-        # todo this tests board controller, not combat window
         self.window = CombatWindow()
         # needed since combat window makes callbacks to parent
         self.window.parent = Dummy()
@@ -40,8 +39,8 @@ class TestCase:
         self.view = self.window.view
         self.delay = self.view.COMBAT_DELAY
         self.round = 0
-        self.player_1 = Player(0, 0, 0, 0, 0)
-        self.player_2 = Player(1, 0, 0, 0, 0)
+        self.player_1 = Player(0)
+        self.player_2 = Player(1)
         self.left_monster = Monster(MonsterType.HYDRA, (0, 0), self.player_1,
                                     Terrain.GRASS)
         self.right_monster = Monster(MonsterType.SIRENE, (1, 0), self.player_2,

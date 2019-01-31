@@ -1,5 +1,6 @@
 import logging
 
+from controller.mainmenu_controller import CappedCounter
 from src.components.board import players
 from src.components.board.board import Board, BoardFactory
 from src.components.board.pathing import PathMatrixFactory, PathFactory
@@ -18,7 +19,7 @@ class BoardModel:
         self.board = None
         self.players: players.PlayerList = None
         self.turn = 0
-        self.sun_stance = 0
+        self.sun_stance = CappedCounter(0, 4)
         self.board = Board()
         factory = BoardFactory()
         self.board = factory.load_map(mapoptions)
@@ -43,13 +44,11 @@ class BoardModel:
         self._progress_sun_stance()
 
     def _progress_sun_stance(self):
-        self.sun_stance += 1
-        if self.sun_stance >= 4:
-            self.sun_stance = 0
+        self.sun_stance.flip()
 
     def get_combat_result(self, attacker, defender, attack_range):
         combat_result = Combat().monster_combat(
-            (attacker, defender), attack_range, self.sun_stance)
+            (attacker, defender), attack_range, self.sun_stance.value)
         return combat_result
 
     def process_combat_log(self, combatlog: CombatLog):
@@ -71,22 +70,33 @@ class BoardModel:
 
     def remove_player_from_game(self, id_):
         self.players.remove_player(id_)
-        if self._no_human_players_left() or len(self.players) < 2:
+        if self._no_human_players_left() or self._only_one_team_left():
             self.game_over = True
+            # assert False, 'game over'
 
     def _no_human_players_left(self):
-        for id_ in range(len(self.players)):
-            player = self.players.get_player_by_id(id_)
+        for player in self.players:
             if player.ai_type == AiType.human:
                 return False
         return True
+
+    def _only_one_team_left(self):
+        teams = set()
+        for player in self.players:
+            if player.team is None:
+                return False
+            teams.add(player.team)
+        if len(teams) == 1:
+            return True
+        else:
+            return False
 
     def get_current_player_monsters(self):
         player = self.players.get_current_player()
         return self.get_monsters_of_player(player)
 
     def get_monsters_of_player(self, player):
-        return self.board.monsters[player.id_]
+        return self.board.get_monsters_for(player)
 
     def summon_monster_at(self, monster_type, pos):
         """Returns None if monster could not be summoned"""
@@ -108,11 +118,12 @@ class BoardModel:
     def get_short_and_long_attacks(self, monsters) -> AttackCollection:
         attack_factory = AttackFactory()
         return attack_factory.get_all_attacks_between_monsters(
-            monsters, self.sun_stance)
+            monsters, self.sun_stance.value)
 
     def has_capturable_tower_at(self, pos):
-        return (self.board.has_tower_at(pos) and
-                not self.is_friendly_player(self.board.tower_owner_at(pos)))
+        return (self.board.has_tower_at(pos)
+                and self.get_current_player().is_enemy_of(
+                    self.board.tower_owner_at(pos)))
 
     def move_monster_to(self, monster, pos):
         self.board.move_monster(monster, pos)
@@ -160,7 +171,7 @@ class BoardModel:
         # todo include direct link to lord
         if player is None:
             player = self.get_current_player()
-        return self.board.get_lord_of_player(player.id_)
+        return self.board.get_lord_of(player)
 
     def is_friendly_player(self, player):
         return player is self.get_current_player()

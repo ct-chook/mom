@@ -120,12 +120,13 @@ class PlayerDefaultBrain(PlayerBrain):
                     self.did_action = True
 
     def _possible_to_summon(self):
-        return self._have_enough_mana_to_summon_() \
-               and self._have_enough_towers_to_summon()
+        return (self._have_enough_mana_to_summon_()
+                and self._have_enough_towers_to_summon())
 
     def _have_enough_mana_to_summon_(self):
-        return self.player.mana >= \
-               DataTables.get_monster_stats(self.monster_to_summon).summon_cost
+        return (self.player.mana
+                >= DataTables.get_monster_stats(
+                    self.monster_to_summon).summon_cost)
 
     def _have_enough_towers_to_summon(self):
         return len(self.monsters) <= self.player.tower_count
@@ -247,12 +248,10 @@ class MonsterBrain:
         self.matrix = self.matrix_factory.generate_path_matrix(self.monster.pos)
 
     def _set_destination(self):
-        id_ = self.monster.owner
-        # capturable_towers = self.board.get_capturable_towers_for_player(id_)
-        # if capturable_towers:
+        player = self.monster.owner
         self._set_destination_to_closest_tower()
         if not self.destination_pos:
-            self._set_destination_to_enemy_lord(id_)
+            self._set_destination_to_enemy_lord(player)
         assert self.destination_pos
 
     def _set_destination_to_closest_tower(self):
@@ -261,9 +260,9 @@ class MonsterBrain:
         if tower_matrix.end:
             self.destination_pos = tower_matrix.end
 
-    def _set_destination_to_enemy_lord(self, player_id):
+    def _set_destination_to_enemy_lord(self, player):
         # go to enemy lord
-        enemy_lord = self.board.get_enemy_lord_for_player(player_id)
+        enemy_lord = self.board.get_enemy_lord_for_player(player)
         assert enemy_lord
         self.destination_pos = enemy_lord.pos
 
@@ -324,8 +323,10 @@ class MonsterBrain:
         assert destination is not None
         if self._is_valid_destination(destination):
             self._skip_turn()
+        # assert self.matrix.get_distance_value_at(self.destination_pos) < 99
+        if self.matrix.get_distance_value_at(destination) < 99:
+            self._skip_turn()
         self.destination_pos = destination
-        assert self.matrix.get_distance_value_at(self.destination_pos) < 99
 
     def _is_occupied(self, pos):
         monster = self.board.monster_at(pos)
@@ -355,7 +356,10 @@ class MonsterBrain:
         make_player_brain_act_again(self.controller)
 
     def _move_to_destination(self):
-        if self.destination_pos and self.destination_pos in self.matrix:
+        if (self.destination_pos
+                and self.destination_pos in self.matrix
+                and self.matrix.get_distance_value_at(
+                    self.destination_pos) < 99):
             self._move_to_pos_inside_matrix(self.destination_pos)
             if self.monster_to_attack:
                 self.monster.moved = False

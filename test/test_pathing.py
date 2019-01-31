@@ -398,7 +398,6 @@ class TestTowerSearch(TestCase):
         chim_pos = (1, 5)
         tower_pos = (2, 1)
         self.make_board_from_layout2(map_, legend, chim_pos)
-        self.board.print()
         self.get_path_to_tower(chim_pos)
         expected = (chim_pos, (0, 5), (0, 4), (0, 3), (1, 3), (2, 2), tower_pos)
         self.compare(self.path, expected)
@@ -422,7 +421,6 @@ class TestTowerSearch(TestCase):
         chim_pos = (1, 9)
         closest_tower_pos = (5, 0)
         self.make_board_from_layout2(map_, legend, chim_pos)
-        self.board.print()
         self.get_path_to_tower(chim_pos)
         assert self.path[-1] == closest_tower_pos
         assert self.path.furthest_reachable[1] == 4

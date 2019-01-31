@@ -51,8 +51,14 @@ class TileBlitter:
     def blit_all_terrain(self):
         x_max = self.__adjust_x_max_for_camera()
         y_max = self.__adjust_y_max_for_camera()
-        for y in range(self.camera.y, y_max):
-            for x in range(self.camera.x, x_max):
+        x_min = self.camera.x
+        if x_min < 0:
+            x_min = 0
+        y_min = self.camera.y
+        if y_min < 0:
+            y_min = 0
+        for y in range(y_min, y_max):
+            for x in range(x_min, x_max):
                 self.blit_terrain_tile((x, y))
 
     def blit_terrain_tile(self, pos):

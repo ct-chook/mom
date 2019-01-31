@@ -61,7 +61,3 @@ class TestCase:
         self.model.board.on_tile(pos).set_terrain_to(Terrain.TOWER)
         self.model.board.capture_terrain_at(pos, self.model.players[0])
         assert self.model.get_current_player().tower_count == towers + 1
-
-    def test_monster_gets_healed_on_tower(self, before):
-        pass
-

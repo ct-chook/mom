@@ -101,7 +101,8 @@ class TestDijkstraWithPathingComparison(TestCase):
 
 class TestDijkstraAlgorithm(TestCase):
     @pytest.mark.skip
-    def test_if_algorithm_is_correct(self):
+    def test_if_dijkstra_algorithm_is_correct(self):
+        """Test for the test above. Uses a very naive and slow algorithm"""
         for _ in range(10):
             self.run_algorithm()
 

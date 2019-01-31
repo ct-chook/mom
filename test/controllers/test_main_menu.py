@@ -32,6 +32,7 @@ class TestCase:
     def start(self):
         self.menu.map_selection_window.pick_map('testempty.map')
         self.options.finish_button.click()
+        self.fetch_model()
 
     # noinspection PyAttributeOutsideInit
     def fetch_model(self):
@@ -49,7 +50,6 @@ class TestPlayerCount(TestCase):
     def check_player_count(self, count):
         self.create_new_controllers()
         self.set_players_and_start(count)
-        self.fetch_model()
         assert len(self.model.players) == count
 
 
@@ -57,13 +57,13 @@ class TestChangeSummoner(TestCase):
     def test_change_summoner_to_summoner(self, before):
         self.click_summon_button_x_times(0, 4)
         self.start()
-        self.fetch_model()
-        assert self.model.board.lords[0].type == Monster.Type.SUMMONER
+        player = self.model.get_current_player()
+        lord = self.model.board.lords.get_for(player)
+        assert lord.type == Monster.Type.SUMMONER
 
     def test_change_summoner_to_daimyou(self, before):
         self.click_summon_button_x_times(0, 5)
         self.start()
-        self.fetch_model()
         self.check_lord_type_for_player(Monster.Type.DAIMYOU, 0)
 
     def test_change_all_summoners(self, before):
@@ -72,14 +72,14 @@ class TestChangeSummoner(TestCase):
         self.click_summon_button_x_times(2, 0)
         self.click_summon_button_x_times(3, 6)
         self.start()
-        self.fetch_model()
         self.check_lord_type_for_player(Monster.Type.WIZARD, 0)
         self.check_lord_type_for_player(Monster.Type.DAIMYOU, 1)
         self.check_lord_type_for_player(Monster.Type.SORCERER, 2)
         self.check_lord_type_for_player(Monster.Type.SUMMONER, 3)
 
-    def check_lord_type_for_player(self, type_, player):
-        lord = self.model.board.lords[player]
+    def check_lord_type_for_player(self, type_, player_id):
+        player = self.model.get_player_of_number(player_id)
+        lord = self.model.board.lords.get_for(player)
         assert lord.type == type_
         assert self.model.board.monster_at(lord.pos) == lord
 
@@ -91,7 +91,6 @@ class TestChangeSummoner(TestCase):
 class TestChangeHumanOrComputer(TestCase):
     def test_default_settings(self, before):
         self.start()
-        self.fetch_model()
         ai_types = (AiType.human, AiType.default, AiType.default,
                     AiType.default)
         for n in range(4):
@@ -103,7 +102,6 @@ class TestChangeHumanOrComputer(TestCase):
         assert (self.options.player_type_buttons[0].get_value()
                 == AiType.default)
         self.start()
-        self.fetch_model()
         player = self.model.get_current_player()
         assert player.ai_type == AiType.default, (
             f'Player type was {player.ai_type}')
@@ -111,3 +109,17 @@ class TestChangeHumanOrComputer(TestCase):
     def click_x_times(self, x):
         for _ in range(x):
             self.options.player_type_buttons[0].click()
+
+
+class TestTeams(TestCase):
+    def test_no_teams(self, before):
+        self.click_team_button_x_times(1, 0)
+        self.start()
+        player_1 = self.model.board.players[0]
+        player_2 = self.model.board.players[1]
+        assert player_1.team == 1
+        assert player_2.team == 0
+
+    def click_team_button_x_times(self, x, row):
+        for _ in range(x):
+            self.options.team_buttons[row].click()

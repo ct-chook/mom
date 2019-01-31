@@ -8,7 +8,6 @@ from src.controller.board_controller import BoardController
 from src.helper.Misc.constants import Terrain, MonsterType, AiType
 from src.helper.Misc.options_game import Options
 
-
 Options.headless = True
 
 roman_x = 1
@@ -325,9 +324,10 @@ class TestTowerCapture(TestCase):
 
     def assert_tower_captured_by(self, monster):
         assert not self.controller.tower_capture_window.visible
-        assert self.board.monster_at(tower_pos) == monster,\
-            'monster was not at tower'
-        assert (self.board.tower_owner_at(tower_pos) == monster.owner,
-                'Wrong owner')
+        assert self.board.monster_at(tower_pos) == monster, (
+            'monster was not at tower')
+        assert self.board.tower_owner_at(tower_pos) == monster.owner, (
+            'Wrong owner')
         player = monster.owner
-        assert player.tower_count == 8
+        # assumes player starts with 6 towers (adjacent tiles)
+        assert player.tower_count == 7

@@ -1,4 +1,7 @@
-import src.helper.Misc.datatables
+import random
+
+from components.board.players import Player
+from helper.Misc.datatables import MonsterStats, DataTables
 from src.helper.Misc.constants import MonsterType
 
 
@@ -19,11 +22,11 @@ class Monster:
     def __init__(self, monster_type, pos, owner, terrain):
         assert type(owner) is not int
         self.pos = pos
-        self.owner = owner
+        self.owner: Player = owner
         self.terrain = terrain
 
         self.type = None
-        self.stats: src.helper.Misc.datatables.MonsterStats = None
+        self.stats: MonsterStats = None
         self.hp = None
         self.name = None
         self.exp = None
@@ -31,16 +34,18 @@ class Monster:
         self.moved = False
         self.brain = None
 
-        self.set_monster_type(monster_type)
+        self.set_monster_type_to(monster_type)
 
-    def set_monster_type(self, monster_type):
+    def set_monster_type_to(self, monster_type):
         self.type = monster_type
-        self.stats = src.helper.Misc.datatables.DataTables\
-            .get_monster_stats(monster_type)
-        self.hp = self.stats.max_hp
-        self.name = self.stats.name
+        self.stats = DataTables.get_monster_stats(monster_type)
+        self._update_stats()
         self.exp = 0
         self.terrain_type = self.stats.terrain_type
+
+    def _update_stats(self):
+        self.hp = self.stats.max_hp
+        self.name = self.stats.name
 
     def award_exp(self, exp):
         self.exp += exp
@@ -49,15 +54,32 @@ class Monster:
         return self.exp + exp >= self.stats.max_exp
 
     def promote(self):
-        if not self.stats.promotion:
-            raise AttributeError(
+        assert self.stats.promotion, (
                 f'Tried to promote {self.name}, but it has no promotion!')
-        self.set_monster_type(self.stats.promotion)
+        self.set_monster_type_to(self.stats.promotion)
         self.exp = 0
 
     def is_lord(self):
         if self.type <= MonsterType.SIXTHLORD:
             return True
+
+    def tower_heal(self):
+        """Should be triggered when monster ends turn on tower
+
+        todo check how much health is restored (flat amount?)
+        """
+        self.heal(random.randint(5, 10))
+
+    def heal(self, amount):
+        self.hp += amount
+        if self.hp > self.stats.max_hp:
+            self.hp = self.stats.max_hp
+
+    def is_friendly_with(self, player):
+        return self.owner.is_friendly_with(player)
+
+    def is_enemy_of(self, player):
+        return self.owner.is_enemy_of(player)
 
     def __str__(self):
         return f'{self.name}'

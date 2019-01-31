@@ -10,7 +10,7 @@ from src.abstract.view import View
 
 class MinimapController(Window):
     def __init__(self, board):
-        super().__init__(700, 0, 120, 120)
+        super().__init__(700, 0, 100, 120)
         self.view: MinimapView = self.add_view(MinimapView, board)
 
 

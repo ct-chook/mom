@@ -10,12 +10,13 @@ from src.controller.sidebar_controller import Sidebar
 
 Options.headless = True
 
+
 class TestCase:
     @pytest.fixture
     def before(self):
         self.sidebar = Sidebar()
         self.view = self.sidebar.view
-        self.player_1 = Player(0, 0, 0, 0, 0)
+        self.player_1 = Player(0)
 
     def test(self):
         # for pycharm to recognize this as a testing class

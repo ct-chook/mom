@@ -272,7 +272,8 @@ class BoardController(Window):
         self.selection_handler.unselect_enemy()
         self.model.on_end_turn()
         current_player = self.model.players.get_current_player()
-        self.sidebar.display_turn_info(current_player, self.model.sun_stance)
+        self.sidebar.display_turn_info(current_player,
+                                       self.model.sun_stance.value)
         if current_player.ai_type == AiType.human:
             self.is_ai_controlled = False
         else:
@@ -299,14 +300,14 @@ class BoardView(View):
         self.pos_converter = None
         self.path_animation = None
         self.path_index = None
-        self.monster_to_sprite = None
+        self.monster_sprites = None
 
-        self.board_model = None
+        self.board_model: BoardModel = None
         self.board = None
         self.tile_blitter: TileBlitter = None
         self.link_to_board_model(board_model)
         self.add_text('Board view')
-        self.monster_sprites = \
+        self.monster_spritesheet = \
             SpriteSheetFactory().get_monster_spritesheets()
         self.create_sprites_for_board_in_view()
 
@@ -379,13 +380,13 @@ class BoardView(View):
         logging.info(f'doing movement animation')
         pos_on_path = path[self.path_index]
         self.path_index += 1
-        if monster not in self.monster_to_sprite:
+        if monster not in self.monster_sprites:
             logging.info(
                 f'Tried to animate monster {monster.name} but not in dict. '
                 'This means that the sprite is outside camera view, or '
                 'simply was never created')
             return PATH_ANIMATION_DELAY
-        sprite = self.monster_to_sprite[monster]
+        sprite = self.monster_sprites[monster]
         surface_pos = self.pos_converter.board_to_surface_pos(pos_on_path)
         sprite.rect.x, sprite.rect.y = surface_pos
         self.queue_for_background_update()
@@ -393,35 +394,46 @@ class BoardView(View):
 
     def create_sprites_for_board_in_view(self):
         self.sprites.empty()
-        self.monster_to_sprite = {}
-        for key in self.board.monsters:
-            monsterlist = self.board.monsters[key]
-            self.create_sprites_from_monsterlist(monsterlist)
+        self.monster_sprites = {}
+        monsterlist = self._get_monsters_within_view()
+        self.create_sprites_from_monsterlist(monsterlist)
+
+    def _get_monsters_within_view(self):
+        monsterlist = []
+        y_max = self.camera.y + self.camera.height
+        if y_max > self.board.y_max:
+            y_max = self.board.y_max
+        x_max = self.camera.x + self.camera.width
+        if x_max > self.board.x_max:
+            x_max = self.board.x_max
+        y_min = self.camera.y
+        if y_min < 0:
+            y_min = 0
+        x_min = self.camera.x
+        if x_min < 0:
+            x_min = 0
+
+        for y in range(y_min, y_max):
+            for x in range(x_min, x_max):
+                monster = self.board.monster_at((x, y))
+                if monster:
+                    monsterlist.append(monster)
+        return monsterlist
 
     def create_sprites_from_monsterlist(self, monsterlist):
         for monster in monsterlist:
-            if self.monster_is_within_camera_view(monster):
-                self.create_sprite_for_monster(monster)
-
-    def monster_is_within_camera_view(self, monster):
-        adjusted_pos_not_negative = (
-                monster.pos[0] >= self.camera.x and
-                monster.pos[1] >= self.camera.y)
-        adjusted_pos_not_too_high = (
-                monster.pos[0] < self.camera.x + self.camera.width and
-                monster.pos[1] < self.camera.y + self.camera.height)
-        return adjusted_pos_not_negative and adjusted_pos_not_too_high
+            self.create_sprite_for_monster(monster)
 
     def create_sprite_for_monster(self, monster):
         try:
-            sprite_surface = self.monster_sprites.get_sprite(
+            sprite_surface = self.monster_spritesheet.get_sprite(
                 monster.stats.id, monster.owner.id_)
         except IndexError:
             print(f'trying to fetch a sprite for {monster.stats.id}, but '
                   'sprite was not found')
             return
         offset = self.pos_converter.board_to_surface_pos(monster.pos)
-        self.monster_to_sprite[monster] = self.add_sprite(
+        self.monster_sprites[monster] = self.add_sprite(
             sprite_surface, offset)
         # logging.info(f'sprite added for {monster.name} ({monster.owner})')
 
@@ -430,3 +442,12 @@ class BoardView(View):
         for enemy in enemies:
             tiles.append(enemy.pos)
         self.highlight_tiles(tiles)
+
+    # def monster_is_within_camera_view(self, monster):
+    #     adjusted_pos_not_negative = (
+    #             monster.pos[0] >= self.camera.x and
+    #             monster.pos[1] >= self.camera.y)
+    #     adjusted_pos_not_too_high = (
+    #             monster.pos[0] < self.camera.x + self.camera.width and
+    #             monster.pos[1] < self.camera.y + self.camera.height)
+    #     return adjusted_pos_not_negative and adjusted_pos_not_too_high

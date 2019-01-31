@@ -237,7 +237,8 @@ class MatrixProcessor:
 
     def _tile_is_not_passable(self, pos):
         tile_monster = self.board.monster_at(pos)
-        if tile_monster and tile_monster.owner is not self.monster.owner:
+        if (tile_monster
+                and tile_monster.is_enemy_of(self.monster.owner)):
             return True
 
     def _get_move_cost_for(self, pos):
@@ -556,9 +557,7 @@ class PathFinder:
     def _pos_has_adjacent_enemy(self, pos):
         nearby_monster = self.board.monster_at(pos)
         return (nearby_monster
-                and not self.board.is_friendly_player(
-                    nearby_monster.owner, self.board.get_current_player())
-                )
+                and nearby_monster.is_enemy_of(self.board.get_current_player()))
 
     def _add_tile_to_path(self):
         pos = self.pos_to
