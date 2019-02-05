@@ -3,7 +3,8 @@ import os
 from pygame.rect import Rect
 
 from src.abstract.view import View
-from src.abstract.window import Window, TextButton
+from src.abstract.window import Window
+from src.components.button import TextButton
 from src.components.board.monster import Monster
 from src.components.board.players import PlayerList
 from src.helper.Misc.constants import Color, AiType

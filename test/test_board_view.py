@@ -1,9 +1,7 @@
 import pytest
 
-from src.helper.Misc.options_game import Options
-from src.helper.events.events import Publisher, EventList
 from src.controller.board_controller import BoardController
-
+from src.helper.Misc.options_game import Options
 
 Options.headless = True
 

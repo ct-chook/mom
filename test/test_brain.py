@@ -293,7 +293,7 @@ class TestCannotMove(TestCase):
                           (0, 4), (1, 4), (2, 4), (3, 4), (4, 4), (5, 4),
                           (0, 5), (1, 5), (2, 5), (3, 5), (4, 5), (5, 5))
         for pos in blocked_posses:
-            self.board.summon_monster(Type.COCOON, pos, 0)
+            self.model.summon_monster(Type.COCOON, pos, self.player_1)
         self.check_chim_pos((0, 0))
 
     def test_ignore_monster_surrounded_by_friendlies(self, before):
@@ -435,8 +435,8 @@ class TestTwoMonsters(TestCase):
 
     def add_troll(self):
         # noinspection PyAttributeOutsideInit
-        self.troll = self.board.summon_monster(Monster.Type.TROLL, (2, 2),
-                                               self.player_2)
+        self.troll = self.board.place_new_monster(Monster.Type.TROLL, (2, 2),
+                                                  self.player_2)
         self.troll.moved = False
 
 

@@ -2,7 +2,7 @@ import logging
 
 from pygame.rect import Rect
 
-from helper.events.events import EventCallback, EventList
+from src.helper.events.events import EventCallback, EventList
 
 
 class Controller:

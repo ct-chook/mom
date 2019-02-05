@@ -1,6 +1,7 @@
 from src.components.combat.attack import AttackCollection
 from src.abstract.view import View
-from src.abstract.window import Window, Button
+from src.abstract.window import Window
+from src.components.button import Button
 from src.controller import board_controller
 from src.controller.combat_controller import CombatWindow
 from src.helper.Misc.constants import Color
@@ -54,8 +55,8 @@ class PreCombatWindow(Window):
 
 
 class AttackButton(Button):
-    def __init__(self, x, y, width, height, callbacks, arguments):
-        super().__init__(x, y, width, height, callbacks, arguments)
+    def __init__(self, x, y, width, height, callback, arguments):
+        super().__init__(x, y, width, height, callback, arguments)
         self.view = self.add_view(AttackButtonView)
 
     def set_stats(self, attacks):

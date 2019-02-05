@@ -1,6 +1,6 @@
 import pygame
 
-from abstract.controller import PublisherInjector
+from src.abstract.controller import PublisherInjector
 from src.controller.board_controller import BoardController
 from src.abstract.view import View
 from src.abstract.window import Window

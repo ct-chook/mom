@@ -1,19 +1,16 @@
 import logging
 
 from pygame import Surface
-from pygame.rect import Rect
 
-from helper.Misc.datatables import DataTables
+from src.abstract.view import View
+from src.abstract.window import Window
 from src.components.combat import combatlog
 from src.components.combat.combat import Combat
-from src.helper.Misc.options_game import Options
-from src.helper.events import events
-from src.helper.events.events import EventCallback, EventList
-from src.abstract.window import Window
 from src.components.combat.combatlog import CombatLog
 from src.helper.Misc.constants import Color
+from src.helper.Misc.options_game import Options
 from src.helper.Misc.spritesheet import SpriteSheetFactory
-from src.abstract.view import View
+from src.helper.events.events import EventCallback
 
 
 class CombatWindow(Window):

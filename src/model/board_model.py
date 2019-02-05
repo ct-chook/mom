@@ -1,12 +1,12 @@
 import logging
 
 from controller.mainmenu_controller import CappedCounter
+from helper.Misc.datatables import DataTables
 from src.components.board import players
 from src.components.board.board import Board, BoardFactory
 from src.components.board.pathing import PathMatrixFactory, PathFactory
 from src.components.board.pathing_components import PathMatrix
 from src.components.combat.attack import AttackFactory, AttackCollection
-from src.components.combat.combat import Combat
 from src.components.combat.combatlog import CombatLog
 from src.helper.Misc.constants import AiType, Terrain
 
@@ -30,26 +30,34 @@ class BoardModel:
         self.matrix_factory = PathMatrixFactory(self.board)
 
     def on_end_turn(self):
-        self.board.on_end_of_turn()
+        current_player = self.get_current_player()
+        for monster in self.board.monsters.get_for(current_player):
+            monster.moved = False
+            if self._is_on_terrain_that_heals(monster):
+                monster.tower_heal()
+        logging.info(f'Ending turn of {current_player}')
         self.turn += 1
         self.players.get_current_player().regenerate_mana()
         self.players.goto_next_player()
         if self._round_has_ended():
             self._on_end_round()
 
+    def _is_on_terrain_that_heals(self, monster):
+        """ todo check what terrain heals in-game
+
+        Seems to be tower, not sure about castle. not fortress.
+        """
+        terrain = monster.terrain
+        return terrain == Terrain.TOWER or terrain == Terrain.CASTLE
+
     def _round_has_ended(self):
-        return self.turn % len(self.players) == 0
+        return self.turn == len(self.players)
 
     def _on_end_round(self):
         self._progress_sun_stance()
 
     def _progress_sun_stance(self):
         self.sun_stance.flip()
-
-    def get_combat_result(self, attacker, defender, attack_range):
-        combat_result = Combat().monster_combat(
-            (attacker, defender), attack_range, self.sun_stance.value)
-        return combat_result
 
     def process_combat_log(self, combatlog: CombatLog):
         for monster, hp in zip(combatlog.monsters, combatlog.hp_end):
@@ -100,8 +108,25 @@ class BoardModel:
 
     def summon_monster_at(self, monster_type, pos):
         """Returns None if monster could not be summoned"""
-        return self.board.summon_monster(
+        return self.summon_monster(
             monster_type, pos, self.get_current_player())
+
+    def summon_monster(self, monster_type, pos, owner):
+        """Adds a monster and checks/reduces mana and flags it"""
+        assert not self.board.tile_at(pos).monster, f'{self.board.print()}' \
+            f'Tried to summon ' \
+            f'{DataTables.get_monster_stats(monster_type).name} at ' \
+            f'location occupied by {self.board.monster_at(pos).name} '
+        summon_cost = DataTables.get_monster_stats(monster_type).summon_cost
+        if owner.mana < summon_cost:
+            logging.info('Not enough mana to summon monster')
+            return None
+        if owner.max_monsters_reached():
+            return None
+        monster = self.board.place_new_monster(monster_type, pos, owner)
+        owner.decrease_mana_by(summon_cost)
+        monster.moved = True
+        return monster
 
     def get_current_player(self):
         return self.players.get_current_player()
@@ -159,9 +184,6 @@ class BoardModel:
         """
         return self.path_matrix.accessible_positions
 
-    def get_players(self):
-        return self.players
-
     def get_path_to(self, pos):
         assert self.path_matrix
         pathfinder = PathFactory(self.board)
@@ -173,9 +195,6 @@ class BoardModel:
             player = self.get_current_player()
         return self.board.get_lord_of(player)
 
-    def is_friendly_player(self, player):
-        return player is self.get_current_player()
-
     def is_valid_pos_for_summon(self, pos):
         return self.board.monster_at(pos) is None \
                and self._is_valid_terrain_for_summon(pos)
@@ -183,4 +202,4 @@ class BoardModel:
     def _is_valid_terrain_for_summon(self, pos):
         terrain = self.board.terrain_at(pos)
         return (terrain == Terrain.TOWER or terrain == Terrain.FORTRESS
-                or terrain == Terrain.MAIN_FORTRESS)
+                or terrain == Terrain.CASTLE)

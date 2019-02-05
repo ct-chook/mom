@@ -1,6 +1,6 @@
 import pygame
 
-from helper.Misc.constants import Color
+from src.helper.Misc.constants import Color
 from src.abstract.view import View
 from src.abstract.window import Window
 import src.components.board.players

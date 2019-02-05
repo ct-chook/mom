@@ -1,7 +1,7 @@
 import random
 
-from components.board.players import Player
-from helper.Misc.datatables import MonsterStats, DataTables
+from src.components.board.players import Player
+from src.helper.Misc.datatables import MonsterStats, DataTables
 from src.helper.Misc.constants import MonsterType
 
 
@@ -67,8 +67,9 @@ class Monster:
         """Should be triggered when monster ends turn on tower
 
         todo check how much health is restored (flat amount?)
+        seems to be 10±4, independent of max hp
         """
-        self.heal(random.randint(5, 10))
+        self.heal(random.randint(6, 14))
 
     def heal(self, amount):
         self.hp += amount

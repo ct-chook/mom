@@ -1,4 +1,5 @@
-from src.abstract.window import Window, ButtonMatrix
+from src.abstract.window import Window
+from components.button import ButtonMatrix
 from math import floor
 
 from src.helper.Misc.constants import TERRAIN_COUNT, is_even, Color
@@ -25,9 +26,9 @@ class TileEditorWindow(Window):
 
 class TileEditorButtons(ButtonMatrix):
     def __init__(self, x, y, button_width, button_height, rows, cols,
-                 callbacks):
+                 callback):
         super().__init__(
-            x, y, button_width, button_height, rows, cols, callbacks)
+            x, y, button_width, button_height, rows, cols, callback)
         self.add_view(TileEditorButtonsView)
 
 

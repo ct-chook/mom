@@ -1,5 +1,9 @@
+from math import ceil
+
 from src.abstract.view import View
-from src.abstract.window import Window, ButtonMatrix
+from components.button import ButtonMatrixView
+from src.abstract.window import Window
+from src.components.button import ButtonMatrix
 from src.helper.Misc.constants import Color
 from src.helper.Misc.datatables import DataTables
 from src.helper.Misc.spritesheet import SpriteSheetFactory
@@ -14,34 +18,32 @@ class SummonWindow(Window):
         button_y_offset = 100
         button_x_offset = 0
         self.board_model = board_model
-        self.player_id = 0
+        self.player = self.board_model.get_current_player()
         self.summonable_monsters = []
         self.summon_pos = None
 
-        self._get_summonable_monsters_for_player(self.player_id)
+        self.summonable_monsters = (DataTables
+                                    .get_summon_options(self.player.lord_type))
         number_of_buttons = len(self.summonable_monsters)
-        height = button_y_offset + button_height * number_of_buttons
-        rows = number_of_buttons
-        cols = 1
+        height = ceil(button_y_offset + button_height * number_of_buttons) / 2
+        rows = ceil(number_of_buttons / 2)
+        cols = 2
         # super is called after the number of buttons, that is, the number
         # of monsters has been computed
         super().__init__(100, 100, width, height)
         self.view = self.add_view(SummonView)
-        self.summon_options = self.add_button(
-            SummonChoiceButtons(
-                button_x_offset, button_y_offset,
-                button_width, button_height,
-                rows, cols, self.handle_summon_choice))
+        self.summon_buttons: SummonButtons = self.add_button(
+            SummonButtons(button_x_offset, button_y_offset,
+                          button_width, button_height,
+                          rows, cols, self.handle_summon_choice))
         self.display_summonable_monsters()
         self.hide()
-
-    def _get_summonable_monsters_for_player(self, summoner_id):
-        self.summonable_monsters = DataTables.get_summon_options(summoner_id)
 
     def handle_summon_choice(self, index):
         monster_type = self.summonable_monsters[index]
         monster = self.parent.handle_summon_monster(
             monster_type, self.summon_pos)
+        # todo better alert
         if not monster:
             print('could not summon monster, not enough towers/mp')
         else:
@@ -50,8 +52,7 @@ class SummonWindow(Window):
     def display_summonable_monsters(self):
         if not self.view:
             return
-        self.summon_options.view.display_summonable_monsters(
-            self.summonable_monsters)
+        self.summon_buttons.display_monsters(self.summonable_monsters)
 
     def set_summon_pos(self, pos):
         self.summon_pos = pos
@@ -63,20 +64,28 @@ class SummonWindow(Window):
 class SummonView(View):
     def __init__(self, rectangle):
         super().__init__(rectangle)
-
         self.set_bg_color(Color.CYAN)
         self.title = self.add_text('SummonView', 48, (0, 0))
 
 
-class SummonChoiceButtons(ButtonMatrix):
+class SummonButtons(ButtonMatrix):
     def __init__(self, x, y, button_width, button_height, rows, cols,
-                 callbacks):
+                 callback):
         super().__init__(
-            x, y, button_width, button_height, rows, cols, callbacks)
+            x, y, button_width, button_height, rows, cols, callback)
         self.add_view(SummonChoiceButtonsView)
 
+    def display_monsters(self, summonable_monsters):
+        for monster_index, index in zip(summonable_monsters,
+                                        range(len(summonable_monsters))):
+            player_id = 0
+            sprite = (SpriteSheetFactory().get_monster_spritesheets()
+                      .get_sprite(monster_index, player_id))
+            self.add_button_sprite(sprite, index)
+        self.view.queue_for_sprite_update()
 
-class SummonChoiceButtonsView(View):
+
+class SummonChoiceButtonsView(ButtonMatrixView):
     def __init__(self, rectangle):
         super().__init__(rectangle)
         self.set_bg_color(Color.BLUE)

@@ -1,6 +1,6 @@
 import logging
 
-from src.helper.Misc.constants import ROOT, SUMMONER_COUNT
+from src.helper.Misc.constants import ROOT, SUMMONER_COUNT, MonsterType
 
 stats_csv_location = f'{ROOT}/src/data/monsters/stats.csv'
 terrain_cost_csv_location = f'{ROOT}/src/data/terrain/cost.csv'
@@ -57,13 +57,14 @@ class TableLoader:
 
     def _load_monster_stats(self):
         lines = self._get_lines(stats_csv_location)
-        possible_summoners = []
+        monsters = []
         for line in lines:
-            self._parse_monster_stats(line, possible_summoners)
-        for _ in range(SUMMONER_COUNT):
-            self.tableholder.summon_options.append([])
-        for i in range(len(possible_summoners)):
-            self._set_summonable_monsters(i, possible_summoners)
+            self._parse_monster_stats(line, monsters)
+        for n in range(MonsterType.DAIMYOU, MonsterType.SIXTHLORD + 1):
+            self.tableholder.summon_options[n] = []
+        for i in range(len(monsters)):
+            self._set_summonable_monsters(i, monsters)
+        pass
 
     def _parse_monster_stats(self, line, possible_summoners):
         s = line.split(',')
@@ -75,12 +76,13 @@ class TableLoader:
             s[14], s[15], s[16], s[17]))
         possible_summoners.append(s[18])  # also fetch summoner data
 
-    def _set_summonable_monsters(self, monster_index, possible_summoners):
-        summoners = possible_summoners[monster_index]
+    def _set_summonable_monsters(self, monster_index, monsters):
+        """Lord indices are dash-separated <-(like this word)"""
+        summoners = monsters[monster_index]
         summoners = summoners.split('-')
         for summoner in summoners:
             if summoner:
-                summoner_index = int(summoner) - 1
+                summoner_index = int(summoner)
                 self.tableholder.summon_options[summoner_index].append(
                     monster_index)
 
@@ -161,7 +163,7 @@ class DataTables:
     terrain_cost = []
     terrain_name = []
     terrain_defense = []
-    summon_options = []
+    summon_options = {}
     monster_stats = []
     loaded = False
 

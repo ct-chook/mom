@@ -1,4 +1,4 @@
-from abstract.controller import PublisherInjector
+from src.abstract.controller import PublisherInjector
 from src.abstract.game_handler import GameHandler
 from src.controller.mom_controller import MomController
 from src.handlers.mom_display import MomDisplay

@@ -1,4 +1,21 @@
-from helper.Misc.constants import AiType
+from src.helper.Misc.constants import AiType
+
+
+class Monsters:
+    def __init__(self):
+        self.monsters = set()
+
+    def add(self, monster):
+        self.monsters.add(monster)
+
+    def remove(self, monster):
+        self.monsters.remove(monster)
+
+    def __len__(self):
+        return len(self.monsters)
+
+    def __iter__(self):
+        return iter(self.monsters)
 
 
 class Player:
@@ -11,6 +28,8 @@ class Player:
         self.mana_gain = 50
         self.team = 0
         self.tower_count = 0
+        self.monsters: Monsters = Monsters()
+        self.monster_count = 0
 
     def regenerate_mana(self):
         self.mana += self.mana_gain
@@ -31,6 +50,9 @@ class Player:
         if self.team is 0 or player is 0:
             return True
         return self.team != player.team
+
+    def max_monsters_reached(self):
+        return self.tower_count + 1 < len(self.monsters)
 
 
 class PlayerBuilder:
@@ -68,8 +90,8 @@ class PlayerList:
         if self.current_index == len(self.players):
             self.current_index = 0
         assert len(self.players) > self.current_index, (
-                f'current player index {self.current_index} but only '
-                f'{len(self.players)} players')
+            f'current player index {self.current_index} but only '
+            f'{len(self.players)} players')
 
     def get_player_by_id(self, id_) -> Player:
         return self.players[id_]

@@ -4,7 +4,6 @@ import pygame
 from pygame.rect import Rect
 
 from src.abstract.view import View, Sprite
-from src.helper.logging_functions import log_time
 
 
 class MainDisplay:

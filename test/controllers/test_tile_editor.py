@@ -39,15 +39,15 @@ class TestTileEditor(TestCase):
     def test_set_main_fortress(self, before):
         assert self.tile_editor.selected_terrain is None
         self.buttons._handle_button_click(0)
-        assert self.tile_editor.selected_terrain == Terrain.MAIN_FORTRESS
+        assert self.tile_editor.selected_terrain == Terrain.CASTLE
         assert self.board.terrain_at(self.tile_pos) == Terrain.GRASS
         self.click_on(self.tile_pos)
-        assert self.board.terrain_at(self.tile_pos) == Terrain.MAIN_FORTRESS
+        assert self.board.terrain_at(self.tile_pos) == Terrain.CASTLE
 
     def test_button_off(self, before):
         assert self.tile_editor.selected_terrain is None
         self.buttons._handle_button_click(0)
-        assert self.tile_editor.selected_terrain == Terrain.MAIN_FORTRESS
+        assert self.tile_editor.selected_terrain == Terrain.CASTLE
         # now turn button off
         self.buttons._handle_button_click(0)
         assert self.tile_editor.selected_terrain is None

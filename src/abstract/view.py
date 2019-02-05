@@ -16,9 +16,8 @@ class Sprite(pygame.sprite.Sprite):
         self.new_pos = None
         self.image = surface
         if surface:
-            self.rect = pygame.Rect(
-                offset[0], offset[1],
-                surface.get_width(), surface.get_height())
+            self.rect = pygame.Rect(offset[0], offset[1], surface.get_width(),
+                                    surface.get_height())
         else:
             self.rect = pygame.Rect(offset[0], offset[1], 0, 0)
 
@@ -44,7 +43,6 @@ class Text(pygame.sprite.Sprite):
     def __init__(self, text, offset, max_width=None,
                  color=Color.WHITE, size=16, background_color=None,
                  font='menlo'):
-
         super().__init__()
         self.image = None
         self.x, self.y = offset
@@ -155,21 +153,21 @@ class View:
         if Options.headless:
             return
         # noinspection PyArgumentList
-        self.background = pygame.Surface(
-            (rectangle.width, rectangle.height)).convert()
+        self.background = pygame.Surface((rectangle.width,
+                                          rectangle.height)).convert()
         # noinspection PyArgumentList
-        self.surface = pygame.Surface(
-            (rectangle.width, rectangle.height)).convert()
+        self.surface = pygame.Surface((rectangle.width,
+                                       rectangle.height)).convert()
 
     def initialize_background(self):
         if Options.headless:
             return
         logging.info(f'Initializing background for {self}')
-        self.background = pygame.Surface(
-            (self.rectangle.width, self.rectangle.height))
+        self.background = pygame.Surface((self.rectangle.width,
+                                          self.rectangle.height))
         self.background.fill(self.bg_color)
-        self.surface = pygame.Surface(
-            (self.rectangle.width, self.rectangle.height))
+        self.surface = pygame.Surface((self.rectangle.width,
+                                       self.rectangle.height))
         self.queue_for_background_update()
 
     def queue_for_background_update(self):
@@ -185,8 +183,7 @@ class View:
         """Gives order to redraw background on screen"""
         if Options.headless:
             return
-        if not self.surface:
-            raise AttributeError(
+        assert self.surface, (
                 f'{self} tried to update background but had no surface')
         # logging.info(f'Redrawing background of {self}')
         self.surface.blit(self.background, self.background.get_rect())
@@ -197,15 +194,11 @@ class View:
         self.queue_for_sprite_update()
         return new_sprite
 
-    def add_text(
-            self, input_text: str, size: int = 16, offset: tuple = (0, 0),
-            max_width: int = None):
-
+    def add_text(self, input_text: str='', size: int = 16,
+                 offset: tuple = (0, 0), max_width: int = None):
         if not max_width:
             max_width = self._get_horizonal_space_till_end_of_view(offset[0])
-        text = Text(
-            input_text, offset,
-            max_width=max_width, size=size)
+        text = Text(input_text, offset, max_width=max_width, size=size)
         self.texts.add(text)
         self.queue_for_sprite_update()
         return text
@@ -275,6 +268,7 @@ class View:
     def _blit_surface_to_display(self, pos):
         """Blit this view on the display"""
         assert self.visible
+        assert self.main_display, f'{self} has no main display set'
         # logging.info(f'Blitting {self} to display')
         self.main_display.blit(self.surface, pos)
 
@@ -315,12 +309,3 @@ def get_total_surface_height(surfaces):
     for surface in surfaces:
         total_height += surface.get_height()
     return total_height
-
-
-class ButtonMatrixView(View):
-    # todo move this to a button module
-    def __init__(self, rectangle):
-        super().__init__(rectangle)
-
-    def set_sprite_for_button(self, index):
-        pass

@@ -1,7 +1,7 @@
 import pytest
 
-from helper.events.events import Publisher
-from src.abstract.window import ButtonMatrix
+from components.button import ButtonMatrix
+
 
 # Tests ButtonCluster
 

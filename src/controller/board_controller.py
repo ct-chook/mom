@@ -4,8 +4,12 @@ from math import floor
 import pygame
 from pygame.rect import Rect
 
+from src.components.board.board import Board
+from src.controller.statusbar_controller import StatusbarController
+from src.handlers.selectionhandler import SelectionHandler
 from src.abstract.view import View
-from src.abstract.window import Window, YesNoWindow
+from src.abstract.window import Window
+from src.controller.yesno_controller import YesNoWindow
 from src.components.board.brain import PlayerIdleBrain, PlayerDefaultBrain
 from src.controller.combat_controller import CombatWindow
 from src.controller.minimap_controller import MinimapController
@@ -18,10 +22,9 @@ from src.helper.Misc.constants import Color, AiType
 from src.helper.Misc.options_game import Options
 from src.helper.Misc.posconverter import PosConverter
 from src.helper.Misc.spritesheet import SpriteSheetFactory
-from src.helper.Misc.tileblitter import TileBlitter
+from src.helper.Misc.tileblitter import BoardBlitter
 from src.helper.events.events import EventCallback
 from src.helper.events.factory import PathEventFactory
-from handlers.selectionhandler import SelectionHandler
 from src.model.board_model import BoardModel
 
 
@@ -67,6 +70,8 @@ class BoardController(Window):
         self.end_of_turn_window: YesNoWindow = self.attach_controller(
             YesNoWindow('Do you want to end your turn?',
                         self.handle_end_of_turn, None))
+        self.status_bar: StatusbarController = self.attach_controller(
+            StatusbarController(0, 500, self.model))
 
         self.end_of_turn_window.hide()
         self.create_brains()
@@ -75,7 +80,7 @@ class BoardController(Window):
         self.append_event(self.get_ai_action_event())
 
     def create_brains(self):
-        for player in self.model.get_players():
+        for player in self.model.players:
             self._create_brain(player)
 
     def _create_brain(self, player):
@@ -96,8 +101,8 @@ class BoardController(Window):
     def handle_mouseclick(self):
         if self.is_ai_controlled:
             return
-        assert self.mouse_pos[0] >= 0 and self.mouse_pos[1] >= 0, \
-            'Position was calculated as outside the controller'
+        assert self.mouse_pos[0] >= 0 and self.mouse_pos[1] >= 0, (
+            'Position was calculated as outside the controller')
         tile_pos = self.get_tile_pos_at_mouse()
         self.handle_tile_selection(tile_pos)
 
@@ -167,13 +172,13 @@ class BoardController(Window):
         destination is unoccupied tower and add a capture event directly
         after movement. The model should auto-capture tower upon moving
         """
-        logging.info('Moving monster')
+        logging.info(f'Moving monster {monster}')
         pos = path[-1]
         if monster.pos != pos:
             assert self.model.board.monster_at(pos) is None, (
                 f'Destination {pos} is occupied by '
                 f'{self.model.board.monster_at(pos)}')
-            self.model.move_monster_to(monster, pos)
+        self.model.move_monster_to(monster, pos)
         self.set_movement_events(monster, path)
         if self.model.has_capturable_tower_at(pos):
             self._handle_tower_capture(pos)
@@ -210,6 +215,7 @@ class BoardController(Window):
         freeze_callback = self.freeze_events
         self.append_callback(capture_event)
         self.append_callback(freeze_callback)
+        self.status_bar.update_stats()
 
     def _handle_ai_action(self):
         """The ai must take over the controller until they end their turn
@@ -221,6 +227,7 @@ class BoardController(Window):
         """
         if len(self.events) > 1:
             # we only want to do ai action if controller has no other events
+            # might want to log if this happens because it shouldn't
             return
         brain = self._get_current_player_brain()
         if brain:
@@ -253,6 +260,7 @@ class BoardController(Window):
 
     def handle_combat_end(self, combat_log):
         self.model.process_combat_log(combat_log)
+        self.status_bar.update_stats()
 
     def handle_summon_order_at(self, pos):
         x, y = pos
@@ -263,8 +271,12 @@ class BoardController(Window):
     def handle_summon_monster(self, monster_type, pos):
         summoned_monster = self.model.summon_monster_at(monster_type, pos)
         if self.is_ai_controlled:
+            self.view.center_camera_on(pos)
             self.append_ai_callback()
-        self.view.queue_for_sprite_update()
+        if summoned_monster:
+            self.view.create_sprite_for_monster(summoned_monster)
+            self.view.queue_for_sprite_update()
+            self.status_bar.update_stats()
         return summoned_monster
 
     def handle_end_of_turn(self):
@@ -274,11 +286,14 @@ class BoardController(Window):
         current_player = self.model.players.get_current_player()
         self.sidebar.display_turn_info(current_player,
                                        self.model.sun_stance.value)
+        lord = self.model.board.get_lord_of(current_player)
+        self.view.center_camera_on(lord.pos)
         if current_player.ai_type == AiType.human:
             self.is_ai_controlled = False
         else:
             self.is_ai_controlled = True
             self.append_ai_callback()
+        self.status_bar.update_stats()
 
     def highlight_tiles(self, posses):
         self.view.highlight_tiles(posses)
@@ -291,35 +306,30 @@ class BoardView(View):
     def __init__(self, rectangle, arguments):
         camera, board_model = arguments
         super().__init__(rectangle)
-        self.set_bg_color(Color.WHITE)
+        self.set_bg_color(Color.GRAY)
         self.camera = camera
-        self.monster_width = Options.tile_width
-        self.monster_height = Options.tile_height
-        self.tile_width = Options.tile_width
-        self.tile_height = Options.tile_height
         self.pos_converter = None
         self.path_animation = None
         self.path_index = None
-        self.monster_sprites = None
-
-        self.board_model: BoardModel = None
-        self.board = None
-        self.tile_blitter: TileBlitter = None
-        self.link_to_board_model(board_model)
-        self.add_text('Board view')
-        self.monster_spritesheet = \
-            SpriteSheetFactory().get_monster_spritesheets()
-        self.create_sprites_for_board_in_view()
-
+        self.monster_sprites = {}
         self.tiles_to_highlight = None
 
+        self.board_model: BoardModel = None
+        self.board: Board = None
+        self.tile_blitter: BoardBlitter = None
+        self.link_to_board_model(board_model)
+        self.monster_spritesheet = (SpriteSheetFactory()
+                                    .get_monster_spritesheets())
+        self.create_sprites_for_viewport()
+        self.add_text('Board view')
+
     def link_to_board_model(self, board_model):
+        """A form of dependency injection?"""
         self.board_model = board_model
         self.board = board_model.board
-        self.tile_blitter = TileBlitter(self, self.board, self.camera)
-        x_max = self.board.x_max
-        y_max = self.board.y_max
-        self.pos_converter = PosConverter(self.camera, x_max, y_max)
+        self.tile_blitter = BoardBlitter(self, self.board, self.camera)
+        self.pos_converter = PosConverter(self.camera, self.board.x_max,
+                                          self.board.y_max)
 
     def highlight_tiles(self, tiles):
         self.tiles_to_highlight = tiles
@@ -330,69 +340,66 @@ class BoardView(View):
         self.queue_for_background_update()
 
     def move_camera(self, dxy):
-        center_x, center_y = self.get_center_tile(dxy)
-        if (center_x < 0 or center_y < 0 or center_x >= self.board.x_max or
-                center_y >= self.board.y_max):
+        dx, dy = dxy
+        center_x, center_y = self._get_center_tile()
+        new_center = (center_x + dx, center_y + dy)
+        if not self.board.is_valid_board_pos(new_center):
             return
-        old_camera_x = self.camera.x
-        old_camera_y = self.camera.y
-        dx, dy = dxy
-        new_camera_x = old_camera_x + dx
-        new_camera_y = old_camera_y + dy
-        self.camera.x = new_camera_x
-        self.camera.y = new_camera_y
-        self.create_sprites_for_board_in_view()
-        self.queue_for_background_update()
+        self.center_camera_on(new_center)
 
-    def get_center_tile(self, dxy):
-        dx, dy = dxy
-        return (self.camera.x + dx + floor(self.camera.width / 2),
-                self.camera.y + dy + floor(self.camera.height / 2))
+    def _get_center_tile(self):
+        return (self.camera.x + floor(self.camera.width / 2),
+                self.camera.y + floor(self.camera.height / 2))
 
     def center_camera_on(self, pos):
         # todo pos should be centered on board
         x, y = pos
-        self.camera.x = x - self.camera.width / 2
-        self.camera.y = y - self.camera.height / 2
-        self.create_sprites_for_board_in_view()
+        self.camera.x = x - floor(self.camera.width / 2)
+        self.camera.y = y - floor(self.camera.height / 2)
+        self.create_sprites_for_viewport()
         self.queue_for_background_update()
 
     def update_background(self):
-        self.background.fill(self.bg_color)
+        if Options.headless:
+            return
         self.tile_blitter.blit_all_tiles()
         super().update_background()
         logging.info('updated surface of board')
 
     def get_movement_events(self, monster, path):
+        """Returns all the callbacks needed to animate a moving monster"""
         self.path_animation = (path, monster)
         self.path_index = 0
-        focus_camera_event = EventCallback(
-            self.center_camera_on, path[0], name='focus camera')
+        focus_camera_event = EventCallback(self.center_camera_on, path[0],
+                                           name='focus camera')
         movement_event = EventCallback(self.on_path_animation, name='path anim')
-        clear_highlight_event = EventCallback(
-            self.clear_highlighted_tiles, name='clear highlight')
+        clear_highlight_event = EventCallback(self.clear_highlighted_tiles,
+                                              name='clear highlight')
         return focus_camera_event, movement_event, clear_highlight_event
 
     def on_path_animation(self):
+        """A callback used to animate a moving monster"""
         path, monster = self.path_animation
         if self.path_index >= len(path):
-            return None
+            return
         logging.info(f'doing movement animation')
         pos_on_path = path[self.path_index]
+        if self.path_index % 4 == 0:
+            self.center_camera_on(pos_on_path)
         self.path_index += 1
         if monster not in self.monster_sprites:
             logging.info(
                 f'Tried to animate monster {monster.name} but not in dict. '
                 'This means that the sprite is outside camera view, or '
                 'simply was never created')
-            return PATH_ANIMATION_DELAY
+            return
         sprite = self.monster_sprites[monster]
         surface_pos = self.pos_converter.board_to_surface_pos(pos_on_path)
         sprite.rect.x, sprite.rect.y = surface_pos
-        self.queue_for_background_update()
+        self.queue_for_sprite_update()
         return PATH_ANIMATION_DELAY
 
-    def create_sprites_for_board_in_view(self):
+    def create_sprites_for_viewport(self):
         self.sprites.empty()
         self.monster_sprites = {}
         monsterlist = self._get_monsters_within_view()
@@ -400,19 +407,7 @@ class BoardView(View):
 
     def _get_monsters_within_view(self):
         monsterlist = []
-        y_max = self.camera.y + self.camera.height
-        if y_max > self.board.y_max:
-            y_max = self.board.y_max
-        x_max = self.camera.x + self.camera.width
-        if x_max > self.board.x_max:
-            x_max = self.board.x_max
-        y_min = self.camera.y
-        if y_min < 0:
-            y_min = 0
-        x_min = self.camera.x
-        if x_min < 0:
-            x_min = 0
-
+        x_min, x_max, y_min, y_max = self.get_dimensions_of_viewport()
         for y in range(y_min, y_max):
             for x in range(x_min, x_max):
                 monster = self.board.monster_at((x, y))
@@ -420,21 +415,29 @@ class BoardView(View):
                     monsterlist.append(monster)
         return monsterlist
 
+    def get_dimensions_of_viewport(self):
+        """Returns the coordinates of the piece of board visible"""
+        x_min = max(self.camera.x, 0)
+        y_min = max(self.camera.y, 0)
+        x_max = min(self.camera.x + self.camera.height, self.board.x_max)
+        y_max = min(self.camera.y + self.camera.height, self.board.y_max)
+        return x_min, x_max, y_min, y_max
+
     def create_sprites_from_monsterlist(self, monsterlist):
         for monster in monsterlist:
             self.create_sprite_for_monster(monster)
 
     def create_sprite_for_monster(self, monster):
         try:
-            sprite_surface = self.monster_spritesheet.get_sprite(
-                monster.stats.id, monster.owner.id_)
+            sprite_surface = (self.monster_spritesheet
+                              .get_sprite(monster.stats.id, monster.owner.id_))
         except IndexError:
             print(f'trying to fetch a sprite for {monster.stats.id}, but '
                   'sprite was not found')
             return
         offset = self.pos_converter.board_to_surface_pos(monster.pos)
-        self.monster_sprites[monster] = self.add_sprite(
-            sprite_surface, offset)
+        self.monster_sprites[monster] = self.add_sprite(sprite_surface,
+                                                        offset)
         # logging.info(f'sprite added for {monster.name} ({monster.owner})')
 
     def highlight_monsters(self, enemies):
@@ -442,12 +445,3 @@ class BoardView(View):
         for enemy in enemies:
             tiles.append(enemy.pos)
         self.highlight_tiles(tiles)
-
-    # def monster_is_within_camera_view(self, monster):
-    #     adjusted_pos_not_negative = (
-    #             monster.pos[0] >= self.camera.x and
-    #             monster.pos[1] >= self.camera.y)
-    #     adjusted_pos_not_too_high = (
-    #             monster.pos[0] < self.camera.x + self.camera.width and
-    #             monster.pos[1] < self.camera.y + self.camera.height)
-    #     return adjusted_pos_not_negative and adjusted_pos_not_too_high

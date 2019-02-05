@@ -3,7 +3,7 @@ import random
 import re
 from math import floor
 
-from components.board.players import Player, PlayerList
+from src.components.board.players import Player, PlayerList
 from src.components.board import players
 from src.components.board.monster import Monster
 from src.components.board.tile import Tile, TileModifier
@@ -75,16 +75,20 @@ class MonsterList:
         self.monsters = {}
 
     def add(self, monster):
-        if monster.owner not in self.monsters:
-            self.monsters[monster.owner] = []
-        self.monsters[monster.owner].append(monster)
+        self.get_for_owner_of(monster).add(monster)
 
     def remove(self, monster):
-        """todo check if different data structure needed"""
-        self.monsters[monster.owner].remove(monster)
+        self.get_for_owner_of(monster).remove(monster)
 
     def get_for(self, player) -> [Monster]:
         return self.monsters[player]
+
+    def get_for_owner_of(self, monster):
+        return self.monsters[monster.owner]
+
+    def load_from_players(self, _players):
+        for player in _players:
+            self.monsters[player] = player.monsters
 
 
 class Board:
@@ -106,20 +110,10 @@ class Board:
 
     def set_players(self, players_):
         self.players = players_
+        self.monsters.load_from_players(players_)
 
-    def on_end_of_turn(self):
-        current_player = self.get_current_player()
-        for monster in self.monsters.get_for(current_player):
-            monster.moved = False
-            if self._is_on_terrain_that_heals(monster):
-                monster.tower_heal()
-        logging.info(f'Ending turn of {current_player}')
-
-    def _is_on_terrain_that_heals(self, monster):
-        # todo check what terrain heals in-game
-        terrain = monster.terrain
-        return (terrain == Terrain.TOWER or terrain == Terrain.FORTRESS
-                or terrain == Terrain.MAIN_FORTRESS)
+    def on_tile(self, pos):
+        return TileModifier(pos, self)
 
     def tile_at(self, pos) -> Tile:
         assert self.is_valid_board_pos(pos), f'Invalid pos {pos}'
@@ -142,40 +136,27 @@ class Board:
         if self.monster_at(pos):
             self.monster_at(pos).terrain = terrain
 
-    def summon_monster(self, monster_type, pos, owner):
-        """Adds a monster and checks/reduces mana and flags it"""
-        assert not self.tile_at(pos).monster, f'{self.print()}' \
-            f'Tried to summon ' \
-            f'{DataTables.get_monster_stats(monster_type).name} at ' \
-            f'location occupied by {self.monster_at(pos).name} '
-        summon_cost = DataTables.get_monster_stats(monster_type).summon_cost
-        if self.get_current_player().mana < summon_cost:
-            logging.info('Not enough mana to summon monster')
-            return None
-        if self._max_monsters_reached():
-            return None
-        monster = self.place_new_monster(monster_type, pos, owner)
-        self.get_current_player().decrease_mana_by(summon_cost)
-        monster.moved = True
-        return monster
-
-    def _max_monsters_reached(self):
-        return (self.get_current_player().tower_count + 1
-                < len(self.monsters.get_for(self.get_current_player())))
-
-    def place_new_monster(self,
-                          monster_type, pos=(0, 0), owner=None) -> Monster:
+    def place_new_monster(self, monster_type, pos=(0, 0),
+                          owner=None) -> Monster:
         """Places a new monster without checking/reducing mana or flagging it"""
-        assert not self.monster_at(pos), \
-            f'Tried to summon a ' \
-                f'{DataTables.get_monster_stats(monster_type).name} at {pos} ' \
-                f'but it is already occupied by a {self.monster_at(pos)} '
+        assert not self.monster_at(pos), (
+            f'Tried to summon a '
+            f'{DataTables.get_monster_stats(monster_type).name} at {pos} '
+            f'but it is already occupied by a {self.monster_at(pos)}')
         if owner is None:
             owner = self.get_current_player()
         new_monster = Monster(monster_type, pos, owner, self.terrain_at(pos))
         self.monsters.add(new_monster)
         self.tile_at(new_monster.pos).monster = new_monster
+        owner.monster_count += 1
         return new_monster
+
+    def remove_monster(self, monster):
+        assert monster is not None
+        logging.info(f'removing {monster.name}')
+        self.monsters.remove(monster)
+        self.tile_at(monster.pos).monster = None
+        monster.owner.monster_count -= 1
 
     def has_tower_at(self, pos):
         return pos in self.towers
@@ -191,23 +172,6 @@ class Board:
         if owner is None:
             return True
         return not owner.is_friendly_with(player)
-
-    def get_enemy_lord_for_player(self, player):
-        """todo messy, should find better method"""
-        for lord in self.lords:
-            if player.is_enemy_of(lord.owner):
-                return lord
-        assert False, (f'Could not find enemy lord for player {player}\n' 
-                       f'{self.lords}')
-
-    def on_tile(self, pos):
-        return TileModifier(pos, self)
-
-    def remove_monster(self, monster):
-        assert monster is not None
-        logging.info(f'removing {monster.name}')
-        self.monsters.remove(monster)
-        self.tile_at(monster.pos).monster = None
 
     def get_enemies_adjacent_to(self, pos):
         enemies = []
@@ -277,7 +241,8 @@ class Board:
             adjacent_posses.append((x, y + 1))
 
     def is_valid_board_pos(self, pos):
-        return self.x_max > pos[0] >= 0 and 0 <= pos[1] < self.y_max
+        x, y = pos
+        return self.x_max > x >= 0 and 0 <= y < self.y_max
 
     def get_current_player(self):
         return self.players.get_current_player()
@@ -306,11 +271,30 @@ class Board:
             player.tower_count += 1
             self.set_tower_owner_at(pos, player)
 
+    def get_enemy_lord_for_player(self, player):
+        """todo messy, should find better method
+
+        perhaps find lord closest to a certain pos
+        or strongest lord?
+        """
+        for lord in self.lords:
+            if player.is_enemy_of(lord.owner):
+                return lord
+        assert False, (f'Could not find enemy lord for player {player}\n' 
+                       f'{self.lords}')
+
     def print(self):
         BoardPrinter(self).print()
 
 
 class BoardPrinter:
+    terrain_to_char = {
+        Terrain.TOWER: 't', Terrain.DUNE: ':', Terrain.FOREST: 'f',
+        Terrain.FORTRESS: '=', Terrain.GRASS: '.', Terrain.CASTLE: '@',
+        Terrain.MOUNTAIN: 'm', Terrain.OCEAN: '~', Terrain.RIVER: '-',
+        Terrain.ROCKY: 'n',  Terrain.SWAMP: 'o', Terrain.TUNDRA: '#',
+        Terrain.VOLCANO: 'v'}
+
     def __init__(self, board):
         self.board = board
 
@@ -322,7 +306,7 @@ class BoardPrinter:
                 if tile.monster:
                     row.append(self.monster_to_char(tile.monster))
                 else:
-                    row.append(self.terrain_to_char(tile.terrain))
+                    row.append(self.terrain_to_char[tile.terrain])
             if y % 2 == 0:
                 print(' '.join(row))
             else:
@@ -335,36 +319,6 @@ class BoardPrinter:
 
     def monster_to_char(self, monster):
         return monster.name[0]
-
-    def terrain_to_char(self, terrain):
-        if terrain == Terrain.TOWER:
-            return 't'
-        elif terrain == Terrain.DUNE:
-            return ':'
-        elif terrain == Terrain.FOREST:
-            return 'f'
-        elif terrain == Terrain.FORTRESS:
-            return '='
-        elif terrain == Terrain.GRASS:
-            return '.'
-        elif terrain == Terrain.MAIN_FORTRESS:
-            return '@'
-        elif terrain == Terrain.MOUNTAIN:
-            return 'm'
-        elif terrain == Terrain.OCEAN:
-            return '~'
-        elif terrain == Terrain.RIVER:
-            return '-'
-        elif terrain == Terrain.ROCKY:
-            return 'n'
-        elif terrain == Terrain.SWAMP:
-            return 'o'
-        elif terrain == Terrain.TUNDRA:
-            return '#'
-        elif terrain == Terrain.VOLCANO:
-            return 'v'
-        else:
-            return '?'
 
 
 class BoardFactory:
@@ -447,7 +401,6 @@ class BoardFactory:
             self.board.set_players(self.players)
             self._add_lords()
             if test:
-                self.set_test_monsters()
                 self._generate_towers_around_lords()
         return self.board
 
@@ -464,7 +417,7 @@ class BoardFactory:
 
     def _generate_towers_around_lords(self):
         for lord in self.board.lords:
-            self.board.set_terrain_to(lord.pos, Terrain.MAIN_FORTRESS)
+            self.board.set_terrain_to(lord.pos, Terrain.CASTLE)
             posses = []
             posses += self.board.get_posses_adjacent_to(lord.pos)
             for pos in posses:
@@ -499,10 +452,7 @@ class BoardFactory:
             layout.append(int(layout_string))
         self.layout = layout
 
-    def set_test_monsters(self):
-        pass
-
-    def set_map_using_layout(self, mode=0):
+    def set_map_using_layout(self, transpose=0):
         """Parses the layout to set up the terrain
 
         How it works: the first two integers are the width and height,
@@ -520,7 +470,7 @@ class BoardFactory:
                 f'Error setting terrain layout, {self.x_max}:{self.y_max} but '
                 f'{len(layout) - 10} tiles')
         # mode should be unified to just one, right now it transposes the layout
-        if mode == 0:
+        if transpose == 0:
             n = 2
             for x in range(self.x_max):
                 for y in range(self.y_max):
