@@ -20,7 +20,7 @@ class EventCallback:
         return self.callback(*self.args)
 
     def __str__(self):
-        return f'{self.name} {self.callback}{self.args}'
+        return f'{self.callback}{self.args}'
 
     def __repr__(self):
         if self.name:
@@ -114,7 +114,7 @@ class EventList:
         name = []
         for event in self.events:
             name.append(str(event))
-        return 'eventlist:' + ','.join(name)
+        return 'eventlist:\n' + '\n'.join(name)
 
 
 class Publisher:

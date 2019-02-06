@@ -46,6 +46,14 @@ class PlayerDefaultBrain(PlayerBrain):
         Generally, moves monsters, then summons if all monsters have moved.
         Then it ends turn.
         """
+        self.try_actions()
+        # if the AI cannot do any more this turn
+        if self.did_action:
+            self.controller.append_ai_callback()
+        else:
+            self._finish_turn()
+
+    def try_actions(self):
         self.did_action = False
         logging.info('AI Handling monsters')
         self._handle_monsters()
@@ -53,26 +61,22 @@ class PlayerDefaultBrain(PlayerBrain):
             return
         logging.info('AI Handling summon')
         self._handle_summon()
-        if self.did_action:
-            return
-        logging.info('AI Ending turn')
-        self._finish_turn()
 
     def _handle_monsters(self):
         if not self.monsters:
             self._create_list_of_monsters()
             self._create_monster_brains()
         # skip lord action for now
-        if self.monster_index < len(self.monsters) and \
-                self._get_current_monster().is_lord():
+        if (self.monster_index < len(self.monsters)
+                and self._get_current_monster().is_lord()):
                 self.monster_index += 1
         if self.monster_index < len(self.monsters):
             self._do_monster_action()
 
     def _create_list_of_monsters(self):
         self.monsters = tuple(self.model.get_current_player_monsters())
-        assert self.monsters, \
-            f'Player {self.model.get_current_player().id_} has no monsters'
+        assert self.monsters, (
+            f'Player {self.model.get_current_player().id_} has no monsters')
         self.monster_index = 0
 
     def _create_monster_brains(self):
@@ -91,9 +95,6 @@ class PlayerDefaultBrain(PlayerBrain):
             monster_brain.do_action()
             if not monster.moved and monster_brain.monster_to_attack:
                 self.monster_index -= 1
-        else:
-            # make it queue up another AI action
-            make_player_brain_act_again(self.controller)
         self.did_action = True
         self.monster_index += 1
 
@@ -139,6 +140,7 @@ class PlayerDefaultBrain(PlayerBrain):
                 return pos
 
     def _finish_turn(self):
+        logging.info('AI ending turn')
         self.monster_index = 0
         self.monsters = None
         self._do_end_of_turn()
@@ -287,10 +289,8 @@ class MonsterBrain:
         tile_to_attack_from = self._get_tile_to_attack_from(enemy)
         if tile_to_attack_from:
             self.destination_pos = tile_to_attack_from
-            # self._move_to_pos_inside_matrix(tile_to_attack_from)
             self.monster_to_attack = enemy
             self.range_to_attack_with = attack_range
-            # self.monster.moved = False  # so it can move again next time
             assert self.matrix.get_distance_value_at(tile_to_attack_from) < 99
         else:
             self.destination_pos = self.monster.pos
@@ -329,11 +329,6 @@ class MonsterBrain:
             destination = new_destination
             assert destination in self.matrix
         assert destination is not None
-        if self._is_valid_destination(destination):
-            self._skip_turn()
-        # assert self.matrix.get_distance_value_at(self.destination_pos) < 99
-        if self.matrix.get_distance_value_at(destination) < 99:
-            self._skip_turn()
         self.destination_pos = destination
 
     def _is_occupied(self, pos):
@@ -360,9 +355,6 @@ class MonsterBrain:
                     break
         return new_destination
 
-    def _skip_turn(self):
-        make_player_brain_act_again(self.controller)
-
     def _move_to_destination(self):
         if (self.destination_pos
                 and self.destination_pos in self.matrix
@@ -371,8 +363,6 @@ class MonsterBrain:
             self._move_to_pos_inside_matrix(self.destination_pos)
             if self.monster_to_attack:
                 self.monster.moved = False
-        else:
-            self._skip_turn()
 
     def _move_to_pos_inside_matrix(self, pos):
         assert pos in self.matrix, f'{self.matrix.get_printable_dist_values()}'
@@ -388,7 +378,3 @@ class MonsterBrain:
 class DestinationFinder:
     def __init__(self):
         pass
-
-
-def make_player_brain_act_again(controller):
-    (controller.append_ai_callback())

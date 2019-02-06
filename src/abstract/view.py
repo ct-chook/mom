@@ -295,6 +295,9 @@ class View:
     def __str__(self):
         return self.__class__.__name__
 
+    def __repr__(self):
+        return str(self)
+
 
 def get_max_surface_width(surfaces):
     max_width = 0

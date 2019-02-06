@@ -116,9 +116,9 @@ class TestCase:
         self.board.set_monster_pos(self.chim, pos)
 
     def check_chim_pos(self, pos):
-        assert self.chim.pos == pos, \
-            f'Monster was at {self.chim.pos} instead of {pos} \
-                      {self.board.print()}'
+        assert self.chim.pos == pos, (
+            f'Monster was at {self.chim.pos} instead of {pos} '
+            f'{self.board.print()}')
 
     def summon_monster(self, type_, pos):
         monster = self.board.place_new_monster(type_, pos, self.player_1)
@@ -128,7 +128,7 @@ class TestCase:
     def do_enemy_turn(self):
         self.end_turn()
         for _ in range(120):
-            if self.is_player_x_turn(0):
+            if self.is_player_x_turn(0) or self.model.game_over:
                 break
             assert self.publisher.events
             self.tick_event(60)
@@ -331,8 +331,10 @@ class TestWithTwoTowers(TestCase):
         # monster is almost dead, easy target
         self.board.monster_at(self.tower).hp = 1
         # chim should move next so it can attack it
-        left_of_tower = (self.tower[0] - 5, self.tower[1])
-        next_to_tower = (self.tower[0] - 1, self.tower[1])
+
+        tower_x, tower_y = self.tower
+        left_of_tower = (tower_x - 5, tower_y)
+        next_to_tower = (tower_x - 1, tower_y)
         self.board.set_monster_pos(
             self.chim, left_of_tower)
         self.check_move_action(next_to_tower)
@@ -467,7 +469,7 @@ class TestNormalScenario(TestCase):
         self.create_tower_at((15, 15))
 
     def skip_test_ai_doesnt_lock_up_the_game(self, before):
-        for _ in range(9):
+        for _ in range(10):
             self.do_enemy_turn()
 
     def surround_pos_with_towers_for(self, pos, owner):

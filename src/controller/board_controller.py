@@ -203,8 +203,6 @@ class BoardController(Window):
         self.set_movement_events(monster, path)
         if self.model.has_capturable_tower_at(pos):
             self._handle_tower_capture(pos)
-        if self.is_ai_controlled:
-            self.append_ai_callback()
 
     def get_ai_action_event(self):
         return EventCallback(self._handle_ai_action, name='ai action')
@@ -226,8 +224,6 @@ class BoardController(Window):
         events = self.view.get_movement_events(monster, path)
         for event in events:
             self.append_event(event)
-        # self.freeze_events()
-        # self.append_callback(self.unfreeze_events)
         self.minimap_window.update_view()
 
     def _handle_tower_capture(self, pos):
@@ -246,10 +242,6 @@ class BoardController(Window):
         The event should also include another call to this method if the AI's
         turn is not over yet.
         """
-        if len(self.events) > 1:
-            # we only want to do ai action if controller has no other events
-            # might want to log if this happens because it shouldn't
-            return
         brain = self._get_current_player_brain()
         if brain:
             brain.do_action()
@@ -276,8 +268,6 @@ class BoardController(Window):
         defender = attacks.get_attack(1, attack_range).monster
         logging.info(f'{attacker} is attacking monster {defender}')
         self.freeze_events()
-        if self.is_ai_controlled:
-            self.append_ai_callback()
 
     def handle_combat_end(self, combat_log):
         self.model.process_combat_log(combat_log)
@@ -296,7 +286,6 @@ class BoardController(Window):
         summoned_monster = self.model.summon_monster_at(monster_type, pos)
         if self.is_ai_controlled:
             self.view.center_camera_on(pos)
-            self.append_ai_callback()
         if summoned_monster:
             self.view.create_sprite_for_monster(summoned_monster)
             self.view.queue_for_sprite_update()
@@ -403,12 +392,13 @@ class BoardView(View):
         """Returns all the callbacks needed to animate a moving monster"""
         self.path_animation = (path, monster)
         self.path_index = 0
-        focus_camera_event = EventCallback(self.center_camera_on, path[0],
-                                           name='focus camera')
-        movement_event = EventCallback(self.on_path_animation, name='path anim')
-        clear_highlight_event = EventCallback(self.clear_highlighted_tiles,
-                                              name='clear highlight')
-        return focus_camera_event, movement_event, clear_highlight_event
+        movement_event = EventCallback(
+            self.on_path_animation,
+            name='path anim')
+        clear_highlight_event = EventCallback(
+            self.clear_highlighted_tiles,
+            name='clear highlight')
+        return movement_event, clear_highlight_event
 
     def on_path_animation(self):
         """A callback used to animate a moving monster"""

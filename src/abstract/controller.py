@@ -191,6 +191,9 @@ class Controller:
     def __str__(self):
         return self.__class__.__name__
 
+    def __repr__(self):
+        return str(self)
+
 
 # class PublisherInjector:
 #     def __init__(self, controller):
