@@ -1,4 +1,4 @@
-from src.abstract.controller import PublisherInjector
+from src.abstract.controller import ControllerInfo, ControllerConfig
 from src.abstract.game_handler import GameHandler
 from src.controller.mom_controller import MomController
 from src.handlers.mom_display import MomDisplay
@@ -7,9 +7,9 @@ from src.handlers.mom_display import MomDisplay
 class MomHandler(GameHandler):
     def __init__(self):
         super().__init__(1125, 600)
-        self.top_controller = MomController(self.width, self.height)
-        assert self.publisher is not None
-        PublisherInjector(self.top_controller).inject(self.publisher)
+        config = ControllerConfig()
+        info = ControllerInfo(config, self.publisher)
+        self.top_controller = MomController(info, self.width, self.height)
         self.display.top_view = self.top_controller.view
         self.display.top_view.queue_for_background_update()
 
@@ -18,4 +18,3 @@ class MomHandler(GameHandler):
 
     def is_running(self):
         return self.top_controller.running
-

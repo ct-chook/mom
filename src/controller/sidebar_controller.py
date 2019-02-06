@@ -10,8 +10,8 @@ from src.helper.Misc.spritesheet import SpriteSheetFactory
 
 
 class Sidebar(Window):
-    def __init__(self):
-        super().__init__(800, 0, 200, 600)
+    def __init__(self, info):
+        super().__init__(800, 0, 200, 600, info)
         self.view: SidebarView = self.add_view(SidebarView)
 
     def display_tile_info(self, tile):

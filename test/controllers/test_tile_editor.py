@@ -1,5 +1,6 @@
 import pytest
 
+from abstract.controller import ControllerInfoFactory
 from src.components.board.board import Board
 from src.controller.board_controller import BoardController
 from src.controller.tile_editor_controller import TileEditorWindow, \
@@ -13,7 +14,8 @@ Options.headless = True
 class TestCase:
     @pytest.fixture
     def before(self):
-        self.board_controller = BoardController(0, 0, 500, 500)
+        info = ControllerInfoFactory().make()
+        self.board_controller = BoardController(0, 0, 500, 500, info)
         self.model = self.board_controller.model
         self.board: Board = self.model.board
         self.before_more()

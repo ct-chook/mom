@@ -64,7 +64,6 @@ class TableLoader:
             self.tableholder.summon_options[n] = []
         for i in range(len(monsters)):
             self._set_summonable_monsters(i, monsters)
-        pass
 
     def _parse_monster_stats(self, line, possible_summoners):
         s = line.split(',')

@@ -1,12 +1,11 @@
 import pytest
 
-from abstract.controller import PublisherInjector
-from helper.events.events import Publisher
-from src.helper.Misc.constants import AiType
+from src.abstract.controller import ControllerInfoFactory
 from src.components.board.monster import Monster
 from src.controller.mainmenu_controller import MainMenuController, \
     MapOptionsWindow
 from src.controller.mom_controller import MomController
+from src.helper.Misc.constants import AiType
 from src.helper.Misc.options_game import Options
 
 Options.headless = True
@@ -19,8 +18,8 @@ class TestCase:
 
     # noinspection PyAttributeOutsideInit
     def create_new_controllers(self):
-        self.mom_controller = MomController(500, 500)
-        PublisherInjector(self.mom_controller).inject(Publisher())
+        info = ControllerInfoFactory().make()
+        self.mom_controller = MomController(info, 500, 500)
         self.menu: MainMenuController = self.mom_controller.main_menu
         self.options: MapOptionsWindow = self.menu.mapoptions_window
         self.menu.start_button.handle_mouseclick()

@@ -8,14 +8,16 @@ from src.abstract.view import View
 
 
 class TileEditorWindow(Window):
-    def __init__(self):
-        super().__init__(1000, 50, 100, 450)
+    def __init__(self, info):
+        super().__init__(1000, 50, 100, 450, info)
         self.view = self.add_view(TileEditorView)
         self.selected_terrain = None
         self.buttons = self.attach_controller(
             TileEditorButtons(
                 0, 100, 50, 50,
-                7, 2, self.select_terrain_button))
+                7, 2,
+                info,
+                self.select_terrain_button))
 
     def select_terrain_button(self, terrain_id):
         if terrain_id == self.selected_terrain:
@@ -26,9 +28,9 @@ class TileEditorWindow(Window):
 
 class TileEditorButtons(ButtonMatrix):
     def __init__(self, x, y, button_width, button_height, rows, cols,
-                 callback):
+                 info, callback):
         super().__init__(
-            x, y, button_width, button_height, rows, cols, callback)
+            x, y, button_width, button_height, rows, cols, info, callback)
         self.add_view(TileEditorButtonsView)
 
 

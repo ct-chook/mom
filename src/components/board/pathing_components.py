@@ -242,8 +242,9 @@ class MatrixProcessor:
             return True
 
     def _get_move_cost_for(self, pos):
-        return DataTables.get_terrain_cost(self.board.terrain_at(pos),
-                                           self.monster.terrain_type)
+        return DataTables.get_terrain_cost(
+            self.board.terrain_at(pos),
+            self.monster.terrain_type)
 
     def _move_is_valid_and_better(self, pos):
         # Returns true only if this move is within the move point budget and

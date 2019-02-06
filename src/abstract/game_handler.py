@@ -37,9 +37,6 @@ class GameHandler:
         self.set_display()
         self.clock = pygame.time.Clock()
 
-        View.main_controller = self
-        Controller.main_controller = self
-
     def start(self):
         while self.is_running():  # the main loop
             self._do_game_frame()

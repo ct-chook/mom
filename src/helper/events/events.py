@@ -123,8 +123,11 @@ class Publisher:
     Receives events. 'Ticks' events down and executes callback when timer hits
     zero.
     """
+    times_made = 0
 
     def __init__(self):
+        Publisher.times_made += 1
+        assert Publisher.times_made == 1, 'publisher was made twice'
         self.timer = 0
         self.events = set()
         self.to_unsubscribe = set()
@@ -134,7 +137,6 @@ class Publisher:
     def create_event_list(self, events=None) -> EventList:
         event_list = EventList(events)
         event_list.publisher = self
-        # self.subscribe_event(event_list)
         return event_list
 
     def tick_events(self):

@@ -14,8 +14,8 @@ from src.helper.events.events import EventCallback
 
 
 class CombatWindow(Window):
-    def __init__(self):
-        super().__init__(100, 100, 300, 200)
+    def __init__(self, info):
+        super().__init__(100, 100, 300, 200, info)
         self.view: CombatView = self.add_view(CombatView)
         self.combat_log: combatlog.CombatLog = None
         self.hide()

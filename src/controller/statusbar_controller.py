@@ -6,8 +6,8 @@ from src.components.board.players import Player
 class StatusbarController(Window):
     """Displayed at the bottom of the screen"""
 
-    def __init__(self, x, y, model):
-        super().__init__(x, y, 500, 200)
+    def __init__(self, x, y, info, model):
+        super().__init__(x, y, 500, 200, info)
         self.add_view(StatusbarView)
         self.stats: [PlayerstatsController] = []
 
@@ -16,7 +16,10 @@ class StatusbarController(Window):
         y = 0
         for player in players:
             self.stats.append(
-                self.attach_controller(PlayerstatsController(x, y, player)))
+                self.attach_controller(PlayerstatsController(
+                    x, y,
+                    info,
+                    player)))
             x += 70
 
     def update_stats(self):
@@ -29,8 +32,8 @@ class StatusbarView(View):
 
 
 class PlayerstatsController(Window):
-    def __init__(self, x, y, player):
-        super().__init__(x, y, 100, 100)
+    def __init__(self, x, y, info, player):
+        super().__init__(x, y, 100, 100, info)
         self.player = player
         self.add_view(PlayerstatsView)
         self.update_stats()
@@ -40,7 +43,7 @@ class PlayerstatsController(Window):
 
 
 class PlayerstatsView(View):
-    id_to_color = ('BLUE', 'RED', 'YELLOW', 'GREEN')
+    id_to_color = ('BLUE', 'RED', 'GREEN', 'YELLOW')
 
     def __init__(self, rectangle):
         super().__init__(rectangle)

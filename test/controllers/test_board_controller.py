@@ -1,9 +1,8 @@
 import pytest
 
-from abstract.controller import PublisherInjector
-from components.board.monster import Monster
-from helper.events.events import Publisher
+from src.abstract.controller import ControllerInfoFactory
 from src.components.board.board import Board
+from src.components.board.monster import Monster
 from src.controller.board_controller import BoardController
 from src.helper.Misc.constants import Terrain, MonsterType, AiType
 from src.helper.Misc.options_game import Options
@@ -38,9 +37,10 @@ class TestCase:
     # noinspection PyAttributeOutsideInit
     @pytest.fixture
     def make_board(self):
-        self.controller = BoardController(0, 0, 500, 500)
-        self.publisher = Publisher()
-        PublisherInjector(self.controller).inject(self.publisher)
+        info = ControllerInfoFactory().make()
+        self.controller = BoardController(0, 0, 500, 500, info)
+        self.publisher = info.publisher
+
         self.model = self.controller.model
         self.board: Board = self.model.board
         self.precombat_window = self.controller.precombat_window

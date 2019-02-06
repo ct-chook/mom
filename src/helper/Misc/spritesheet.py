@@ -6,17 +6,14 @@ from src.helper.Misc.constants import ROOT, Color, TERRAIN_COUNT, \
     MONSTER_COUNT
 from src.helper.Misc.options_game import Options
 
-monster_spritesheet_filename = \
-    f'{ROOT}src/data/monsters/monsters_spritesheet.png'
+monster_spritesheet_filename = (
+    f'{ROOT}src/data/monsters/monsters_spritesheet.png')
 terrain_spritesheet_filename = f'{ROOT}src/data/terrain/terrain_spritesheet.png'
 
-player_colors = (
-    Color.PLAYER_BLUE, Color.PLAYER_RED, Color.PLAYER_GREEN,
-    Color.PLAYER_YELLOW)
+player_colors = (Color.PLAYER_BLUE, Color.PLAYER_RED, Color.PLAYER_GREEN,
+                 Color.PLAYER_YELLOW)
 
-tower_colors = (
-    Color.BLUE, Color.LIGHT_RED, Color.DARK_GREEN,
-    Color.YELLOW)
+tower_colors = (Color.BLUE, Color.LIGHT_RED, Color.DARK_GREEN,Color.YELLOW)
 
 TOWER_CLAIMED = 13
 FOG = 14
@@ -24,7 +21,7 @@ CLAIMED_TOWER_BACKGROUND_COLOR = (27, 18, 125)
 
 
 class SpriteSheet:
-    scale = Options.scale
+    scale = 2  # todo let config specifiy this
 
     # specify filename of spritesheet, and how many columns
     # of sprites (read left to right, top to bottom)
@@ -41,8 +38,8 @@ class SpriteSheet:
             self.sheet = pygame.image.load(filename).convert()
 
     def get_sprite(self, index):
-        assert index < len(self.sprites), \
-            f'Requested {index} but only {len(self.sprites)} available!'
+        assert index < len(self.sprites), (
+            f'Requested {index} but only {len(self.sprites)} available!')
         return self.sprites[index]
 
     def replace_color_of_sheet(self, source_color, target_color):
@@ -73,7 +70,6 @@ class SpriteSheet:
         return sprite
 
     # noinspection PyArgumentList
-
     def _generate_sprite(self, index):
         if Options.headless:
             return None
@@ -183,8 +179,8 @@ class SpriteSheetFactory:
         self.terrain_spritesheet.generate_tower_sprites()
 
     def _load_monster_sprites(self):
-        for player_id in range(Options.player_count):
-            self.monster_spritesheet = MonsterSpriteSheet(Options.player_count)
+        for player_id in range(4):
+            self.monster_spritesheet = MonsterSpriteSheet(4)
             self.monster_spritesheet.generate_sprites()
 
     def get_minimap_terrain(self, size) -> SpriteSheet:
@@ -196,6 +192,6 @@ class SpriteSheetFactory:
 
     def get_minimap_monsters(self, size) -> MonsterSpriteSheet:
         if not self.minimap_monsters:
-            self.minimap_monsters = MonsterSpriteSheet(Options.player_count)
+            self.minimap_monsters = MonsterSpriteSheet(4)
             self.minimap_monsters.generate_mini_sprites(size)
         return self.minimap_monsters

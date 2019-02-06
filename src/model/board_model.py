@@ -1,9 +1,9 @@
 import logging
 
-from controller.mainmenu_controller import CappedCounter
-from helper.Misc.datatables import DataTables
+from src.controller.mainmenu_controller import CappedCounter
+from src.helper.Misc.datatables import DataTables
 from src.components.board import players
-from src.components.board.board import Board, BoardFactory
+from src.components.board.board import BoardFactory
 from src.components.board.pathing import PathMatrixFactory, PathFactory
 from src.components.board.pathing_components import PathMatrix
 from src.components.combat.attack import AttackFactory, AttackCollection
@@ -15,15 +15,10 @@ class BoardModel:
     """Holds everything related to the board and its rules"""
 
     def __init__(self, mapoptions=None):
-        self.selection_handler = None
-        self.board = None
-        self.players: players.PlayerList = None
         self.turn = 0
         self.sun_stance = CappedCounter(0, 4)
-        self.board = Board()
-        factory = BoardFactory()
-        self.board = factory.load_map(mapoptions)
-        self.players = self.board.players
+        self.board = BoardFactory().load_map(mapoptions)
+        self.players: players.PlayerList = self.board.players
 
         self.game_over = False  # jumps to true when no human players left
         self.path_matrix: PathMatrix = None
@@ -91,10 +86,8 @@ class BoardModel:
     def _only_one_team_left(self):
         teams = set()
         for player in self.players:
-            if player.team is None:
-                return False
             teams.add(player.team)
-        if len(teams) == 1:
+        if len(teams) == 1 and None not in teams:
             return True
         else:
             return False
@@ -113,15 +106,15 @@ class BoardModel:
 
     def summon_monster(self, monster_type, pos, owner):
         """Adds a monster and checks/reduces mana and flags it"""
-        assert not self.board.tile_at(pos).monster, f'{self.board.print()}' \
-            f'Tried to summon ' \
-            f'{DataTables.get_monster_stats(monster_type).name} at ' \
-            f'location occupied by {self.board.monster_at(pos).name} '
+        assert not self.board.tile_at(pos).monster, (
+            f'{self.board.print()}\n'
+            f'Tried to summon {DataTables.get_monster_stats(monster_type).name}'
+            f'at location occupied by {self.board.monster_at(pos).name} ')
+        if owner.max_monsters_reached():
+            return None
         summon_cost = DataTables.get_monster_stats(monster_type).summon_cost
         if owner.mana < summon_cost:
             logging.info('Not enough mana to summon monster')
-            return None
-        if owner.max_monsters_reached():
             return None
         monster = self.board.place_new_monster(monster_type, pos, owner)
         owner.decrease_mana_by(summon_cost)
@@ -143,7 +136,8 @@ class BoardModel:
     def get_short_and_long_attacks(self, monsters) -> AttackCollection:
         attack_factory = AttackFactory()
         return attack_factory.get_all_attacks_between_monsters(
-            monsters, self.sun_stance.value)
+            monsters,
+            self.sun_stance.value)
 
     def has_capturable_tower_at(self, pos):
         return (self.board.has_tower_at(pos)
@@ -196,8 +190,8 @@ class BoardModel:
         return self.board.get_lord_of(player)
 
     def is_valid_pos_for_summon(self, pos):
-        return self.board.monster_at(pos) is None \
-               and self._is_valid_terrain_for_summon(pos)
+        return (self.board.monster_at(pos) is None
+                and self._is_valid_terrain_for_summon(pos))
 
     def _is_valid_terrain_for_summon(self, pos):
         terrain = self.board.terrain_at(pos)

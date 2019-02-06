@@ -1,26 +1,24 @@
 import pytest
 
-from components.board.players import Player
-from helper.events.events import Publisher
-from src.helper.Misc.options_game import Options
+from src.abstract.controller import ControllerInfoFactory
+from src.components.board.players import Player
 from src.components.board.monster import Monster
 from src.components.board.tile import Tile
-from src.helper.Misc.constants import Terrain, MonsterType
 from src.controller.sidebar_controller import Sidebar
+from src.helper.Misc.constants import Terrain, MonsterType
+from src.helper.Misc.options_game import Options
 
 Options.headless = True
 
 
 class TestCase:
+    # noinspection PyAttributeOutsideInit
     @pytest.fixture
     def before(self):
-        self.sidebar = Sidebar()
+        info = ControllerInfoFactory().make()
+        self.sidebar = Sidebar(info)
         self.view = self.sidebar.view
         self.player_1 = Player(0)
-
-    def test(self):
-        # for pycharm to recognize this as a testing class
-        pass
 
     def display_tile_with_terrain(self, terrain):
         tile = self.create_tile(terrain)

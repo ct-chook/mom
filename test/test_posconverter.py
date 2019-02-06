@@ -1,10 +1,7 @@
 import pytest
 from pygame.rect import Rect
 
-from src.helper.Misc.options_game import Options
 from src.helper.Misc.posconverter import PosConverter
-
-tile_size = Options.tile_width
 
 
 class Dummy:
@@ -12,12 +9,15 @@ class Dummy:
         self.camera = camera
 
 
+tile_size = 2
+
+
 class TestBoardToSurface:
     @pytest.fixture
     def before(self):
         self.camera = Rect(0, 0, 15, 15)
         self.view = Dummy(self.camera)
-        self.converter = PosConverter(self.camera, 15, 15)
+        self.converter = PosConverter(self.camera, 15, 15, tile_size, tile_size)
 
     def test_first_tile_first_row(self, before):
         self.assert_surface_pos((0, 0), 0, 0, 0, 0)
@@ -86,7 +86,7 @@ class TestBoardToScreen:
     def before(self):
         self.camera = Rect(0, 0, 15, 15)
         self.view = Dummy(self.camera)
-        self.converter = PosConverter(self.camera, 15, 15)
+        self.converter = PosConverter(self.camera, 15, 15, 10, 10)
         self.x = 50
         self.y = 50
 
@@ -105,7 +105,8 @@ class TestMouseToBoard:
         self.view = Dummy(self.camera)
         self.x_max = 20
         self.y_max = 16
-        self.converter = PosConverter(self.camera, self.x_max, self.y_max)
+        self.converter = PosConverter(self.camera, self.x_max, self.y_max,
+                                      10, 10)
 
     def test_top_left(self, before):
         pos = (0, 0)

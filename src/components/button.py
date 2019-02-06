@@ -1,15 +1,14 @@
 import logging
 from math import floor
 
-from abstract.view import View
 from src.abstract.controller import Controller
 from src.abstract.view import View
 from src.helper.Misc.constants import Color
 
 
 class Button(Controller):
-    def __init__(self, x, y, width, height, callback, *args):
-        super().__init__(x, y, width, height)
+    def __init__(self, x, y, width, height, info, callback, *args):
+        super().__init__(x, y, width, height, info)
         self.callbacks = []
         self.arguments = []
         self.add_callback(callback, *args)
@@ -32,8 +31,8 @@ class Button(Controller):
 
 
 class TextButton(Button):
-    def __init__(self, x, y, width, height, button_text, callback, *args):
-        super().__init__(x, y, width, height, callback, *args)
+    def __init__(self, x, y, width, height, info, button_text, callback, *args):
+        super().__init__(x, y, width, height, info, callback, *args)
         self.name = f'TextButton: {button_text}'
         self.view = self.add_view(TextButtonView, button_text)
 
@@ -54,9 +53,9 @@ class TextButtonView(View):
 class ButtonMatrix(Button):
     """A block of buttons, that passes the index of the button to callback"""
     def __init__(self, x, y, button_width, button_height, rows, cols,
-                 callback):
+                 info, callback):
         super().__init__(x, y, button_width * cols, button_height * rows,
-                         callback)
+                         info, callback)
         self.rows = rows
         self.cols = cols
         self.button_width = button_width
@@ -93,8 +92,4 @@ class ButtonMatrix(Button):
 
 
 class ButtonMatrixView(View):
-    def __init__(self, rectangle):
-        super().__init__(rectangle)
-
-    def set_sprite_for_button(self, index):
-        pass
+    pass

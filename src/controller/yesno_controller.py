@@ -7,9 +7,9 @@ from src.helper.Misc.constants import Color
 
 
 class YesNoWindow(Window):
-    def __init__(self, window_text, yes_callback, no_callback):
-        assert isinstance(yes_callback, types.MethodType), \
-            f'Yes/no window {window_text} has no callback on yes'
+    def __init__(self, info, window_text, yes_callback, no_callback):
+        assert isinstance(yes_callback, types.MethodType), (
+            f'Yes/no window {window_text} has no callback on yes')
         if no_callback:
             assert isinstance(no_callback, types.MethodType)
 
@@ -23,15 +23,19 @@ class YesNoWindow(Window):
         yes_x = int(window_width / 2 - button_width)
         no_x = int(window_width / 2)
         yes_button = TextButton(
-            yes_x, text_height - 25, button_width, button_height,
+            yes_x, text_height - 25,
+            button_width, button_height,
+            info,
             'Yes', yes_callback)
         no_button = TextButton(
-            no_x, text_height - 25, button_width, button_height,
+            no_x, text_height - 25,
+            button_width, button_height,
+            info,
             'No', no_callback)
         yes_button.add_callback(self.hide)
         no_button.add_callback(self.hide)
 
-        super().__init__(200, 200, window_width, window_height)
+        super().__init__(200, 200, window_width, window_height, info)
         self.view = self.add_view(YesNoWindowView, window_text)
         self.yes = self.add_button(yes_button)
         self.no = self.add_button(no_button)
