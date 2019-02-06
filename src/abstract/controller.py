@@ -193,11 +193,3 @@ class Controller:
 
     def __repr__(self):
         return str(self)
-
-
-# class PublisherInjector:
-#     def __init__(self, controller):
-#         self.controller = controller
-#
-#     def inject(self, publisher):
-#         self.controller.create_event_list_from(publisher)
