@@ -333,10 +333,10 @@ class BoardFactory:
         self.start_posses = []
 
     def make_board_from_text(self, text, legend) -> Board:
-        self._parse_layout(text, legend)
+        self._parse_text_to_layout(text, legend)
         return self.board
 
-    def _parse_layout(self, input_layout, legend):
+    def _parse_text_to_layout(self, input_layout, legend):
         chars = re.sub('[\\s]+', ' ', input_layout).split(' ')
         self.layout = []
         monsters_to_add = []

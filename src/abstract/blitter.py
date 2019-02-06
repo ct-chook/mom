@@ -6,12 +6,14 @@ CAPTURED_TOWER_SPRITE = 13
 class TileBlitter:
     """Reads the board and blits using the information there"""
 
-    def __init__(self, view, board, camera):
+    def __init__(self, view, board, camera, tile_height, tile_width):
         self.view = view
         self.camera = camera
         self.board = board
-        self.pos_converter = PosConverter(camera, self.board.x_max,
-                                          self.board.y_max)
+        self.pos_converter = PosConverter(
+            camera, self.board.x_max,
+            self.board.y_max,
+            tile_height, tile_width)
         self.terrain_sprites = None
 
     def blit_surface_at_board_pos(self, sprite, pos):

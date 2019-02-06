@@ -8,8 +8,8 @@ from src.helper.Misc.tileblitter import MinimapBlitter
 
 
 class MinimapController(Window):
-    def __init__(self, board):
-        super().__init__(700, 0, 100, 120)
+    def __init__(self, info, board):
+        super().__init__(700, 0, 100, 120, info)
         self.view: MinimapView = self.add_view(MinimapView, board)
         self.view.queue_for_background_update()
 

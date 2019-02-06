@@ -14,8 +14,8 @@ class BoardBlitter(TileBlitter):
     Maybe blit this once? Only reblit when terrain changes. Then use a rect
     to say which part of the background should be displayed.
     """
-    def __init__(self, view, board, camera):
-        super().__init__(view, board, camera)
+    def __init__(self, view, board, camera, tile_width, tile_height):
+        super().__init__(view, board, camera, tile_height, tile_width)
         self.terrain_sprites = (SpriteSheetFactory()
                                 .get_terrain_spritesheet())
 
@@ -64,7 +64,7 @@ class BoardBlitter(TileBlitter):
 class MinimapBlitter(TileBlitter):
     """Used to blit dots on the minimap, from the board"""
     def __init__(self, view, board, camera):
-        super().__init__(view, board, camera)
+        super().__init__(view, board, camera, 6, 6)
         self.size = 6
         self.terrain_sprites = (SpriteSheetFactory()
                                 .get_minimap_terrain(self.size))

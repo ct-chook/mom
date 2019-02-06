@@ -297,10 +297,18 @@ class MonsterBrain:
             assert self.matrix.get_distance_value_at(self.destination_pos) < 99
 
     def _get_tile_to_attack_from(self, enemy):
-        adjacent_tiles = self.board.get_posses_adjacent_to(enemy.pos)
-        for tile in adjacent_tiles:
-            if self._is_valid_destination(tile):
-                return tile
+        adjacent_posses = self.board.get_posses_adjacent_to(enemy.pos)
+        for pos in adjacent_posses:
+            if self._is_valid_destination(pos):
+                return pos
+        # at this point, none of the adjacent posses are valid destinations
+        # so check posses adjacent of these tiles
+        # todo very clumsy, should have function return a ring of posses
+        for pos in adjacent_posses:
+            new_adj_posses = self.board.get_posses_adjacent_to(pos)
+            for pos2 in new_adj_posses:
+                if self._is_valid_destination(pos2):
+                    return pos2
 
     def _is_valid_destination(self, pos):
         return (self.matrix.get_distance_value_at(pos) < 99

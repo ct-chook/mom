@@ -1,16 +1,17 @@
 from math import floor
 
 from src.helper.Misc.constants import is_odd, is_even, grid_height_factor
-from src.helper.Misc.options_game import Options
 
 
 class PosConverter:
-    def __init__(self, camera, x_max, y_max):
+    def __init__(self, camera, x_max, y_max, tile_height, tile_width):
         self.camera = camera
         self.x_max = x_max
         self.y_max = y_max
 
-        self.row_height = grid_height_factor * Options.tile_height
+        self.tile_height = tile_height
+        self.tile_width = tile_width
+        self.row_height = grid_height_factor * self.tile_height
 
     def board_to_surface_pos(self, pos):
         board_x, board_y = pos
@@ -21,13 +22,13 @@ class PosConverter:
         return screen_x, screen_y
 
     def _get_screen_x(self, board_x_camera_adjusted, board_y):
-        screen_x = board_x_camera_adjusted * Options.tile_width
+        screen_x = board_x_camera_adjusted * self.tile_width
         screen_x = self._shift_right_if_odd_row(board_y, screen_x)
         return screen_x
 
     def _shift_right_if_odd_row(self, board_y, screen_x):
         if is_odd(board_y):  # even non-camera-adjusted rows are shifted right
-            screen_x += 0.5 * Options.tile_width
+            screen_x += 0.5 * self.tile_width
         return screen_x
 
     def board_to_screen(self, pos, x, y):
@@ -38,8 +39,8 @@ class PosConverter:
 
     def mouse_to_board(self, pos):
         mouse_x, mouse_y = pos
-        half_tile_width = Options.tile_width / 2
-        half_tile_height = Options.tile_height / 2
+        half_tile_width = self.tile_width / 2
+        half_tile_height = self.tile_height / 2
         # first grid dot has an xy of halfW x halfH
         # the space between the grid is halfW on the x side
         # and 0.7 * H on the y side
@@ -70,7 +71,7 @@ class PosConverter:
             corner_x = ((corner[0] - self.camera.x * 2) * half_tile_width)
             a_squared = pow(corner_x - mouse_x, 2)
             corner_y = ((corner[1] - self.camera.y) * self.row_height
-                        - Options.tile_height * 0.2)
+                        - self.tile_height * 0.2)
             b_squared = pow(corner_y - mouse_y, 2)
             c = pow(a_squared + b_squared, 0.5)
             dist.append(c)
@@ -80,8 +81,8 @@ class PosConverter:
             corner = corners[0]
         y = floor(corner[1] - 1)
         x = floor((corner[0] - 1) / 2)
-        if self._pos_is_outside_boundaries(x, y) or \
-                self._pos_is_outside_camera(x, y):
+        if (self._pos_is_outside_boundaries(x, y)
+                or self._pos_is_outside_camera(x, y)):
             return None
         return x, y
 

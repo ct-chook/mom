@@ -1,7 +1,7 @@
 import logging
-from math import floor
-
 import pygame
+
+from math import floor
 from pygame.rect import Rect
 
 from src.components.board.board import Board
@@ -33,47 +33,67 @@ class BoardController(Window):
     directions = {pygame.K_LEFT: (-1, 0), pygame.K_RIGHT: (1, 0),
                   pygame.K_DOWN: (0, 1), pygame.K_UP: (0, -1)}
 
-    def __init__(self, x, y, width, height, mapoptions=None):
-        super().__init__(x, y, width, height)
+    def __init__(self, x, y, width, height, info, mapoptions=None):
+        super().__init__(x, y, width, height, info)
         self.path_event_factory = None
         self.is_ai_controlled = False
         self.camera = Rect(
-            (0, 0), (Options.camera_width, Options.camera_height))
+            (0, 0),
+            (self.config.camera_width, self.config.camera_height))
         self.brains = {}
 
         self.model = BoardModel(mapoptions)
-        self.view: BoardView = self.add_view(BoardView,
-                                             (self.camera, self.model))
-
+        self.view: BoardView = self.add_view(
+            BoardView,
+            (self.camera, self.model, info.config))
         self.pos_converter = PosConverter(
-            self.camera, self.model.board.x_max, self.model.board.y_max)
+            self.camera,
+            self.model.board.x_max,
+            self.model.board.y_max,
+            info.config.tile_width,
+            info.config.tile_height)
         self.selection_handler = SelectionHandler(
-            self.model.board, self.model, self)
+            self.model.board,
+            self.model, self)
         if self.view:
             self.path_event_factory = PathEventFactory(
                 self.view.on_path_animation)
 
         # Windows
         self.combat_window: CombatWindow = self.attach_controller(
-            CombatWindow())
+            CombatWindow(info))
         self.precombat_window: PreCombatWindow = self.attach_controller(
-            PreCombatWindow(self.model, self.combat_window))
+            PreCombatWindow(
+                info,
+                self.model,
+                self.combat_window))
         self.summon_window: SummonWindow = self.attach_controller(
-            SummonWindow(self.model))
-        self.sidebar: Sidebar = self.attach_controller(Sidebar())
+            SummonWindow(
+                info,
+                self.model))
+        self.sidebar: Sidebar = self.attach_controller(Sidebar(info))
         self.tower_capture_window: TowerCaptureWindow = self.attach_controller(
-            TowerCaptureWindow())
+            TowerCaptureWindow(info))
         self.tile_editor_window: TileEditorWindow = self.attach_controller(
-            TileEditorWindow())
+            TileEditorWindow(info))
         self.minimap_window: MinimapController = self.attach_controller(
-            MinimapController(self.model.board))
+            MinimapController(
+                info,
+                self.model.board))
         self.end_of_turn_window: YesNoWindow = self.attach_controller(
-            YesNoWindow('Do you want to end your turn?',
-                        self.handle_end_of_turn, None))
+            YesNoWindow(
+                info,
+                'Do you want to end your turn?',
+                self.handle_end_of_turn,
+                None))
         self.status_bar: StatusbarController = self.attach_controller(
-            StatusbarController(0, 500, self.model))
-
+            StatusbarController(
+                0, 500,
+                info,
+                self.model))
         self.end_of_turn_window.hide()
+
+        # AI stuff
         self.create_brains()
 
     def append_ai_callback(self):
@@ -152,6 +172,7 @@ class BoardController(Window):
         self.view.queue_for_background_update()
 
     def _handle_key_k(self):
+        """For now use this to print terrain to stdout"""
         terrain = [self.model.board.x_max, self.model.board.y_max]
         for col in self.model.board.tiles:
             for tile in col:
@@ -261,6 +282,9 @@ class BoardController(Window):
     def handle_combat_end(self, combat_log):
         self.model.process_combat_log(combat_log)
         self.status_bar.update_stats()
+        if self.model.game_over:
+            if self.parent:
+                self.parent.running = False
 
     def handle_summon_order_at(self, pos):
         x, y = pos
@@ -284,8 +308,9 @@ class BoardController(Window):
         self.selection_handler.unselect_enemy()
         self.model.on_end_turn()
         current_player = self.model.players.get_current_player()
-        self.sidebar.display_turn_info(current_player,
-                                       self.model.sun_stance.value)
+        self.sidebar.display_turn_info(
+            current_player,
+            self.model.sun_stance.value)
         lord = self.model.board.get_lord_of(current_player)
         self.view.center_camera_on(lord.pos)
         if current_player.ai_type == AiType.human:
@@ -304,7 +329,7 @@ PATH_ANIMATION_DELAY = 6
 
 class BoardView(View):
     def __init__(self, rectangle, arguments):
-        camera, board_model = arguments
+        camera, board_model, config = arguments
         super().__init__(rectangle)
         self.set_bg_color(Color.GRAY)
         self.camera = camera
@@ -316,20 +341,28 @@ class BoardView(View):
 
         self.board_model: BoardModel = None
         self.board: Board = None
-        self.tile_blitter: BoardBlitter = None
-        self.link_to_board_model(board_model)
+        self.board_blitter: BoardBlitter = None
+        self.link_to_board_model(board_model, config)
         self.monster_spritesheet = (SpriteSheetFactory()
                                     .get_monster_spritesheets())
         self.create_sprites_for_viewport()
         self.add_text('Board view')
 
-    def link_to_board_model(self, board_model):
+    def link_to_board_model(self, board_model, config):
         """A form of dependency injection?"""
         self.board_model = board_model
         self.board = board_model.board
-        self.tile_blitter = BoardBlitter(self, self.board, self.camera)
-        self.pos_converter = PosConverter(self.camera, self.board.x_max,
-                                          self.board.y_max)
+        tile_width = config.tile_width
+        tile_height = config.tile_height
+        self.board_blitter = BoardBlitter(
+            self,
+            self.board,
+            self.camera,
+            tile_width, tile_height)
+        self.pos_converter = PosConverter(
+            self.camera,
+            self.board.x_max, self.board.y_max,
+            tile_width, tile_height)
 
     def highlight_tiles(self, tiles):
         self.tiles_to_highlight = tiles
@@ -362,7 +395,7 @@ class BoardView(View):
     def update_background(self):
         if Options.headless:
             return
-        self.tile_blitter.blit_all_tiles()
+        self.board_blitter.blit_all_tiles()
         super().update_background()
         logging.info('updated surface of board')
 

@@ -9,8 +9,8 @@ from src.helper.Misc.constants import Range
 
 
 class PreCombatWindow(Window):
-    def __init__(self, board_model, combat_window):
-        super().__init__(100, 100, 400, 300)
+    def __init__(self, info, board_model, combat_window):
+        super().__init__(100, 100, 400, 300, info)
         self.board_model: board_controller.BoardModel = board_model
         self.combat_window: CombatWindow = combat_window
 
@@ -19,10 +19,12 @@ class PreCombatWindow(Window):
         self.short_range_button: AttackButton = self.attach_controller(
             AttackButton(
                 0, 75, 200, 50,
+                info,
                 self.handle_attack_choice, Range.CLOSE))
         self.long_range_button: AttackButton = self.attach_controller(
             AttackButton(
                 0, 175, 200, 50,
+                info,
                 self.handle_attack_choice, Range.LONG))
         self.short_range_button.show()
         self.long_range_button.show()
@@ -55,8 +57,8 @@ class PreCombatWindow(Window):
 
 
 class AttackButton(Button):
-    def __init__(self, x, y, width, height, callback, arguments):
-        super().__init__(x, y, width, height, callback, arguments)
+    def __init__(self, x, y, width, height, info, callback, arguments):
+        super().__init__(x, y, width, height, info, callback, arguments)
         self.view = self.add_view(AttackButtonView)
 
     def set_stats(self, attacks):

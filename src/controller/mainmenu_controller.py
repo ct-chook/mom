@@ -13,21 +13,23 @@ from src.helper.Misc.datatables import DataTables
 
 
 class MainMenuController(Window):
-    def __init__(self, x, y, width, height, parent):
+    def __init__(self, x, y, width, height, info, parent):
         """Should be initialized by MomController"""
         self.rectangle = Rect(x, y, width, height)
-        super().__init__(x, y, width, height)
+        super().__init__(x, y, width, height, info)
         self.add_view(MainMenuView)
         self.parent = parent
         self.mapname = None
 
         self.start_button = self.attach_controller(
-            TextButton(50, 50, 150, 50, 'Choose map',
+            TextButton(50, 50, 150, 50,
+                       info,
+                       'Choose map',
                        self.show_map_selection_window))
         self.map_selection_window: MapSelectionWindow = self.attach_controller(
-            MapSelectionWindow(50, 50, 200, 600, self))
+            MapSelectionWindow(50, 50, 200, 600, info, self))
         self.mapoptions_window: MapOptionsWindow = self.attach_controller(
-            MapOptionsWindow(50, 50, 650, 350, self))
+            MapOptionsWindow(50, 50, 650, 350, info, self))
 
         self.map_selection_window.hide()
         self.mapoptions_window.hide()
@@ -40,10 +42,10 @@ class MainMenuController(Window):
         self.mapname = mapname
         self.mapoptions_window.show()
 
-    def create_board(self, mapoptions):
+    def create_board(self, info, mapoptions):
         mapoptions.mapname = self.mapname
         self.hide()
-        self.parent.create_board(mapoptions)
+        self.parent.create_board(info, mapoptions)
 
 
 class MainMenuView(View):
@@ -54,54 +56,57 @@ class MainMenuView(View):
 
 
 class MapOptionsWindow(Window):
-    def __init__(self, x, y, width, height, parent):
-        super().__init__(x, y, width, height)
+    def __init__(self, x, y, width, height, info, parent):
+        super().__init__(x, y, width, height, info)
         self.add_view(MapOptionsView)
         self.parent: MainMenuController = parent
         self.mapoptions = MapOptions()
 
         self.player_count_buttons: [FlipButton] = \
-            self._add_player_count_buttons()
+            self._add_player_count_buttons(info)
         self.summoner_type_buttons: [FlipButton] = \
-            self._add_summoner_type_buttons()
-        self.player_type_buttons: [FlipButton] = self._add_player_type_buttons()
-        self.team_buttons: [FlipButton] = self._add_team_buttons()
-        self._add_finish_button()
+            self._add_summoner_type_buttons(info)
+        self.player_type_buttons: [FlipButton] = (
+            self._add_player_type_buttons(info))
+        self.team_buttons: [FlipButton] = self._add_team_buttons(info)
+        self._add_finish_button(info)
         self.set_number_of_players(4)
 
-    def _add_player_count_buttons(self):
+    def _add_player_count_buttons(self, info):
         buttons = []
         for n in range(3):
             buttons.append(self.add_button(
-                TextButton(50, 50 * n, 150, 50, f'{2 + n} Players',
+                TextButton(50, 50 * n, 150, 50,
+                           info,
+                           f'{2 + n} Players',
                            self.set_number_of_players, n + 2)))
         return buttons
 
-    def _add_summoner_type_buttons(self):
+    def _add_summoner_type_buttons(self, info):
         buttons = []
         for n in range(4):
             buttons.append(self.add_button(
-                SummonerButton(200, 50 * n, 150, 50, n)))
+                SummonerButton(200, 50 * n, 150, 50, info, n)))
         return buttons
 
-    def _add_player_type_buttons(self):
+    def _add_player_type_buttons(self, info):
         buttons = []
         default_player_type = (0, 1, 1, 1)
         for n in range(4):
             buttons.append(self.add_button(HumanOrComputerButton(
-                350, 50 * n, 150, 50, default_player_type[n])))
+                350, 50 * n, 150, 50, info, default_player_type[n])))
         return buttons
 
-    def _add_team_buttons(self):
+    def _add_team_buttons(self, info):
         buttons = []
         for n in range(4):
             buttons.append(self.add_button(
-                TeamButton(500, 50 * n, 150, 50, 0)))
+                TeamButton(500, 50 * n, 150, 50, info, 0)))
         return buttons
 
-    def _add_finish_button(self):
+    def _add_finish_button(self, info):
         self.finish_button = self.add_button(TextButton(
-            50, 250, 150, 50, 'Ok', self.finish))
+            50, 250, 150, 50, info, 'Ok', self.finish, info))
 
     def set_number_of_players(self, number):
         self.mapoptions.set_number_of_players(number)
@@ -109,7 +114,7 @@ class MapOptionsWindow(Window):
     def set_lord(self, monster_type):
         self.mapoptions.lord_type = monster_type
 
-    def finish(self):
+    def finish(self, info):
         n = 0
         for button in self.summoner_type_buttons:
             self.mapoptions.lord_types[n] = button.get_value()
@@ -124,7 +129,7 @@ class MapOptionsWindow(Window):
             n += 1
         self.mapoptions.create_players()
         self.hide()
-        self.parent.create_board(self.mapoptions)
+        self.parent.create_board(info, self.mapoptions)
 
 
 class MapOptionsView(View):
@@ -157,12 +162,12 @@ class CappedCounter:
 
 
 class FlipButton(TextButton):
-    def __init__(self, x, y, width, height, base_val):
+    def __init__(self, x, y, width, height, info, base_val):
         """Used to hold and return a value from a list of values
 
         Provide a list of values that the button should return, and also a list
         of strings representing these values to show on the button"""
-        super().__init__(x, y, width, height, '', self._next)
+        super().__init__(x, y, width, height, info, '', self._next)
         self.val_list = self._get_val_list()
         self.str_list = self._get_str_list()
         assert len(self.val_list) == len(self.str_list), (
@@ -221,10 +226,11 @@ class TeamButton(FlipButton):
 
 
 class MapSelectionWindow(Window):
-    def __init__(self, x, y, width, height, parent):
-        super().__init__(x, y, width, height)
+    def __init__(self, x, y, width, height, info, parent):
+        super().__init__(x, y, width, height, info)
         self.add_view(MapSelectionView)
         self.parent = parent
+        self.info = info
 
     def fetch_maps(self):
         mapnames = os.listdir(MAP_DIRECTORY)
@@ -236,7 +242,8 @@ class MapSelectionWindow(Window):
         y = 0
         for mapname in mapnames:
             self.add_button(TextButton(
-                0, y, 200, 100, mapname, self.pick_map, mapname))
+                0, y, 200, 100,
+                self.info, mapname, self.pick_map, mapname))
             y += 50
 
     def pick_map(self, mapname):

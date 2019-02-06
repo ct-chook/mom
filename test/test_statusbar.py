@@ -1,5 +1,6 @@
 import pytest
 
+from src.abstract.controller import ControllerInfoFactory
 from src.controller.statusbar_controller import StatusbarController, \
     PlayerstatsView
 from src.model.board_model import BoardModel
@@ -12,7 +13,8 @@ class TestCase:
     @pytest.fixture
     def before(self):
         model = BoardModel()
-        self.bar = StatusbarController(0, 0, model)
+        info = ControllerInfoFactory().make()
+        self.bar = StatusbarController(0, 0, info, model)
 
     def test_statusbar(self, before):
         self.bar.update_stats()

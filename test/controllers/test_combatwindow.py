@@ -1,12 +1,11 @@
 import pytest
 
-from abstract.controller import PublisherInjector
-from components.board.players import Player
-from components.combat.combat import Combat
-from components.combat.combatlog import CombatRound
-from helper.events.events import Publisher
+from src.abstract.controller import ControllerInfoFactory
 from src.components.board.monster import Monster
+from src.components.board.players import Player
 from src.components.combat.attack import AttackFactory
+from src.components.combat.combat import Combat
+from src.components.combat.combatlog import CombatRound
 from src.controller.combat_controller import CombatWindow
 from src.helper.Misc.constants import Terrain, DayTime, MonsterType
 from src.helper.Misc.options_game import Options
@@ -31,11 +30,11 @@ class DummyView:
 class TestCase:
     @pytest.fixture
     def before(self):
-        self.window = CombatWindow()
+        info = ControllerInfoFactory().make()
+        self.window = CombatWindow(info)
         # needed since combat window makes callbacks to parent
         self.window.parent = Dummy()
-        self.publisher = Publisher()
-        PublisherInjector(self.window).inject(self.publisher)
+        self.publisher = info.publisher
         self.view = self.window.view
         self.delay = self.view.COMBAT_DELAY
         self.round = 0

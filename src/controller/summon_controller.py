@@ -1,7 +1,7 @@
 from math import ceil
 
 from src.abstract.view import View
-from components.button import ButtonMatrixView
+from src.components.button import ButtonMatrixView
 from src.abstract.window import Window
 from src.components.button import ButtonMatrix
 from src.helper.Misc.constants import Color
@@ -10,7 +10,7 @@ from src.helper.Misc.spritesheet import SpriteSheetFactory
 
 
 class SummonWindow(Window):
-    def __init__(self, board_model):
+    def __init__(self, info, board_model):
         # todo: clean up, set and cache window every time it opens
         width = 300
         button_height = 50
@@ -18,24 +18,27 @@ class SummonWindow(Window):
         button_y_offset = 100
         button_x_offset = 0
         self.board_model = board_model
-        self.player = self.board_model.get_current_player()
         self.summonable_monsters = []
         self.summon_pos = None
 
-        self.summonable_monsters = (DataTables
-                                    .get_summon_options(self.player.lord_type))
+        self.summonable_monsters = (
+            DataTables.get_summon_options(
+                self.board_model.get_current_player().lord_type))
         number_of_buttons = len(self.summonable_monsters)
         height = ceil(button_y_offset + button_height * number_of_buttons) / 2
         rows = ceil(number_of_buttons / 2)
         cols = 2
         # super is called after the number of buttons, that is, the number
         # of monsters has been computed
-        super().__init__(100, 100, width, height)
+        super().__init__(100, 100, width, height, info)
         self.view = self.add_view(SummonView)
         self.summon_buttons: SummonButtons = self.add_button(
-            SummonButtons(button_x_offset, button_y_offset,
-                          button_width, button_height,
-                          rows, cols, self.handle_summon_choice))
+            SummonButtons(
+                button_x_offset, button_y_offset,
+                button_width, button_height,
+                rows, cols,
+                info,
+                self.handle_summon_choice))
         self.display_summonable_monsters()
         self.hide()
 
@@ -70,9 +73,9 @@ class SummonView(View):
 
 class SummonButtons(ButtonMatrix):
     def __init__(self, x, y, button_width, button_height, rows, cols,
-                 callback):
+                 info, callback):
         super().__init__(
-            x, y, button_width, button_height, rows, cols, callback)
+            x, y, button_width, button_height, rows, cols, info, callback)
         self.add_view(SummonChoiceButtonsView)
 
     def display_monsters(self, summonable_monsters):

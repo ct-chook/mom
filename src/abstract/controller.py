@@ -2,7 +2,33 @@ import logging
 
 from pygame.rect import Rect
 
-from src.helper.events.events import EventCallback, EventList
+from src.helper.events.events import EventCallback, EventList, Publisher
+
+
+class ControllerConfig:
+    """Configuration for the controllers. Shared."""
+    def __init__(self):
+        self.scale = 2
+        tile_size = 48
+        self.tile_width = tile_size
+        self.tile_height = tile_size
+        self.camera_width = 14
+        self.camera_height = 14
+        self.speed = 1
+
+
+class ControllerInfo:
+    """Data structure that contains information that controllers need"""
+    def __init__(self, config, publisher):
+        self.config = config
+        self.publisher = publisher
+
+
+class ControllerInfoFactory:
+    def make(self):
+        config = ControllerConfig()
+        publisher = Publisher()
+        return ControllerInfo(config, publisher)
 
 
 class Controller:
@@ -13,17 +39,24 @@ class Controller:
 
     Accepts rectangle parameters. Do not pass the rectangle directly.
     """
-    main_controller = None
-    verbose = 1
 
-    def __init__(self, x, y, width, height):
+    def __init__(self, x, y, width, height, controller_info):
+        self.rectangle = Rect(x, y, width, height)
         self.children = []
         self.view = None
         self.parent = None
-        self.rectangle = Rect(x, y, width, height)
-        self.visible = True
         self.mouse_pos = None
         self.events: EventList = None
+        self.visible = True
+
+        self._unpack_controller_info(controller_info)
+
+    def _unpack_controller_info(self, controllerinfo):
+        assert controllerinfo.config
+        assert controllerinfo.publisher
+        self.config = controllerinfo.config
+        self.publisher = controllerinfo.publisher
+        self.create_event_list_from(self.publisher)
 
     def create_event_list_from(self, publisher):
         self.events = publisher.create_event_list()
@@ -44,8 +77,7 @@ class Controller:
 
     def get_local_pos(self, pos):
         x, y = pos
-        adjusted_pos = (x - self.rectangle.x, y - self.rectangle.y)
-        return adjusted_pos
+        return x - self.rectangle.x, y - self.rectangle.y
 
     def receive_mouseclick(self, mouse_pos):
         controller = self.topmost_controller_at(mouse_pos)
@@ -72,7 +104,8 @@ class Controller:
         self.handle_keypress(key)
 
     def overlaps_with(self, mouse_pos):
-        return self.rectangle.collidepoint(mouse_pos[0], mouse_pos[1])
+        x, y = mouse_pos
+        return self.rectangle.collidepoint(x, y)
 
     def attach_controller(self, controller):
         assert self.view != controller.view
@@ -93,13 +126,13 @@ class Controller:
 
     def show(self):
         logging.info(f'Showing {self}')
-        self._change_visibility(True)
+        self._set_visibility(True)
 
     def hide(self):
         logging.info(f'Hiding {self}')
-        self._change_visibility(False)
+        self._set_visibility(False)
 
-    def _change_visibility(self, visibility):
+    def _set_visibility(self, visibility):
         self.visible = visibility
         if self.view:
             self.view.visible = visibility
@@ -139,29 +172,29 @@ class Controller:
         self.events.subscribe()
         self.events.append(event)
 
-    def __str__(self):
-        return self.__class__.__name__
-
-    def handle_keypress(self, key):
-        pass
-
     def click(self):
         """Shorthand, use in tests etc"""
         self.handle_mouseclick()
 
+    def handle_keypress(self, key):
+        """Actions a controller should do when key is pressed"""
+
     def handle_mouseclick(self):
-        pass
+        """Actions a controller should do on a left mouseclick"""
 
     def handle_right_mouseclick(self):
-        pass
+        """Actions a controller should do on a right mouseclick"""
 
     def handle_mouseover(self):
-        pass
+        """Actions a controller should do on a mouseover"""
+
+    def __str__(self):
+        return self.__class__.__name__
 
 
-class PublisherInjector:
-    def __init__(self, controller):
-        self.controller = controller
-
-    def inject(self, publisher):
-        self.controller.create_event_list_from(publisher)
+# class PublisherInjector:
+#     def __init__(self, controller):
+#         self.controller = controller
+#
+#     def inject(self, publisher):
+#         self.controller.create_event_list_from(publisher)

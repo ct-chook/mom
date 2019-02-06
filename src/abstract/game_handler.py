@@ -37,9 +37,6 @@ class GameHandler:
         self.set_display()
         self.clock = pygame.time.Clock()
 
-        View.main_controller = self
-        Controller.main_controller = self
-
     def start(self):
         while self.is_running():  # the main loop
             self._do_game_frame()
@@ -57,7 +54,7 @@ class GameHandler:
         pass
 
     def _cleanup(self):
-        print('Game ended normally, bye!')
+        print('Game ended normally!')
         pygame.quit()
 
     def _do_game_frame(self):

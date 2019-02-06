@@ -1,8 +1,7 @@
 import pytest
 
-from abstract.controller import PublisherInjector
-from components.board.board import Board
-from helper.events.events import Publisher
+from src.abstract.controller import ControllerInfoFactory
+from src.components.board.board import Board
 from src.components.board.brain import PlayerDefaultBrain, PlayerIdleBrain
 from src.components.board.monster import Monster
 from src.components.combat.combat import Combat
@@ -26,9 +25,9 @@ class TestCase:
         mapoptions.mapname = 'testempty.map'
         mapoptions.set_number_of_players(2)
         mapoptions.create_players()
-        self.controller = BoardController(0, 0, 500, 500, mapoptions)
-        self.publisher = Publisher()
-        PublisherInjector(self.controller).inject(self.publisher)
+        info = ControllerInfoFactory().make()
+        self.publisher = info.publisher
+        self.controller = BoardController(0, 0, 500, 500, info, mapoptions)
         self.model = self.controller.model
         assert self.model.get_player_of_number(1).ai_type != AiType.human
         assert len(self.model.players) == 2
@@ -457,18 +456,18 @@ class TestNormalScenario(TestCase):
     def before_more(self):
         self.set_ai_type(AiType.default)
 
-        lord_1 = self.board.lords[0]
-        lord_2 = self.board.lords[1]
+        lord_1 = self.board.lords.get_for(self.player_1)
+        lord_2 = self.board.lords.get_for(self.player_2)
         self.board.set_monster_pos(lord_1, (1, 1))
-        self.surround_pos_with_towers_for(lord_1.pos, 0)
-        self.surround_pos_with_towers_for(lord_2.pos, 1)
+        self.surround_pos_with_towers_for(lord_1.pos, self.player_1)
+        self.surround_pos_with_towers_for(lord_2.pos, self.player_2)
         self.create_tower_at((9, 9))
         self.create_tower_at((11, 11))
         self.create_tower_at((13, 13))
         self.create_tower_at((15, 15))
 
     def skip_test_ai_doesnt_lock_up_the_game(self, before):
-        for _ in range(5):
+        for _ in range(9):
             self.do_enemy_turn()
 
     def surround_pos_with_towers_for(self, pos, owner):

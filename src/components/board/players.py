@@ -38,6 +38,8 @@ class Player:
         self.mana -= amount
 
     def is_friendly_with(self, player):
+        if player is None:
+            return False
         if player is self:
             return True
         if self.team is 0 or player is 0:
@@ -45,6 +47,8 @@ class Player:
         return self.team == player.team
 
     def is_enemy_of(self, player):
+        if player is None:
+            return True
         if player is self:
             return False
         if self.team is 0 or player is 0:

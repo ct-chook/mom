@@ -2,8 +2,8 @@ from src.abstract.controller import Controller
 
 
 class Window(Controller):
-    def __init__(self, x, y, width, height):
-        super().__init__(x, y, width, height)
+    def __init__(self, x, y, width, height, info):
+        super().__init__(x, y, width, height, info)
         self._buttons = []
 
     def add_button(self, input_button):
