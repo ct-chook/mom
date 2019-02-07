@@ -64,7 +64,7 @@ class AttackCollection:
 class AttackFactory:
     # ali multiplers are in the order of: [sunStance][alignment]
     _ali_multipliers = (
-        (0.25, 0, -0.25), (0, 0, 0), (-0.25, 0, 0.25), (0, 0, 0))
+        (0, 0, 0), (0.25, 0, -0.25), (0, 0, 0), (-0.25, 0, 0.25))
     _ACCURACY_MAGIC = 65
 
     def __init__(self):
