@@ -23,8 +23,7 @@ from src.helper.Misc.options_game import Options
 from src.helper.Misc.posconverter import PosConverter
 from src.helper.Misc.spritesheet import SpriteSheetFactory
 from src.helper.Misc.tileblitter import BoardBlitter
-from src.helper.events.events import EventCallback
-from src.helper.events.factory import PathEventFactory
+from src.helper.events import EventCallback
 from src.model.board_model import BoardModel
 
 
@@ -45,7 +44,9 @@ class BoardController(Window):
         self.model = BoardModel(mapoptions)
         self.view: BoardView = self.add_view(
             BoardView,
-            (self.camera, self.model, info.config))
+            self.camera,
+            self.model,
+            info.config)
         self.pos_converter = PosConverter(
             self.camera,
             self.model.board.x_max,
@@ -55,9 +56,6 @@ class BoardController(Window):
         self.selection_handler = SelectionHandler(
             self.model.board,
             self.model, self)
-        if self.view:
-            self.path_event_factory = PathEventFactory(
-                self.view.on_path_animation)
 
         # Windows
         self.combat_window: CombatWindow = self.attach_controller(
@@ -167,10 +165,6 @@ class BoardController(Window):
         elif key == pygame.K_SPACE:
             self._handle_key_space()
 
-    def _handle_key_space(self):
-        self.end_of_turn_window.show()
-        self.view.queue_for_background_update()
-
     def _handle_key_k(self):
         """For now use this to print terrain to stdout"""
         terrain = [self.model.board.x_max, self.model.board.y_max]
@@ -181,6 +175,34 @@ class BoardController(Window):
 
     def _handle_arrow_key(self, key):
         self.view.move_camera(self.directions[key])
+
+    def _handle_key_space(self):
+        self.end_of_turn_window.show()
+        self.view.queue_for_background_update()
+
+    def highlight_tiles(self, posses):
+        self.view.highlight_tiles(posses)
+
+    def get_ai_action_event(self):
+        return EventCallback(self._handle_ai_action, name='ai action')
+
+    def _handle_ai_action(self):
+        """The ai must take over the controller until they end their turn
+
+        Every event should fetch an ai action from the brain, and send this
+        action to the controller/view.
+        The event should also include another call to this method if the AI's
+        turn is not over yet.
+        """
+        brain = self._get_current_player_brain()
+        assert brain, 'Tried to handle ai action for human'
+        brain.do_action()
+
+    def _get_current_player_brain(self):
+        player = self.model.get_current_player()
+        if player not in self.brains:
+            return None
+        return self.brains[player]
 
     def handle_move_monster(self, monster, path):
         """Accessed by either the selection handler or the brain
@@ -203,9 +225,6 @@ class BoardController(Window):
         self.set_movement_events(monster, path)
         if self.model.has_capturable_tower_at(pos):
             self._handle_tower_capture(pos)
-
-    def get_ai_action_event(self):
-        return EventCallback(self._handle_ai_action, name='ai action')
 
     def set_movement_events(self, monster, path):
         """Movement can work in two ways, either by player or by computer
@@ -234,26 +253,6 @@ class BoardController(Window):
         self.append_callback(freeze_callback)
         self.status_bar.update_stats()
 
-    def _handle_ai_action(self):
-        """The ai must take over the controller until they end their turn
-
-        Every event should fetch an ai action from the brain, and send this
-        action to the controller/view.
-        The event should also include another call to this method if the AI's
-        turn is not over yet.
-        """
-        brain = self._get_current_player_brain()
-        if brain:
-            brain.do_action()
-        else:
-            logging.error('Tried to handle ai action for human')
-
-    def _get_current_player_brain(self):
-        player = self.model.get_current_player()
-        if player not in self.brains:
-            return None
-        return self.brains[player]
-
     def show_precombat_window_for(self, attacker, defender):
         assert attacker
         assert defender
@@ -277,8 +276,7 @@ class BoardController(Window):
                 self.parent.running = False
 
     def handle_summon_order_at(self, pos):
-        x, y = pos
-        logging.info(f'Picked {(x, y)} for summon location')
+        logging.info(f'Picked {pos} for summon location')
         self.summon_window.show()
         self.summon_window.set_summon_pos(pos)
 
@@ -302,23 +300,17 @@ class BoardController(Window):
             self.model.sun_stance.value)
         lord = self.model.board.get_lord_of(current_player)
         self.view.center_camera_on(lord.pos)
-        if current_player.ai_type == AiType.human:
-            self.is_ai_controlled = False
-        else:
-            self.is_ai_controlled = True
+        self.is_ai_controlled = current_player.ai_type != AiType.human
+        if self.is_ai_controlled:
             self.append_ai_callback()
         self.status_bar.update_stats()
-
-    def highlight_tiles(self, posses):
-        self.view.highlight_tiles(posses)
 
 
 PATH_ANIMATION_DELAY = 6
 
 
 class BoardView(View):
-    def __init__(self, rectangle, arguments):
-        camera, board_model, config = arguments
+    def __init__(self, rectangle, camera, board_model, config):
         super().__init__(rectangle)
         self.set_bg_color(Color.GRAY)
         self.camera = camera
@@ -327,18 +319,17 @@ class BoardView(View):
         self.path_index = None
         self.monster_sprites = {}
         self.tiles_to_highlight = None
-
         self.board_model: BoardModel = None
         self.board: Board = None
         self.board_blitter: BoardBlitter = None
+
         self.link_to_board_model(board_model, config)
-        self.monster_spritesheet = (SpriteSheetFactory()
-                                    .get_monster_spritesheets())
+        self.monster_spritesheet = (
+            SpriteSheetFactory().get_monster_spritesheets())
         self.create_sprites_for_viewport()
         self.add_text('Board view')
 
     def link_to_board_model(self, board_model, config):
-        """A form of dependency injection?"""
         self.board_model = board_model
         self.board = board_model.board
         tile_width = config.tile_width
@@ -358,8 +349,7 @@ class BoardView(View):
         self.queue_for_background_update()
 
     def clear_highlighted_tiles(self):
-        self.tiles_to_highlight = None
-        self.queue_for_background_update()
+        self.highlight_tiles(None)
 
     def move_camera(self, dxy):
         dx, dy = dxy
@@ -452,15 +442,17 @@ class BoardView(View):
 
     def create_sprite_for_monster(self, monster):
         try:
-            sprite_surface = (self.monster_spritesheet
-                              .get_sprite(monster.stats.id, monster.owner.id_))
+            sprite_surface = (
+                self.monster_spritesheet
+                .get_sprite(monster.stats.id, monster.owner.id_))
         except IndexError:
             print(f'trying to fetch a sprite for {monster.stats.id}, but '
                   'sprite was not found')
             return
         offset = self.pos_converter.board_to_surface_pos(monster.pos)
-        self.monster_sprites[monster] = self.add_sprite(sprite_surface,
-                                                        offset)
+        self.monster_sprites[monster] = self.add_sprite(
+            sprite_surface,
+            offset)
         # logging.info(f'sprite added for {monster.name} ({monster.owner})')
 
     def highlight_monsters(self, enemies):

@@ -2,7 +2,7 @@ import logging
 
 from pygame.rect import Rect
 
-from src.helper.events.events import EventCallback, EventList, Publisher
+from src.helper.events import EventCallback, EventList, Publisher
 
 
 class ControllerConfig:
@@ -116,11 +116,7 @@ class Controller:
         return controller
 
     def add_view(self, view_class, *args):
-        # if parameters:
         self.view = view_class(self.rectangle, *args)
-        # else:
-        #     self.view = view_class(self.rectangle)
-        # assert self.view.rectangle
         self.view.initialize_background()
         return self.view
 

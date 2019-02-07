@@ -1,6 +1,6 @@
 import pytest
 
-from abstract.controller import ControllerInfoFactory
+from src.abstract.controller import ControllerInfoFactory
 from src.components.board.board import Board
 from src.controller.board_controller import BoardController
 from src.controller.tile_editor_controller import TileEditorWindow, \

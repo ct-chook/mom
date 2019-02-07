@@ -10,7 +10,7 @@ from src.components.combat.combatlog import CombatLog
 from src.helper.Misc.constants import Color
 from src.helper.Misc.options_game import Options
 from src.helper.Misc.spritesheet import SpriteSheetFactory
-from src.helper.events.events import EventCallback
+from src.helper.events import EventCallback
 
 
 class CombatWindow(Window):

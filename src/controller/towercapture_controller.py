@@ -3,7 +3,7 @@ import logging
 from src.abstract.window import Window
 from src.helper.Misc.constants import is_even, Color
 from src.abstract.view import View
-from src.helper.events.events import EventCallback
+from src.helper.events import EventCallback
 
 
 class TowerCaptureWindow(Window):

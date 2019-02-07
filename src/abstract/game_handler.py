@@ -2,11 +2,9 @@ import logging
 
 import pygame
 
-from src.abstract.controller import Controller
 from src.abstract.maindisplay import MainDisplay
-from src.abstract.view import View
 from src.helper.Misc.constants import MouseButton
-from src.helper.events.events import Publisher
+from src.helper.events import Publisher
 
 # logging.getLogger().setLevel(logging.INFO)
 

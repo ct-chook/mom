@@ -1,6 +1,6 @@
 import pytest
 
-from src.helper.events.events import EventList, EventCallback, Publisher
+from src.helper.events import EventList, EventCallback, Publisher
 
 
 class Dummy:

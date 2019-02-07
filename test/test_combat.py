@@ -1,7 +1,7 @@
 import pytest
 
-from components.board.players import Player
 from src.components.board.monster import Monster
+from src.components.board.players import Player
 from src.helper.Misc.constants import MonsterType, Terrain
 from src.components.combat.combat import Combat
 from src.components.combat.attack import Attack

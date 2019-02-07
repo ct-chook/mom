@@ -1,7 +1,7 @@
-from src.abstract.window import Window
-from components.button import ButtonMatrix
 from math import floor
 
+from src.abstract.window import Window
+from src.components.button import ButtonMatrix
 from src.helper.Misc.constants import TERRAIN_COUNT, is_even, Color
 from src.helper.Misc.spritesheet import SpriteSheetFactory
 from src.abstract.view import View
