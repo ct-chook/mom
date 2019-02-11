@@ -5,7 +5,7 @@ from pygame import Surface
 from src.abstract.view import View
 from src.abstract.window import Window
 from src.components.combat import combatlog
-from src.components.combat.combat import Combat
+from src.components.combat.combatlogbuilder import CombatLogBuilder
 from src.components.combat.combatlog import CombatLog
 from src.helper.Misc.constants import Color
 from src.helper.Misc.options_game import Options
@@ -26,8 +26,8 @@ class CombatWindow(Window):
         logging.info('Showing combat')
         assert not self.active, 'Combat window is already in use!'
         self.active = True
-        combat = Combat()
-        self.combat_log = combat.monster_combat2(attacks, attack_range)
+        combat = CombatLogBuilder()
+        self.combat_log = combat.build_from_attacks(attacks, attack_range)
 
         draw_screen_event = EventCallback(self.view.draw_screen, attacks)
         show_attacks_event = EventCallback(self.view.show_attack,

@@ -3,7 +3,7 @@ import pytest
 from src.components.board.monster import Monster
 from src.components.board.players import Player
 from src.helper.Misc.constants import MonsterType, Terrain, Range, DayTime
-from src.components.combat.combat import Combat
+from src.components.combat.combatlogbuilder import CombatLogBuilder
 from src.components.combat.attack import Attack
 from src.controller.board_controller import BoardModel
 
@@ -74,12 +74,12 @@ class TestRomanCombat(CombatTest):
     def before(self):
         self.model = BoardModel()
         self.board = self.model.board
-        self.combat = Combat()
+        self.combat = CombatLogBuilder()
         self.roman_a = self.board.place_new_monster(
             Monster.Type.ROMAN, (4, 4), self.model.players[0])
         self.roman_b = self.board.place_new_monster(
             Monster.Type.ROMAN, (4, 5), self.model.players[1])
-        Combat.perfect_accuracy = True
+        CombatLogBuilder.perfect_accuracy = True
         self.more()
 
     def more(self):
@@ -88,7 +88,7 @@ class TestRomanCombat(CombatTest):
 
 class TestAttacksBetweenRomans(TestRomanCombat):
     def more(self):
-        self.combat.monster_combat(
+        self.combat.build_from_monsters(
             (self.roman_a, self.roman_b), Range.CLOSE, DayTime.DAWN)
         self.attack0 = self.combat._attacks.get_attack(0, Range.CLOSE)
         self.attack1 = self.combat._attacks.get_attack(1, Range.CLOSE)
@@ -104,7 +104,7 @@ class TestAttacksBetweenRomans(TestRomanCombat):
 
 class TestInvalidAttacksBetweenRomans(TestRomanCombat):
     def more(self):
-        self.combat.monster_combat(
+        self.combat.build_from_monsters(
             (self.roman_a, self.roman_b), Range.LONG, DayTime.DAWN)
         self.attack0 = self.combat._attacks.get_attack(0, Range.LONG)
         self.attack1 = self.combat._attacks.get_attack(1, Range.LONG)
@@ -124,7 +124,7 @@ class TestAligmentMultiplier(TestRomanCombat):
         self.assert_damage(DayTime.DAWN, 4)
 
     def assert_damage(self, sun_stance, expect):
-        self.combat.monster_combat(
+        self.combat.build_from_monsters(
             (self.roman_a, self.roman_b), Range.CLOSE, sun_stance)
         self.attack0 = self.combat._attacks.get_attack(0, Range.CLOSE)
         self.attack1 = self.combat._attacks.get_attack(1, Range.CLOSE)
@@ -134,7 +134,7 @@ class TestAligmentMultiplier(TestRomanCombat):
 
 class TestOneRoundOfCombat(TestRomanCombat):
     def more(self):
-        self.combat_result = self.combat.monster_combat(
+        self.combat_result = self.combat.build_from_monsters(
             (self.roman_a, self.roman_b), Range.CLOSE, DayTime.DAWN)
         self.model.process_combat_log(self.combat_result)
 
@@ -165,7 +165,7 @@ class TestMultipleRoundsOfCombat(TestRomanCombat):
         assert self.combat_result.winner.exp == 18
 
     def combat_round(self):
-        self.combat_result = self.combat.monster_combat(
+        self.combat_result = self.combat.build_from_monsters(
             (self.roman_a, self.roman_b), Range.CLOSE, DayTime.DAWN)
         self.model.process_combat_log(self.combat_result)
 
@@ -178,7 +178,7 @@ class TestPromotionFromWinning(TestRomanCombat):
     def more(self):
         self.roman_a.award_exp(15)
         self.roman_b.hp = 3
-        self.combat_result = self.combat.monster_combat(
+        self.combat_result = self.combat.build_from_monsters(
             (self.roman_a, self.roman_b), Range.CLOSE, DayTime.DAWN)
 
     def test_promotion_in_result(self, before):
@@ -194,7 +194,7 @@ class TestPromotionFromSurviving(TestRomanCombat):
     def more(self):
         self.roman_a.award_exp(25)
         self.roman_b.award_exp(25)
-        self.combat_result = self.combat.monster_combat(
+        self.combat_result = self.combat.build_from_monsters(
             (self.roman_a, self.roman_b), Range.CLOSE, DayTime.DAWN)
 
     def test_combat_result(self, before):
@@ -220,7 +220,7 @@ class TestPromotionFromMultipleRounds(TestRomanCombat):
         assert self.roman_a.type == MonsterType.CARTHAGO
 
     def combat_round(self):
-        self.combat_result = self.combat.monster_combat(
+        self.combat_result = self.combat.build_from_monsters(
             (self.roman_a, self.roman_b), Range.CLOSE, DayTime.DAWN)
         self.model.process_combat_log(self.combat_result)
 

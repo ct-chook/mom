@@ -4,14 +4,14 @@ from src.abstract.controller import ControllerInfoFactory
 from src.components.board.monster import Monster
 from src.components.board.players import Player
 from src.components.combat.attack import AttackFactory
-from src.components.combat.combat import Combat
+from src.components.combat.combatlogbuilder import CombatLogBuilder
 from src.components.combat.combatlog import CombatRound
 from src.controller.combat_controller import CombatWindow
 from src.helper.Misc.constants import Terrain, DayTime, MonsterType
 from src.helper.Misc.options_game import Options
 
 Options.headless = True
-Combat.perfect_accuracy = True
+CombatLogBuilder.perfect_accuracy = True
 
 
 class Dummy:
