@@ -69,47 +69,50 @@ class AttackFactory:
 
     def __init__(self):
         self.attacks: AttackCollection = AttackCollection()
+        self._sun_stance = None
 
     def get_all_neutral_attacks_between_monsters(self, monsters):
-        return self.get_all_attacks_between_monsters(monsters, DayTime.NOON)
+        return self.get_all_attacks_between_monsters(monsters, DayTime.DAY)
 
     def get_all_attacks_between_monsters(self, monsters, sun_stance):
+        self._sun_stance = sun_stance
         for attack_range in range(2):
-            self._add_attacks_for_sides(attack_range, monsters, sun_stance)
+            self._add_attacks_for_sides(attack_range, monsters)
         return self.attacks
 
     def get_attacks_between_monsters(self, monsters, attack_range, sun_stance):
-        self._add_attacks_for_sides(attack_range, monsters, sun_stance)
+        self._sun_stance = sun_stance
+        self._add_attacks_for_sides(attack_range, monsters)
         return self.attacks
 
     def get_attacks_for_monster(self, monsters, side, sun_stance):
+        self._sun_stance = sun_stance
         for attack_range in range(2):
-            self._add_attack_for_side(side, attack_range, monsters, sun_stance)
+            self._add_attack_for_side(side, attack_range, monsters)
         return self.attacks
 
     def get_neutral_expected_damage_between(self, attacker, defender, range_):
         """This uses neutral sun stance"""
         return self.get_attack_between_monsters(
-            (attacker, defender), 0, range_, DayTime.NOON).get_expected_damage()
+            (attacker, defender), 0, range_, DayTime.DAY).get_expected_damage()
 
     def get_attack_between_monsters(self, monsters, side, range_, sun_stance):
-        return self._get_attack_against_monster(
-            monsters, side, range_, sun_stance)
+        self._sun_stance = sun_stance
+        return self._get_attack_against_monster(monsters, side, range_)
 
-    def _add_attacks_for_sides(self, attack_range, monsters, sun_stance):
+    def _add_attacks_for_sides(self, attack_range, monsters):
         for side in range(2):
-            self._add_attack_for_side(side, attack_range, monsters, sun_stance)
+            self._add_attack_for_side(side, attack_range, monsters)
 
-    def _add_attack_for_side(self, side, attack_range, monsters, sun_stance):
-        attack = self._get_attack_against_monster(
-            monsters, side, attack_range, sun_stance)
+    def _add_attack_for_side(self, side, attack_range, monsters):
+        attack = self._get_attack_against_monster(monsters, side, attack_range)
         self.attacks.add_attack(attack, side, attack_range)
 
     def _get_attack_against_monster(
-            self, monsters, a, attack_range, sun_stance):
+            self, monsters, a, attack_range):
         b = (a + 1) % 2
         base_damage = monsters[a].stats.damage[attack_range]
-        ali_bonus = self._get_ali_bonus(monsters[a], sun_stance)
+        ali_bonus = self._get_ali_bonus(monsters[a])
         exp = monsters[a].exp
         attack_element = monsters[a].stats.element[attack_range]
         resistance = monsters[b].stats.resistance[attack_element]
@@ -118,9 +121,9 @@ class AttackFactory:
         return Attack(base_damage, ali_bonus, exp, resistance, hits, accuracy,
                       monsters[a])
 
-    def _get_ali_bonus(self, monster, sun_stance):
+    def _get_ali_bonus(self, monster):
         alignment = monster.stats.alignment
-        return self._ali_multipliers[sun_stance][alignment]
+        return self._ali_multipliers[self._sun_stance][alignment]
 
     def _get_accuracy(self, defending_monster, attack_element):
         # Magical attacks always have fixed accuracy

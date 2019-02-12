@@ -89,7 +89,7 @@ class TestRomanCombat(CombatTest):
 class TestAttacksBetweenRomans(TestRomanCombat):
     def more(self):
         self.combat.build_from_monsters(
-            (self.roman_a, self.roman_b), Range.CLOSE, DayTime.DAWN)
+            (self.roman_a, self.roman_b), Range.CLOSE, DayTime.SUNRISE)
         self.attack0 = self.combat._attacks.get_attack(0, Range.CLOSE)
         self.attack1 = self.combat._attacks.get_attack(1, Range.CLOSE)
 
@@ -105,7 +105,7 @@ class TestAttacksBetweenRomans(TestRomanCombat):
 class TestInvalidAttacksBetweenRomans(TestRomanCombat):
     def more(self):
         self.combat.build_from_monsters(
-            (self.roman_a, self.roman_b), Range.LONG, DayTime.DAWN)
+            (self.roman_a, self.roman_b), Range.LONG, DayTime.SUNRISE)
         self.attack0 = self.combat._attacks.get_attack(0, Range.LONG)
         self.attack1 = self.combat._attacks.get_attack(1, Range.LONG)
 
@@ -118,10 +118,10 @@ class TestInvalidAttacksBetweenRomans(TestRomanCombat):
 
 class TestAligmentMultiplier(TestRomanCombat):
     def test_multipliers(self, before):
-        self.assert_damage(DayTime.NOON, 4)
-        self.assert_damage(DayTime.DUSK, 4)
+        self.assert_damage(DayTime.DAY, 4)
+        self.assert_damage(DayTime.SUNSET, 4)
         self.assert_damage(DayTime.NIGHT, 3)
-        self.assert_damage(DayTime.DAWN, 4)
+        self.assert_damage(DayTime.SUNRISE, 4)
 
     def assert_damage(self, sun_stance, expect):
         self.combat.build_from_monsters(
@@ -135,7 +135,7 @@ class TestAligmentMultiplier(TestRomanCombat):
 class TestOneRoundOfCombat(TestRomanCombat):
     def more(self):
         self.combat_result = self.combat.build_from_monsters(
-            (self.roman_a, self.roman_b), Range.CLOSE, DayTime.DAWN)
+            (self.roman_a, self.roman_b), Range.CLOSE, DayTime.SUNRISE)
         self.model.process_combat_log(self.combat_result)
 
     def test_end_of_round_results(self, before):
@@ -166,7 +166,7 @@ class TestMultipleRoundsOfCombat(TestRomanCombat):
 
     def combat_round(self):
         self.combat_result = self.combat.build_from_monsters(
-            (self.roman_a, self.roman_b), Range.CLOSE, DayTime.DAWN)
+            (self.roman_a, self.roman_b), Range.CLOSE, DayTime.SUNRISE)
         self.model.process_combat_log(self.combat_result)
 
     def combat_rounds(self, max_):
@@ -179,7 +179,7 @@ class TestPromotionFromWinning(TestRomanCombat):
         self.roman_a.award_exp(15)
         self.roman_b.hp = 3
         self.combat_result = self.combat.build_from_monsters(
-            (self.roman_a, self.roman_b), Range.CLOSE, DayTime.DAWN)
+            (self.roman_a, self.roman_b), Range.CLOSE, DayTime.SUNRISE)
 
     def test_promotion_in_result(self, before):
         assert MonsterType.CARTHAGO == self.combat_result.promotions[0]
@@ -195,7 +195,7 @@ class TestPromotionFromSurviving(TestRomanCombat):
         self.roman_a.award_exp(25)
         self.roman_b.award_exp(25)
         self.combat_result = self.combat.build_from_monsters(
-            (self.roman_a, self.roman_b), Range.CLOSE, DayTime.DAWN)
+            (self.roman_a, self.roman_b), Range.CLOSE, DayTime.SUNRISE)
 
     def test_combat_result(self, before):
         assert MonsterType.CARTHAGO == self.combat_result.promotions[0]
@@ -221,7 +221,7 @@ class TestPromotionFromMultipleRounds(TestRomanCombat):
 
     def combat_round(self):
         self.combat_result = self.combat.build_from_monsters(
-            (self.roman_a, self.roman_b), Range.CLOSE, DayTime.DAWN)
+            (self.roman_a, self.roman_b), Range.CLOSE, DayTime.SUNRISE)
         self.model.process_combat_log(self.combat_result)
 
     def combat_rounds(self, _max):

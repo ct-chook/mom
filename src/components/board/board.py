@@ -37,7 +37,7 @@ class TowerList:
     def get_capturable_towers_for_player(self, player) -> dict:
         towers = {}
         for pos in self.towers:
-            if not (self.owner_at(pos).is_friendly_with(player)):
+            if player.is_enemy_of(self.owner_at(pos)):
                 towers[pos] = player
         return towers
 
@@ -57,7 +57,8 @@ class LordList:
         self.lords.pop(player)
 
     def get_for(self, player) -> Monster:
-        assert player in self.lords, f'Player {player} has no lord set'
+        assert type(player) is not int, 'Must pass player object, not integer'
+        assert player in self.lords, f'Player "{player}" has no lord set'
         return self.lords[player]
 
     def __iter__(self):
@@ -321,138 +322,18 @@ class BoardPrinter:
         return monster.name[0]
 
 
-class BoardFactory:
+class AbstractBoardBuilder:
+    """Creates the board and sets up the tiles and players and such"""
     def __init__(self):
         self.board = Board()
-        self.mapoptions = None
-        self.mapname = None
+        self.players = players.PlayerList()
+        self.mapoptions: MapOptions = None
         self.layout = None
         self.x_max = None
         self.y_max = None
-        self.players: players.PlayerList = None
         self.start_posses = []
 
-    def make_board_from_text(self, text, legend) -> Board:
-        self._parse_text_to_layout(text, legend)
-        return self.board
-
-    def _parse_text_to_layout(self, input_layout, legend):
-        chars = re.sub('[\\s]+', ' ', input_layout).split(' ')
-        self.layout = []
-        monsters_to_add = []
-        for char in chars:
-            if char.isnumeric():
-                self.layout.append(int(char))
-            elif char == '':
-                pass
-            elif char not in legend:
-                raise AttributeError(f'Char "{char}" missing from legend')
-            else:
-                data = legend[char]
-                if self._is_monster_data(data):
-                    data += (len(self.layout) - 2,)
-                    monsters_to_add.append(data)
-                    self.layout.append(Terrain.GRASS)
-                else:
-                    self.layout.append(legend[char])
-        # start pos (unused, but needed)
-        # might want to use this later or in a different method
-        for _ in range(8):
-            self.layout.append(0)
-        self._make_board_from_layout()
-        self._add_monsters(monsters_to_add)
-
-    def _add_monsters(self, monsters):
-        assert self.players is not None
-        for monster_data in monsters:
-            monster_type, owner_id, index = monster_data
-            x = index % self.x_max
-            y = floor(index / self.x_max)
-            owner = self.players.get_player_by_id(owner_id)
-            self.board.place_new_monster(monster_type, (x, y), owner)
-
-    def _is_monster_data(self, data):
-        return isinstance(data, tuple)
-
-    def _make_board_from_layout(self):
-        self.set_map_using_layout(1)
-        self._create_players()
-        self._set_players()
-        # self._add_lords()
-
-    def load_map(self, mapoptions=None) -> Board:
-        self.mapoptions = mapoptions
-        if not mapoptions:
-            mapname = 'test'
-        else:
-            mapname = mapoptions.mapname
-        self.mapname = mapname
-        if self.mapname == 'random':
-            self.load_random_map(20, 20, mapoptions)
-        else:
-            self._create_players(mapoptions)
-            if self.mapname == 'test':
-                test = True
-                self.mapname = 'test.map'
-            else:
-                test = False
-            self._get_layout_from_map_file()
-            self.set_map_using_layout()
-            self.board.set_players(self.players)
-            self._add_lords()
-            if test:
-                self._generate_towers_around_lords()
-        return self.board
-
-    def load_random_map(self, x_max, y_max, mapoptions) -> Board:
-        self.x_max = x_max
-        self.y_max = y_max
-        self.board.x_max = self.x_max
-        self.board.y_max = self.y_max
-        self._fill_with_grass_tiles()
-        self._randomize_terrain()
-        self._create_players(mapoptions)
-        self._set_players()
-        return self.board
-
-    def _generate_towers_around_lords(self):
-        for lord in self.board.lords:
-            self.board.set_terrain_to(lord.pos, Terrain.CASTLE)
-            posses = []
-            posses += self.board.get_posses_adjacent_to(lord.pos)
-            for pos in posses:
-                terrain = self.board.terrain_at(pos)
-                if terrain == Terrain.GRASS:
-                    self.board.on_tile(pos).set_terrain_to(Terrain.TOWER)
-                    self.board.capture_terrain_at(pos, lord.owner)
-
-    def _create_players(self, mapoptions=None):
-        if mapoptions and mapoptions.players:
-            self.players = mapoptions.players
-            return
-        self.players = players.PlayerList()
-        self.players.add_player(1, AiType.human, 50)
-        self.players.add_player(2, AiType.idle, 50)
-        self.players.add_player(3, AiType.idle, 50)
-        self.players.add_player(4, AiType.idle, 50)
-
-    def _set_players(self):
-        self.board.set_players(self.players)
-
-    def _get_layout_from_map_file(self):
-        assert self.mapname, 'No mapname set'
-        with open(f'{ROOT}/src/data/maps/{self.mapname}', 'r') as fd:
-            content = fd.read()
-        self._get_layout_from_content(content)
-
-    def _get_layout_from_content(self, content):
-        layout_strings = content.split(', ')
-        layout = []
-        for layout_string in layout_strings:
-            layout.append(int(layout_string))
-        self.layout = layout
-
-    def set_map_using_layout(self, transpose=0):
+    def set_map_using_layout(self):
         """Parses the layout to set up the terrain
 
         How it works: the first two integers are the width and height,
@@ -469,30 +350,9 @@ class BoardFactory:
         assert len(layout) - 10 == self.x_max * self.y_max, (
                 f'Error setting terrain layout, {self.x_max}:{self.y_max} but '
                 f'{len(layout) - 10} tiles')
-        # mode should be unified to just one, right now it transposes the layout
-        if transpose == 0:
-            n = 2
-            for x in range(self.x_max):
-                for y in range(self.y_max):
-                    self.board.set_terrain_to((x, y), layout[n])
-                    n += 1
-        else:
-            for x in range(self.x_max):
-                for y in range(self.y_max):
-                    self.board.set_terrain_to(
-                        (x, y), layout[2 + x + y * self.x_max])
-        # grab the starting positions
-        n = len(layout) - 8
-        for _ in range(4):
+        self._set_terrain_from_layout(layout)
+        for n in range(len(layout) - 8, len(layout), 2):
             self.start_posses.append((layout[n], layout[n + 1]))
-            n += 2
-
-    def _add_lords(self):
-        for n in range(len(self.players)):
-            player = self.players.get_player_by_id(n)
-            pos = self.start_posses[n]
-            lord = self.board.place_new_monster(player.lord_type, pos, player)
-            self.board.lords.add(lord)
 
     def _fill_with_grass_tiles(self):
         assert self.x_max
@@ -501,6 +361,205 @@ class BoardFactory:
             self.board.tiles.append([])
             for y in range(self.y_max):
                 self.board.tiles[x].append(Tile(Terrain.GRASS))
+
+    def _set_terrain_from_layout(self, layout):
+        n = 2
+        for x in range(self.x_max):
+            for y in range(self.y_max):
+                self.board.set_terrain_to((x, y), layout[n])
+                n += 1
+
+    def _create_players(self):
+        for id_ in range(self.mapoptions.number_of_players):
+            self._create_player_from_mapoptions(id_)
+        self.board.set_players(self.players)
+
+    def _set_default_mapoption_values_if_not_specified(self):
+        """Sets default options for every option not specified by mapoptions
+
+        By default, 4 players, first is human, rest is computer,
+        DAIMYOU-WIZARD-SORCERER-DARKLORD, no teams and 50 mp recovery per turn
+        """
+        if not self.mapoptions:
+            self.mapoptions = MapOptions()
+        if not self.mapoptions.mapname:
+            self.mapoptions.mapname = 'test'
+        if not self.mapoptions.number_of_players:
+            self._set_default_player_count()
+        if not self.mapoptions.lord_types:
+            self._set_default_lord_type()
+        if not self.mapoptions.ai_types:
+            self._set_default_ai_type()
+        if not self.mapoptions.teams:
+            self._set_default_teams()
+        if not self.mapoptions.starting_mp:
+            self._set_default_mp()
+
+    def _set_default_player_count(self):
+        self.mapoptions.number_of_players = 4
+
+    def _set_default_lord_type(self):
+        for n in range(self.mapoptions.number_of_players):
+            self.mapoptions.lord_types[n] = Monster.Type.DAIMYOU + n
+
+    def _set_default_ai_type(self):
+        for n in range(self.mapoptions.number_of_players):
+            if n == 0:
+                self.mapoptions.ai_types[n] = AiType.human
+            else:
+                self.mapoptions.ai_types[n] = AiType.default
+
+    def _set_default_teams(self):
+        for n in range(self.mapoptions.number_of_players):
+            self.mapoptions.teams[n] = 0
+
+    def _set_default_mp(self):
+        for n in range(self.mapoptions.number_of_players):
+            self.mapoptions.starting_mp[n] = 50
+
+    def _create_player_from_mapoptions(self, id_):
+        new_player = self.players.add_player(
+            self.mapoptions.lord_types[id_],
+            self.mapoptions.ai_types[id_],
+            self.mapoptions.starting_mp[id_])
+        new_player.team = self.mapoptions.teams[id_]
+
+
+class BoardBuilder(AbstractBoardBuilder):
+    def load_default_map(self) -> Board:
+        mapoptions = MapOptions()
+        mapoptions.mapname = 'test'
+        self.load_map(mapoptions)
+        return self.board
+
+    def load_map(self, mapoptions) -> Board:
+        self.mapoptions = mapoptions
+        self._set_default_mapoption_values_if_not_specified()
+        self._create_players()
+        if self.mapoptions.mapname == 'test':
+            test = True
+            self.mapoptions.mapname = 'test.map'
+        else:
+            test = False
+        self._get_layout_from_map_file()
+        self.set_map_using_layout()
+        self._add_lords()
+        if test:
+            self._generate_towers_around_lords()
+        return self.board
+
+    def _get_layout_from_map_file(self):
+        assert self.mapoptions.mapname, 'No mapname set'
+        with open(f'{ROOT}/src/data/maps/{self.mapoptions.mapname}', 'r') as fd:
+            content = fd.read()
+        self._get_layout_from_content(content)
+
+    def _get_layout_from_content(self, content):
+        layout_strings = content.split(', ')
+        layout = []
+        for layout_string in layout_strings:
+            layout.append(int(layout_string))
+        self.layout = layout
+
+    def _add_lords(self):
+        for n in range(len(self.players)):
+            player = self.players.get_player_by_id(n)
+            pos = self.start_posses[n]
+            lord = self.board.place_new_monster(player.lord_type, pos, player)
+            self.board.lords.add(lord)
+
+    def _generate_towers_around_lords(self):
+        for lord in self.board.lords:
+            self.board.set_terrain_to(lord.pos, Terrain.CASTLE)
+            posses = []
+            posses += self.board.get_posses_adjacent_to(lord.pos)
+            for pos in posses:
+                terrain = self.board.terrain_at(pos)
+                if terrain == Terrain.GRASS:
+                    self.board.on_tile(pos).set_terrain_to(Terrain.TOWER)
+                    self.board.capture_terrain_at(pos, lord.owner)
+
+
+class BoardTextBuilder(AbstractBoardBuilder):
+    def __init__(self):
+        super().__init__()
+        self.monsters_to_add = None
+        self.legend = None
+
+    def make_board_from_text(self, text, legend) -> Board:
+        self.legend = legend
+        self._parse_text_to_layout(text)
+        self._make_board_from_layout()
+        self._set_default_mapoption_values_if_not_specified()
+        self._create_players()
+        self._add_monsters(self.monsters_to_add)
+        return self.board
+
+    def _parse_text_to_layout(self, input_layout):
+        chars = re.sub('[\\s]+', ' ', input_layout).split(' ')
+        self.layout = []
+        self.monsters_to_add = []
+        for char in chars:
+            self._process_char(char)
+        # start pos (unused, but needed)
+        # might want to use this later or in a different method
+        for _ in range(8):
+            self.layout.append(0)
+
+    def _process_char(self, char):
+        if char.isnumeric():
+            self.layout.append(int(char))
+        elif char == '':
+            return
+        elif char not in self.legend:
+            raise AttributeError(f'Char "{char}" missing from legend')
+        else:
+            self._convert_char_to_info(char)
+
+    def _convert_char_to_info(self, char):
+        data = self.legend[char]
+        if self._is_monster_data(data):
+            data += (len(self.layout) - 2,)
+            self.monsters_to_add.append(data)
+            self.layout.append(Terrain.GRASS)
+        else:
+            self.layout.append(data)
+
+    def _is_monster_data(self, data):
+        return isinstance(data, tuple)
+
+    def _make_board_from_layout(self):
+        self.set_map_using_layout()
+
+    def _add_monsters(self, monsters):
+        assert self.players is not None
+        for monster_data in monsters:
+            monster_type, owner_id, index = monster_data
+            x = index % self.x_max
+            y = floor(index / self.x_max)
+            owner = self.players.get_player_by_id(owner_id)
+            self.board.place_new_monster(monster_type, (x, y), owner)
+
+    # override
+    def _set_terrain_from_layout(self, layout):
+        for x in range(self.x_max):
+            for y in range(self.y_max):
+                self.board.set_terrain_to(
+                    (x, y), layout[2 + x + y * self.x_max])
+
+
+class RandomBoardBuilder(AbstractBoardBuilder):
+    def load_map(self, x_max, y_max, mapoptions) -> Board:
+        self.mapoptions = mapoptions
+        self.x_max = x_max
+        self.y_max = y_max
+        self.board.x_max = self.x_max
+        self.board.y_max = self.y_max
+        self._fill_with_grass_tiles()
+        self._randomize_terrain()
+        self._set_default_mapoption_values_if_not_specified()
+        self._create_players()
+        return self.board
 
     def _randomize_terrain(self):
         pos = (self._get_random_x(), self._get_random_y())
@@ -515,3 +574,17 @@ class BoardFactory:
 
     def _get_random_x(self):
         return random.randint(0, self.x_max - 1)
+
+
+class MapOptions:
+    def __init__(self):
+        self.players: PlayerList = PlayerList()
+        self.number_of_players = None
+        self.mapname = None
+        self.lord_types = {}
+        self.ai_types = {}
+        self.teams = {}
+        self.starting_mp = {}
+
+    def set_number_of_players(self, number):
+        self.number_of_players = number

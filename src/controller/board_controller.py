@@ -32,7 +32,7 @@ class BoardController(Window):
     directions = {pygame.K_LEFT: (-1, 0), pygame.K_RIGHT: (1, 0),
                   pygame.K_DOWN: (0, 1), pygame.K_UP: (0, -1)}
 
-    def __init__(self, x, y, width, height, info, mapoptions=None):
+    def __init__(self, x, y, width, height, info, mapoptions):
         super().__init__(x, y, width, height, info)
         self.path_event_factory = None
         self.is_ai_controlled = False

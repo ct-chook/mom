@@ -47,7 +47,7 @@ class TestCase:
         self.hp_left = self.left_monster.hp
         self.hp_right = self.right_monster.hp
         monsters = (self.left_monster, self.right_monster)
-        sun_stance = DayTime.NOON
+        sun_stance = DayTime.DAY
         self.attacks = AttackFactory().get_all_attacks_between_monsters(
             monsters, sun_stance)
         attack_range = 0

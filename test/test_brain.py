@@ -1,12 +1,11 @@
 import pytest
 
 from src.abstract.controller import ControllerInfoFactory
-from src.components.board.board import Board
+from src.components.board.board import Board, MapOptions
 from src.components.board.brain import PlayerDefaultBrain, PlayerIdleBrain
 from src.components.board.monster import Monster
 from src.components.combat.combatlogbuilder import CombatLogBuilder
 from src.controller.board_controller import BoardController
-from src.controller.mainmenu_controller import MapOptions
 from src.helper.Misc.constants import Terrain, AiType
 from src.helper.Misc.options_game import Options
 
@@ -24,7 +23,6 @@ class TestCase:
         mapoptions = MapOptions()
         mapoptions.mapname = 'testempty.map'
         mapoptions.set_number_of_players(2)
-        mapoptions.create_players()
         info = ControllerInfoFactory().make()
         self.publisher = info.publisher
         self.controller = BoardController(0, 0, 500, 500, info, mapoptions)

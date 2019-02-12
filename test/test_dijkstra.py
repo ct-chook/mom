@@ -2,12 +2,12 @@ import random
 
 import pytest
 
-from src.components.board.board import BoardFactory
+from src.components.board.board import BoardBuilder, RandomBoardBuilder, \
+    MapOptions
 from src.components.board.dijkstra import DijkstraGraph, DijkstraPrinter
 from src.components.board.monster import Monster
 from src.components.board.pathing import PathMatrixFactory
 from src.components.board.pathing_components import AStarMatrixFactory
-from src.controller.mainmenu_controller import MapOptions
 from src.helper.Misc.constants import IMPASSIBLE, UNEXPLORED
 
 
@@ -15,10 +15,10 @@ class TestCase:
     # noinspection PyAttributeOutsideInit
     @pytest.fixture
     def before(self):
-        factory = BoardFactory()
+        factory = RandomBoardBuilder()
         mapoptions = MapOptions()
         mapoptions.mapname = 'random'
-        self.board = factory.load_map(mapoptions)
+        self.board = factory.load_map(20, 20, mapoptions)
         self.terrain_type = None
         self.generator = None
 
@@ -100,14 +100,16 @@ class TestDijkstraWithPathingComparison(TestCase):
 
 
 class TestDijkstraAlgorithm(TestCase):
-    @pytest.mark.skip
-    def test_if_dijkstra_algorithm_is_correct(self):
-        """Test for the test above. Uses a very naive and slow algorithm"""
+    def skip_test_if_dijkstra_algorithm_is_correct(self):
+        """Test for the test above. Uses a very naive and slow algorithm
+
+        only run this test if algoritm for dijkstra changes
+        """
         for _ in range(10):
             self.run_algorithm()
 
     def run_algorithm(self):
-        factory = BoardFactory()
+        factory = BoardBuilder()
         mapoptions = MapOptions()
         self.board = factory.load_random_map(4, 4, mapoptions)
         self.terrain_type = None

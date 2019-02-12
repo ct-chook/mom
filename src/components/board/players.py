@@ -58,6 +58,9 @@ class Player:
     def max_monsters_reached(self):
         return self.tower_count + 1 < len(self.monsters)
 
+    def __repr__(self):
+        return f'Player {self.id_}'
+
 
 class PlayerBuilder:
     def __init__(self):
@@ -105,6 +108,8 @@ class PlayerList:
         return self.get_current_player()
 
     def get_current_player(self) -> Player:
+        assert len(self.players) > self.current_index, (
+            f'{self.current_index} out of range for {len(self.players)}')
         return self.players[self.current_index]
 
     def __len__(self):

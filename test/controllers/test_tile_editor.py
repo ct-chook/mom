@@ -15,7 +15,7 @@ class TestCase:
     @pytest.fixture
     def before(self):
         info = ControllerInfoFactory().make()
-        self.board_controller = BoardController(0, 0, 500, 500, info)
+        self.board_controller = BoardController(0, 0, 500, 500, info, None)
         self.model = self.board_controller.model
         self.board: Board = self.model.board
         self.before_more()

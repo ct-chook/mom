@@ -9,6 +9,7 @@ MAP_DIRECTORY = f'{ROOT}src/data/maps/'
 print(f'Root dir: {ROOT}')
 
 TERRAIN_COUNT = 13
+# should be 83, is this used by spritesheet?
 MONSTER_COUNT = 90
 SUMMONER_COUNT = 6
 
@@ -18,23 +19,18 @@ IMPASSIBLE = 99999
 grid_height_factor = math.sqrt(2) / 2  # 0.7083, height / width of tiles
 
 
-# enumeration
+# enumerations
 class Range:
     CLOSE, LONG = range(2)
 
 
 class DayTime:
-    DAWN, NOON, DUSK, NIGHT = range(4)
+    SUNRISE, DAY, SUNSET, NIGHT = range(4)
 
 
 class Terrain:
     (CASTLE, FORTRESS, TOWER, DUNE, FOREST, GRASS, MOUNTAIN, OCEAN,
-     RIVER, ROCKY, SWAMP, TUNDRA, VOLCANO) = range(13)
-
-
-class Movetype:
-    (master, highSky, sky, lowSky, fireSky, bigOcean, smallOcean, bigLand,
-     smallLand, fireLand, bigTundra, smallTundra, dune) = range(13)
+     RIVER, ROCKY, SWAMP, TUNDRA, VOLCANO) = range(TERRAIN_COUNT)
 
 
 class AttackType:
@@ -48,13 +44,6 @@ class MouseButton:
 
 class AiType:
     (human, idle, default, scout, attacker, defender) = range(6)
-
-
-AiTypeName = ('Human', 'Idle', 'Default', 'Scout', 'Attacker', 'Defender')
-
-
-class MonsterBehavior:
-    (SCOUT, ATTACKER, DEFENDER) = range(3)
 
 
 class Color:

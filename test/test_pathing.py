@@ -1,8 +1,6 @@
-from copy import deepcopy
-
 import pytest
 
-from src.components.board.board import BoardFactory
+from src.components.board.board import BoardTextBuilder
 from src.components.board.monster import Monster
 from src.components.board.pathing import PathFinder, PathFactory
 from src.components.board.pathing import PathMatrixFactory
@@ -14,87 +12,74 @@ Type = Monster.Type
 
 
 class Boards:
-    zigzag = None
-    cross = None
-    gauntlet = None
-    square = None
-
     @staticmethod
     def get_zigzag():
-        if not Boards.zigzag:
-            legend = {'.': Terrain.GRASS, 'X': Terrain.VOLCANO}
-            layout = """18 10
-                      .  .  .  .  .  .  .  .  .  .  X  .  .  .  .  .  .  . 
-                        .  .  .  .  .  .  .  .  .  .  X  .  .  .  X  .  .  . 
-                      .  .  .  .  .  .  .  .  .  .  X  .  .  .  X  X  .  . 
-                        .  .  .  .  .  .  .  .  .  .  X  .  .  .  X  .  .  . 
-                      .  .  .  .  .  .  .  .  .  .  X  .  .  .  X  .  .  . 
-                        .  .  .  .  .  .  .  .  .  .  X  .  .  .  X  .  .  . 
-                      .  .  .  .  .  .  .  .  .  .  X  .  .  .  X  .  .  . 
-                        .  .  .  .  .  .  .  .  .  .  X  .  .  .  X  .  .  . 
-                      .  .  .  .  .  .  .  .  .  .  X  .  .  .  X  .  .  . 
-                        .  .  .  .  .  .  .  .  .  .  .  .  .  .  X  .  .  ."""
-            factory = BoardFactory()
-            Boards.zigzag = factory.make_board_from_text(layout, legend)
-        return deepcopy(Boards.zigzag)
+        legend = {'.': Terrain.GRASS, 'X': Terrain.VOLCANO}
+        layout = """18 10
+                  .  .  .  .  .  .  .  .  .  .  X  .  .  .  .  .  .  . 
+                    .  .  .  .  .  .  .  .  .  .  X  .  .  .  X  .  .  . 
+                  .  .  .  .  .  .  .  .  .  .  X  .  .  .  X  X  .  . 
+                    .  .  .  .  .  .  .  .  .  .  X  .  .  .  X  .  .  . 
+                  .  .  .  .  .  .  .  .  .  .  X  .  .  .  X  .  .  . 
+                    .  .  .  .  .  .  .  .  .  .  X  .  .  .  X  .  .  . 
+                  .  .  .  .  .  .  .  .  .  .  X  .  .  .  X  .  .  . 
+                    .  .  .  .  .  .  .  .  .  .  X  .  .  .  X  .  .  . 
+                  .  .  .  .  .  .  .  .  .  .  X  .  .  .  X  .  .  . 
+                    .  .  .  .  .  .  .  .  .  .  .  .  .  .  X  .  .  ."""
+        builder = BoardTextBuilder()
+        return builder.make_board_from_text(layout, legend)
 
     @staticmethod
     def get_cross():
-        if not Boards.cross:
-            legend = {'.': Terrain.GRASS, '#': Terrain.VOLCANO,
-                      '=': Terrain.RIVER}
-            #          1   2   3   4   5   6   7   8   9  10  11  12  13  14
-            layout = """14 12
-                      #  .   .   .   .   .   .   .   .   .   .   .   .   . 
-                        #   .   .   .   .   .   .   .   #   .   .   =   =   . 
-                      .   #   .   .   .   #   .   .   #   .   .   =   =   . 
-                        .   #   .   .   .   #   .   #   .   .   =   =   .   . 
-                      .   .   #   .   .   .   #   #   .   .   .   =   =   . 
-                        .   .   #   .   .   .   #   .   .   .   .   =   =   = 
-                      .   .   .   #   .   .   #   #   .   .   .   =   =   . 
-                        .   .   .   .   .   #   .   .   .   .   .   =   =   . 
-                      .   .   .   .   .   #   .   .   .   .   .   =   =   . 
-                        .   .   .   .   #   .   .   .   .   .   =   =   .   . 
-                      .   .   .   .   .   .   .   .   .   .   =   =   .   . 
-                        .   .   .   .   .   .   .   .   .   .   .   .   .   ."""
-            factory = BoardFactory()
-            Boards.cross = factory.make_board_from_text(layout, legend)
-        return deepcopy(Boards.cross)
+        legend = {'.': Terrain.GRASS, '#': Terrain.VOLCANO,
+                  '=': Terrain.RIVER}
+        #          1   2   3   4   5   6   7   8   9  10  11  12  13  14
+        layout = """14 12
+                  #  .   .   .   .   .   .   .   .   .   .   .   .   . 
+                    #   .   .   .   .   .   .   .   #   .   .   =   =   . 
+                  .   #   .   .   .   #   .   .   #   .   .   =   =   . 
+                    .   #   .   .   .   #   .   #   .   .   =   =   .   . 
+                  .   .   #   .   .   .   #   #   .   .   .   =   =   . 
+                    .   .   #   .   .   .   #   .   .   .   .   =   =   = 
+                  .   .   .   #   .   .   #   #   .   .   .   =   =   . 
+                    .   .   .   .   .   #   .   .   .   .   .   =   =   . 
+                  .   .   .   .   .   #   .   .   .   .   .   =   =   . 
+                    .   .   .   .   #   .   .   .   .   .   =   =   .   . 
+                  .   .   .   .   .   .   .   .   .   .   =   =   .   . 
+                    .   .   .   .   .   .   .   .   .   .   .   .   .   ."""
+        builder = BoardTextBuilder()
+        return builder.make_board_from_text(layout, legend)
 
     @staticmethod
     def get_gauntlet():
-        if not Boards.gauntlet:
-            legend = {'.': Terrain.GRASS, '#': Terrain.VOLCANO}
-            #          1   2   3   4   5   6   7   8   9  10  11  12  13  14
-            layout = """14 5
-                      #   #   #   #   #   #   #   #   #   #   #   #   #   #        
-                        #   .   .   .   .   .   .   .   .   .   .   .   .   #   
-                      #   #   #   #   #   #   #   #   #   #   #   #   #   .      
-                        #   .   .   .   .   .   .   .   .   .   .   .   .   # 
-                      #   #   #   #   #   #   #   #   #   #   #   #   #   #     
-                      """
-            factory = BoardFactory()
-            Boards.gauntlet = factory.make_board_from_text(layout, legend)
-        return deepcopy(Boards.gauntlet)
+        legend = {'.': Terrain.GRASS, '#': Terrain.VOLCANO}
+        #          1   2   3   4   5   6   7   8   9  10  11  12  13  14
+        layout = """14 5
+                  #   #   #   #   #   #   #   #   #   #   #   #   #   #        
+                    #   .   .   .   .   .   .   .   .   .   .   .   .   #   
+                  #   #   #   #   #   #   #   #   #   #   #   #   #   .      
+                    #   .   .   .   .   .   .   .   .   .   .   .   .   # 
+                  #   #   #   #   #   #   #   #   #   #   #   #   #   #     
+                  """
+        builder = BoardTextBuilder()
+        return builder.make_board_from_text(layout, legend)
 
     @staticmethod
     def get_square():
-        if not Boards.gauntlet:
-            legend = {'.': Terrain.GRASS}
-            #          1   2   3   4   5   6   7   8   9  10  11  12  13  14
-            layout = """9 9
-                          .   .   .   .   .   .   .   .   .
-                            .   .   .   .   .   .   .   .   .
-                          .   .   .   .   .   .   .   .   .
-                            .   .   .   .   .   .   .   .   .
-                          .   .   .   .   .   .   .   .   .
-                            .   .   .   .   .   .   .   .   .
-                          .   .   .   .   .   .   .   .   .
-                            .   .   .   .   .   .   .   .   .
-                          .   .   .   .   .   .   .   .   ."""
-            factory = BoardFactory()
-            Boards.square = factory.make_board_from_text(layout, legend)
-        return deepcopy(Boards.square)
+        legend = {'.': Terrain.GRASS}
+        #          1   2   3   4   5   6   7   8   9  10  11  12  13  14
+        layout = """9 9
+                      .   .   .   .   .   .   .   .   .
+                        .   .   .   .   .   .   .   .   .
+                      .   .   .   .   .   .   .   .   .
+                        .   .   .   .   .   .   .   .   .
+                      .   .   .   .   .   .   .   .   .
+                        .   .   .   .   .   .   .   .   .
+                      .   .   .   .   .   .   .   .   .
+                        .   .   .   .   .   .   .   .   .
+                      .   .   .   .   .   .   .   .   ."""
+        builder = BoardTextBuilder()
+        return builder.make_board_from_text(layout, legend)
 
 
 class TestCase:
@@ -109,8 +94,8 @@ class TestCase:
 
     # noinspection PyAttributeOutsideInit
     def make_board_from_layout2(self, layout, legend, start_pos):
-        factory = BoardFactory()
-        self.board = factory.make_board_from_text(layout, legend)
+        builder = BoardTextBuilder()
+        self.board = builder.make_board_from_text(layout, legend)
         self.start_pos = start_pos
         assert self.board.monster_at(start_pos), 'No monster at start pos'
 

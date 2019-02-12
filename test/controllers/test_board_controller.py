@@ -1,7 +1,7 @@
 import pytest
 
 from src.abstract.controller import ControllerInfoFactory
-from src.components.board.board import Board
+from src.components.board.board import Board, MapOptions
 from src.components.board.monster import Monster
 from src.controller.board_controller import BoardController
 from src.helper.Misc.constants import Terrain, MonsterType, AiType
@@ -38,7 +38,12 @@ class TestCase:
     @pytest.fixture
     def make_board(self):
         info = ControllerInfoFactory().make()
-        self.controller = BoardController(0, 0, 500, 500, info)
+        mapoptions = MapOptions()
+        mapoptions.ai_types[0] = AiType.human
+        mapoptions.ai_types[1] = AiType.idle
+        mapoptions.ai_types[2] = AiType.idle
+        mapoptions.ai_types[3] = AiType.idle
+        self.controller = BoardController(0, 0, 500, 500, info, mapoptions)
         self.publisher = info.publisher
 
         self.model = self.controller.model
@@ -48,8 +53,9 @@ class TestCase:
         self.player_2 = self.model.players[1]
         self.board.place_new_monster(Monster.Type.ROMAN, roman_start_pos)
         self.board.place_new_monster(Monster.Type.FIGHTER, crusader_start_pos)
-        self.board.place_new_monster(Monster.Type.CHIMERA, chim_start_pos,
-                                     self.player_2)
+        self.board.place_new_monster(
+            Monster.Type.CHIMERA, chim_start_pos,
+            self.player_2)
         self.before_more()
 
     def before_more(self):

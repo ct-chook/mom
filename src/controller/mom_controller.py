@@ -3,8 +3,8 @@ import pygame
 from src.abstract.view import View
 from src.abstract.window import Window
 from src.controller.board_controller import BoardController
-from src.controller.mainmenu_controller import MainMenuController, \
-    MapOptions
+from src.controller.mainmenu_controller import MainMenuController
+from src.components.board.board import MapOptions
 
 
 class MomController(Window):

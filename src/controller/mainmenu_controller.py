@@ -4,9 +4,9 @@ from pygame.rect import Rect
 
 from src.abstract.view import View
 from src.abstract.window import Window
+from src.components.board.board import MapOptions
 from src.components.button import TextButton
 from src.components.board.monster import Monster
-from src.components.board.players import PlayerList
 from src.helper.Misc.constants import Color, AiType
 from src.helper.Misc.constants import MAP_DIRECTORY
 from src.helper.Misc.datatables import DataTables
@@ -127,7 +127,6 @@ class MapOptionsWindow(Window):
         for button in self.team_buttons:
             self.mapoptions.teams[n] = button.get_value()
             n += 1
-        self.mapoptions.create_players()
         self.hide()
         self.parent.create_board(info, self.mapoptions)
 
@@ -249,40 +248,6 @@ class MapSelectionWindow(Window):
     def pick_map(self, mapname):
         self.hide()
         self.parent.set_map(mapname)
-
-
-class MapOptions:
-    def __init__(self):
-        self.players: PlayerList = PlayerList()
-        self.number_of_players = None
-        self.lord_types = {}
-        self.ai_types = {}
-        self.teams = {}
-        self.mapname = None
-
-    def set_number_of_players(self, number):
-        self.number_of_players = number
-
-    def create_players(self):
-        # lord type should be configurable, players shouldn't be made until
-        # all settings are confirmed
-        # quick fix for lack of lord types configured
-        if not self.lord_types:
-            for n in range(4):
-                self.lord_types[n] = n + Monster.Type.DAIMYOU
-        if not self.ai_types:
-            for n in range(4):
-                if n == 0:
-                    self.ai_types[n] = AiType.human
-                else:
-                    self.ai_types[n] = AiType.default
-        if not self.teams:
-            for n in range(4):
-                self.teams[n] = 0
-        for n in range(self.number_of_players):
-            player = self.players.add_player(self.lord_types[n],
-                                             self.ai_types[n], 50)
-            player.team = self.teams[n]
 
 
 class MapSelectionView(View):

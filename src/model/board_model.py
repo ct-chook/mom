@@ -1,28 +1,39 @@
 import logging
 
-from src.controller.mainmenu_controller import CappedCounter
-from src.helper.Misc.datatables import DataTables
 from src.components.board import players
-from src.components.board.board import BoardFactory
+from src.components.board.board import BoardBuilder
 from src.components.board.pathing import PathMatrixFactory, PathFactory
 from src.components.board.pathing_components import PathMatrix
 from src.components.combat.attack import AttackFactory, AttackCollection
 from src.components.combat.combatlog import CombatLog
+from src.controller.mainmenu_controller import CappedCounter
 from src.helper.Misc.constants import AiType, Terrain
+from src.helper.Misc.datatables import DataTables
 
 
 class BoardModel:
     """Holds everything related to the board and its rules"""
 
     def __init__(self, mapoptions=None):
+        self.path_matrix: PathMatrix = None
+        self.game_over = False
         self.turn = 0
         self.sun_stance = CappedCounter(0, 4)
-        self.board = BoardFactory().load_map(mapoptions)
-        self.players: players.PlayerList = self.board.players
 
-        self.game_over = False  # jumps to true when no human players left
-        self.path_matrix: PathMatrix = None
+        self.board = BoardBuilder().load_map(mapoptions)
+        self.players: players.PlayerList = self.board.players
         self.matrix_factory = PathMatrixFactory(self.board)
+
+        # check if there are any human players, if so the game ends when
+        # all of them lose, otherwise it keeps going until one team wins
+        self.ai_only_match = True
+        self._set_ai_only_status()
+
+    def _set_ai_only_status(self):
+        for player in self.players:
+            if player.ai_type == AiType.human:
+                self.ai_only_match = False
+                break
 
     def on_end_turn(self):
         current_player = self.get_current_player()
@@ -78,6 +89,8 @@ class BoardModel:
             # assert False, 'game over'
 
     def _no_human_players_left(self):
+        if self.ai_only_match:
+            return False
         for player in self.players:
             if player.ai_type == AiType.human:
                 return False
@@ -87,7 +100,7 @@ class BoardModel:
         teams = set()
         for player in self.players:
             teams.add(player.team)
-        if len(teams) == 1 and None not in teams:
+        if len(teams) == 1 and 0 not in teams:
             return True
         else:
             return False
@@ -195,5 +208,6 @@ class BoardModel:
 
     def _is_valid_terrain_for_summon(self, pos):
         terrain = self.board.terrain_at(pos)
-        return (terrain == Terrain.TOWER or terrain == Terrain.FORTRESS
+        return (terrain == Terrain.TOWER
+                or terrain == Terrain.FORTRESS
                 or terrain == Terrain.CASTLE)
